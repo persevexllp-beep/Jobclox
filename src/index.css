@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom fade animations and transitions */
+@layer base {
+  body {
+    @apply font-sans antialiased text-slate-900 bg-slate-50;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ==========================================
+   PERSISTED DARK MODE CUSTOM COLOR SYSTEM
+   ========================================== */
+html.dark {
+  background-color: #030712 !important;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.07) 0px, transparent 40%),
+    radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.05) 0px, transparent 45%),
+    radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.06) 0px, transparent 50%) !important;
+  background-attachment: fixed !important;
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: transparent !important;
+  color: #f1f5f9 !important;
+}
+
+/* Transmute light backdrops to deep twilight and slate canvas colors with gradient backdrops */
+html.dark .bg-slate-50 {
+  background-color: #030712 !important;
+}
+
+html.dark .bg-white {
+  background-color: rgba(17, 24, 39, 0.75) !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.25) 100%) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: rgba(31, 41, 55, 0.65) !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.15) 100%) !important;
+}
+
+html.dark .bg-slate-150,
+html.dark .bg-slate-200 {
+  background-color: rgba(55, 65, 81, 0.8) !important;
+}
+
+html.dark .bg-slate-50\/70 {
+  background-color: rgba(17, 24, 39, 0.8) !important;
+}
+
+/* Banner override for company pending status in dark mode */
+html.dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.07) !important;
+  background-image: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.01) 100%) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+html.dark .text-amber-900 {
+  color: #fef3c7 !important;
+}
+html.dark .text-amber-700 {
+  color: #fbbf24 !important;
+}
+
+/* Borders and Dividers with high-tech low contrast slate */
+html.dark .border-slate-100,
+html.dark .border-slate-150,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-gray-200,
+html.dark .border-slate-200\/60 {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html.dark .border-b-slate-100,
+html.dark .border-b-slate-200 {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Typography Overrides based on slate variables */
+html.dark .text-slate-950,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-850,
+html.dark .text-gray-900 {
+  color: #f9fafb !important;
+}
+
+html.dark .text-slate-705,
+html.dark .text-slate-700,
+html.dark .text-slate-650,
+html.dark .text-slate-600,
+html.dark .text-gray-700,
+html.dark .text-gray-650 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-550,
+html.dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-400,
+html.dark .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Interactive elements and hover behaviors */
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-gray-50:hover {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  color: #f8fafc !important;
+}
+
+/* Inputs, Textareas, Selection options */
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark textarea,
+html.dark select {
+  background-color: rgba(17, 24, 39, 0.85) !important;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.01) 0%, rgba(0, 0, 0, 0.1) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f9fafb !important;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #475569 !important;
+}
+
+html.dark input[type="text"]:focus,
+html.dark input[type="email"]:focus,
+html.dark input[type="password"]:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), inset 0 2px 4px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Ensure dropdowns, floating menus and absolute layers retain dark layout contrast */
+html.dark .absolute.bg-white,
+html.dark .shadow-2xl.bg-white,
+html.dark .shadow-lg.bg-white {
+  background-color: #0f172a !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.01) 0%, rgba(0, 0, 0, 0.3) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+/* Buttons with static white backgrounds */
+html.dark button.bg-white,
+html.dark a.bg-white {
+  background-color: rgba(31, 41, 55, 0.8) !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark button.bg-white:hover,
+html.dark a.bg-white:hover {
+  background-color: rgba(55, 65, 81, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* SVG charts and graph components */
+html.dark .recharts-cartesian-grid-horizontal line,
+html.dark .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark .recharts-text {
+  fill: #94a3b8 !important;
+}
+html.dark .recharts-default-tooltip {
+  background-color: #0f172a !important;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.2) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f9fafb !important;
+}
+
+/* Dark mode scrollbar support */
+html.dark ::-webkit-scrollbar-thumb {
+  background: #1f2937;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+

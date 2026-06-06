@@ -1,0 +1,287 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "name": "Olivia Vance",
+      "email": "admin@persevex.com",
+      "role": "admin",
+      "status": "active",
+      "createdAt": "2026-05-01T10:00:00Z"
+    },
+    {
+      "id": "u-comp1",
+      "name": "Sarah Jenkins",
+      "email": "hr@amazon.com",
+      "role": "company",
+      "status": "active",
+      "createdAt": "2026-05-10T12:00:00Z"
+    },
+    {
+      "id": "u-cand1",
+      "name": "Alex Mercer",
+      "email": "candidate@persevex.com",
+      "role": "candidate",
+      "status": "active",
+      "createdAt": "2026-05-15T08:30:00Z"
+    },
+    {
+      "id": "u-cand2",
+      "name": "Monica Geller",
+      "email": "monica@persevex.com",
+      "role": "candidate",
+      "status": "active",
+      "createdAt": "2026-05-20T09:00:00Z"
+    },
+    {
+      "id": "u-1780746610203",
+      "name": "Helli",
+      "email": "helli@gmail.com",
+      "role": "candidate",
+      "status": "active",
+      "createdAt": "2026-06-06T11:50:10.203Z"
+    },
+    {
+      "id": "u-1780750050439",
+      "name": "D23dcs162",
+      "email": "d23dcs162@charusat.edu.in",
+      "role": "candidate",
+      "status": "active",
+      "createdAt": "2026-06-06T12:47:30.439Z"
+    }
+  ],
+  "companies": [
+    {
+      "id": "c-aws",
+      "userId": "u-comp1",
+      "companyName": "Amazon Web Services (AWS)",
+      "website": "https://aws.amazon.com",
+      "linkedin": "https://linkedin.com/company/aws",
+      "industry": "Cloud Computing & Technology",
+      "companyEmail": "recruitment@amazon.com",
+      "contactPerson": "Sarah Jenkins",
+      "phone": "+1 555-019-2834",
+      "verificationStatus": "approved",
+      "documents": [
+        {
+          "name": "aws_incorporation_cert.pdf"
+        }
+      ],
+      "createdAt": "2026-05-12T14:00:00Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "j-web",
+      "companyId": "c-aws",
+      "companyName": "Amazon Web Services (AWS)",
+      "title": "Full-Stack Engineer (React & Node)",
+      "department": "AWS Core Solutions",
+      "location": "Seattle, WA (Hybrid)",
+      "jobType": "Full-time",
+      "experience": "3-5 years",
+      "salary": "$120,000 - $145,000 / yr",
+      "description": "We are seeking a talented developer to build responsive console interfaces and scalable server-side features. You will collaborate closely with system architects to structure API systems and ensure minimal paint latencies.",
+      "requirements": [
+        "React",
+        "Node.js",
+        "MongoDB",
+        "AWS"
+      ],
+      "preferredSkills": [
+        "TypeScript",
+        "Tailwind CSS",
+        "GraphQL"
+      ],
+      "status": "approved",
+      "viewCount": 42,
+      "createdAt": "2026-05-14T09:00:00Z",
+      "deadline": "2026-07-15"
+    },
+    {
+      "id": "j-ui",
+      "companyId": "c-aws",
+      "companyName": "Amazon Web Services (AWS)",
+      "title": "Frontend UI Developer",
+      "department": "AWS Amplify Team",
+      "location": "Boston, MA (Remote)",
+      "jobType": "Full-time",
+      "experience": "1-3 years",
+      "salary": "$95,000 - $115,000 / yr",
+      "description": "Join the developer experience team to build sleek web experiences. Crafting beautiful interfaces, optimizing interactions, and writing high-fidelity, testable Tailwind code is what you will do everyday.",
+      "requirements": [
+        "React",
+        "Tailwind CSS",
+        "TypeScript"
+      ],
+      "preferredSkills": [
+        "Vite",
+        "Figma",
+        "Jest"
+      ],
+      "status": "submitted",
+      "viewCount": 18,
+      "createdAt": "2026-06-01T15:30:00Z",
+      "deadline": "2026-07-20"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "can-alex",
+      "userId": "u-cand1",
+      "education": "B.S. in Computer Science - Georgia Institute of Technology",
+      "skills": [
+        "React",
+        "Node.js",
+        "MongoDB",
+        "Tailwind CSS",
+        "TypeScript",
+        "Git"
+      ],
+      "experience": "3 years as Frontend Developer. Developed low-latency interactive administration grids. Specialized in responsive grids with React, Context, state charts, and REST APIs.",
+      "resumeText": "ALEX MERCER\nEmail: candidate@persevex.com\n\nPROFESSIONAL SUMMARY\nHighly energetic software developer with 3 years of engineering beautiful React interfaces and Node.js backend systems.\n\nTECHNICAL SKILLS\n- Frontend: React, Redux, Tailwind CSS, TypeScript, Javascript (ES6+)\n- Backend: Node.js, Express, MongoDB, RESTful APIs, Git, Unix CLI\n- Operations: Github Actions, Docker basics\n\nPROFESSIONAL EXPERIENCE\nSoftware Engineer | TechCraft Software (2023 - Present)\n- Led creation of user administration hub in React and Tailwind, pruning page load times by 20%.\n- Integrated MongoDB collections to serialize rich client profiles and trigger real-time dashboards.\n\nEDUCATION\nGeorgia Institute of Technology - B.S. in Computer Science",
+      "resumeFileName": "alex_mercer_development_resume.pdf",
+      "createdAt": "2026-05-16T11:00:00Z"
+    },
+    {
+      "id": "can-monica",
+      "userId": "u-cand2",
+      "education": "Master of Computer Applications - NYU",
+      "skills": [
+        "React",
+        "Figma",
+        "Git"
+      ],
+      "experience": "1 year of freelance interface coding. Crafted local HTML portfolios and assisted design mockups in Figma.",
+      "resumeText": "MONICA GELLER\nEmail: monica@persevex.com\n\nSUMMARY\nCreative interface designer and junior frontend coder. Skilled in UI layout wireframing and modular React states.\n\nSKILLS\n- Design: Figma, Adobe XD, Typography, Vector Layouts\n- Engineering: HTML5, CSS3, Javascript, React, Git, Bootstrap\n\nEDUCATION\nNew York University - Master of Computer Applications",
+      "resumeFileName": "monica_geller_designer.pdf",
+      "createdAt": "2026-05-21T10:00:00Z"
+    },
+    {
+      "id": "can-1780746610203",
+      "userId": "u-1780746610203",
+      "education": "Not set",
+      "skills": [],
+      "experience": "",
+      "resumeText": "",
+      "resumeFileName": "",
+      "createdAt": "2026-06-06T11:50:10.203Z"
+    },
+    {
+      "id": "can-1780750050439",
+      "userId": "u-1780750050439",
+      "education": "Not set",
+      "skills": [],
+      "experience": "",
+      "resumeText": "",
+      "resumeFileName": "",
+      "createdAt": "2026-06-06T12:47:30.439Z"
+    }
+  ],
+  "applications": [
+    {
+      "id": "a-1",
+      "candidateId": "can-alex",
+      "candidateName": "Alex Mercer",
+      "candidateEmail": "candidate@persevex.com",
+      "jobId": "j-web",
+      "jobTitle": "Full-Stack Engineer (React & Node)",
+      "companyId": "c-aws",
+      "companyName": "Amazon Web Services (AWS)",
+      "score": 75,
+      "matchedSkills": [
+        "React",
+        "Node.js",
+        "MongoDB"
+      ],
+      "missingSkills": [
+        "AWS"
+      ],
+      "status": "interviewing",
+      "notes": "Strong React background and basic REST knowledge. Missing heavy AWS experience, but has high potential. Recommended for second round.",
+      "appliedAt": "2026-05-18T10:00:00Z",
+      "interviewDate": "2026-06-15T14:00"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "n-1",
+      "recipientId": "all_admin",
+      "title": "New Company Onboarding",
+      "message": "Amazon Web Services uploaded documents for verification.",
+      "isRead": true,
+      "createdAt": "2026-05-12T14:05:00Z"
+    },
+    {
+      "id": "n-2",
+      "recipientId": "u-comp1",
+      "title": "Company Verified",
+      "message": "Your company registration has been approved by Persevex Admin.",
+      "isRead": true,
+      "createdAt": "2026-05-13T09:00:00Z"
+    },
+    {
+      "id": "n-3",
+      "recipientId": "all_admin",
+      "title": "Job Approval Request",
+      "message": "AWS posted a new job: Frontend UI Developer.",
+      "isRead": true,
+      "createdAt": "2026-06-01T15:32:00Z"
+    },
+    {
+      "id": "n-1780744544253",
+      "recipientId": "u-comp1",
+      "title": "New Qualified Candidate Forwarded",
+      "message": "Persevex screened and forwarded a prime match for \"Full-Stack Engineer (React & Node)\": Alex Mercer (Score: 75%). View candidates in your pipeline.",
+      "isRead": false,
+      "createdAt": "2026-06-06T11:15:44.253Z"
+    },
+    {
+      "id": "n-1780744544255",
+      "recipientId": "u-cand1",
+      "title": "Profile Forwarded to Corporate HR!",
+      "message": "Great news! Persevex Senior Recruiters finalized review and forwarded your credentials to the official hiring team at Amazon Web Services (AWS). Keep an eye out for scheduling!",
+      "isRead": false,
+      "createdAt": "2026-06-06T11:15:44.255Z"
+    },
+    {
+      "id": "n-1780750537181",
+      "recipientId": "u-cand1",
+      "title": "Interview Scheduled!",
+      "message": "The hiring manager at Amazon Web Services (AWS) checked your profile and scheduled an interview. Details: 2026-06-15T14:00.",
+      "isRead": false,
+      "createdAt": "2026-06-06T12:55:37.181Z"
+    }
+  ],
+  "emailAlerts": [
+    {
+      "id": "email-1780744544254-620",
+      "recipientEmail": "recruitment@amazon.com",
+      "recipientName": "Sarah Jenkins",
+      "subject": "[Candidate Forwarded] Persevex matched a candidate for your role - Full-Stack Engineer (React & Node)",
+      "body": "\n            <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;\">\n              <div style=\"background-color: #0f172a; color: white; padding: 24px; text-align: center;\">\n                <h1 style=\"margin: 0; font-size: 20px; font-weight: bold;\">PERSEVEX PARTNER HUB</h1>\n              </div>\n              <div style=\"padding: 24px; color: #1e293b; background-color: #ffffff; line-height: 1.6;\">\n                <h3 style=\"margin-top: 0;\">Dear Sarah Jenkins,</h3>\n                <p>We are delighted to inform you that our Senior Recruiters have completed their screening process and forwarded a highly qualified matching candidate for your active role:</p>\n                \n                <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;\">\n                  <table style=\"width: 100%; border-collapse: collapse; font-size: 13px;\">\n                    <tr>\n                      <td style=\"padding: 4px 0; font-weight: 600; color: #64748b; width: 120px;\">Position:</td>\n                      <td style=\"padding: 4px 0; font-weight: bold; color: #0f172a;\">Full-Stack Engineer (React & Node)</td>\n                    </tr>\n                    <tr>\n                      <td style=\"padding: 4px 0; font-weight: 600; color: #64748b;\">Candidate:</td>\n                      <td style=\"padding: 4px 0; font-weight: bold; color: #0f172a;\">Alex Mercer</td>\n                    </tr>\n                    <tr>\n                      <td style=\"padding: 4px 0; font-weight: 600; color: #64748b;\">Match Index Score:</td>\n                      <td style=\"padding: 4px 0;\"><span style=\"background-color: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 9999px; font-weight: bold;\">75% Match</span></td>\n                    </tr>\n                    <tr>\n                      <td style=\"padding: 4px 0; font-weight: 600; color: #64748b;\">Matched Skills:</td>\n                      <td style=\"padding: 4px 0; color: #0f172a; font-family: monospace;\">React, Node.js, MongoDB</td>\n                    </tr>\n                  </table>\n                </div>\n                \n                <p>The candidate's credentials and analyzed resume details are now fully active on your Recruiting Dashboard. You can trigger direct scheduling, record notes, or mark final hiring decisions there.</p>\n                \n                <hr style=\"border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;\" />\n                <div style=\"text-align: center;\">\n                  <span style=\"font-size: 11px; color: #94a3b8; display: block; margin-bottom: 8px;\">Triggered dynamically by Persevex Status Change System</span>\n                </div>\n              </div>\n            </div>\n          ",
+      "status": "delivered",
+      "triggeredByEvent": "Application of Alex Mercer forwarded to company",
+      "createdAt": "2026-06-06T11:15:44.254Z"
+    },
+    {
+      "id": "email-1780744544255-82",
+      "recipientEmail": "candidate@persevex.com",
+      "recipientName": "Alex Mercer",
+      "subject": "[Persevex Careers] Profile Forwarded to HR Team at Amazon Web Services (AWS)",
+      "body": "\n          <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);\">\n            <div style=\"background-color: #10b981; color: white; padding: 24px; text-align: center;\">\n              <h1 style=\"margin: 0; font-size: 20px; font-weight: bold; letter-spacing: -0.025em;\">PERSEVEX CAREER HUB</h1>\n              <p style=\"margin: 4px 0 0 0; font-size: 12px; opacity: 0.9; text-transform: uppercase; font-family: monospace;\">Automated Alert System</p>\n            </div>\n            <div style=\"padding: 24px; color: #1e293b; background-color: #ffffff; line-height: 1.6;\">\n              <h3 style=\"margin-top: 0; font-size: 16px; font-weight: 600;\">Dear Alex Mercer,</h3>\n              <p>Your application status for the position of <strong>Full-Stack Engineer (React & Node)</strong> at <strong>Amazon Web Services (AWS)</strong> has been updated to:</p>\n              <div style=\"background-color: #f1f5f9; border-left: 4px solid #10b981; padding: 12px 16px; margin: 20px 0; border-radius: 0 8px 8px 0;\">\n                <span style=\"font-size: 11px; text-transform: uppercase; font-weight: bold; color: #64748b; letter-spacing: 0.1em; display: block;\">New Workflow Phase</span>\n                <span style=\"font-size: 18px; font-weight: 700; color: #0fa26e; text-transform: capitalize;\">forwarded</span>\n              </div>\n              \n              <div style=\"margin: 15px 0; font-size: 14px; text-align: left; background: #fafafa; border: 1px solid #eaeaea; padding: 15px; border-radius: 8px;\">\n                <p style='margin:0;'>Outstanding news! We completed candidate routing and forwarded your credentials immediately to the selection committee at <strong>Amazon Web Services (AWS)</strong>. Their HR managers can now view your structured index, experience timelines, and resume PDF fields.</p>\n              </div>\n              \n              <hr style=\"border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;\" />\n              <p style=\"font-size: 12px; color: #64748b; margin-bottom: 0;\">Please sign in to the Persevex portal to view real-time status details.</p>\n            </div>\n            <div style=\"background-color: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8;\">\n              You are receiving this automated career updates pipeline alert because you are registered on Persevex.<br />\n              &copy; 2026 Persevex HR Systems Inc., Seattle Corporate HQ\n            </div>\n          </div>\n        ",
+      "status": "delivered",
+      "triggeredByEvent": "Status changed from under_review to forwarded",
+      "createdAt": "2026-06-06T11:15:44.255Z"
+    },
+    {
+      "id": "email-1780750537182-187",
+      "recipientEmail": "candidate@persevex.com",
+      "recipientName": "Alex Mercer",
+      "subject": "[Interview Alert] Amazon Web Services (AWS) scheduled interview for Full-Stack Engineer (React & Node)",
+      "body": "\n          <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);\">\n            <div style=\"background-color: #10b981; color: white; padding: 24px; text-align: center;\">\n              <h1 style=\"margin: 0; font-size: 20px; font-weight: bold; letter-spacing: -0.025em;\">PERSEVEX CAREER HUB</h1>\n              <p style=\"margin: 4px 0 0 0; font-size: 12px; opacity: 0.9; text-transform: uppercase; font-family: monospace;\">Automated Alert System</p>\n            </div>\n            <div style=\"padding: 24px; color: #1e293b; background-color: #ffffff; line-height: 1.6;\">\n              <h3 style=\"margin-top: 0; font-size: 16px; font-weight: 600;\">Dear Alex Mercer,</h3>\n              <p>Your application status for the position of <strong>Full-Stack Engineer (React & Node)</strong> at <strong>Amazon Web Services (AWS)</strong> has been updated to:</p>\n              <div style=\"background-color: #f1f5f9; border-left: 4px solid #10b981; padding: 12px 16px; margin: 20px 0; border-radius: 0 8px 8px 0;\">\n                <span style=\"font-size: 11px; text-transform: uppercase; font-weight: bold; color: #64748b; letter-spacing: 0.1em; display: block;\">New Workflow Phase</span>\n                <span style=\"font-size: 18px; font-weight: 700; color: #0fa26e; text-transform: capitalize;\">interviewing</span>\n              </div>\n              \n              <div style=\"margin: 15px 0; font-size: 14px; text-align: left; background: #fafafa; border: 1px solid #eaeaea; padding: 15px; border-radius: 8px;\">\n                <p style='margin:0;'>Get ready! The recruiting team at <strong>Amazon Web Services (AWS)</strong> has approved your resume and scheduled an interview event. Details listed on Persevex Portal: <em>2026-06-15T14:00</em>.</p>\n              </div>\n              \n              <hr style=\"border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;\" />\n              <p style=\"font-size: 12px; color: #64748b; margin-bottom: 0;\">Please sign in to the Persevex portal to view real-time status details.</p>\n            </div>\n            <div style=\"background-color: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8;\">\n              You are receiving this automated career updates pipeline alert because you are registered on Persevex.<br />\n              &copy; 2026 Persevex HR Systems Inc., Seattle Corporate HQ\n            </div>\n          </div>\n        ",
+      "status": "delivered",
+      "triggeredByEvent": "Status changed from forwarded to interviewing",
+      "createdAt": "2026-06-06T12:55:37.182Z"
+    }
+  ]
+}

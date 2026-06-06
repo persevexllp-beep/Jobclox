@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-06-06T11:44:13.818Z",
+  "environmentVariables": {
+    "success": true,
+    "message": "All required environment variables are present",
+    "details": {
+      "url": "https://fpsqgctnupultjwaunln.supabase.co...",
+      "keyLength": 208,
+      "urlValid": true,
+      "keyFormatValid": true
+    }
+  },
+  "clientCreation": {
+    "success": true,
+    "message": "Supabase client created successfully",
+    "details": {
+      "clientType": "object",
+      "hasAuth": true,
+      "hasDatabase": true,
+      "hasStorage": true
+    }
+  },
+  "connectivity": {
+    "success": true,
+    "message": "Successfully connected to Supabase",
+    "details": {
+      "authenticated": false,
+      "timestamp": "2026-06-06T11:44:13.840Z"
+    }
+  },
+  "tableAccess": {
+    "success": true,
+    "message": "Successfully accessed database table",
+    "details": {
+      "table": "users",
+      "rowCount": 0,
+      "timestamp": "2026-06-06T11:44:14.149Z"
+    }
+  },
+  "readTest": {
+    "success": true,
+    "message": "Read access verified",
+    "details": {
+      "recordsRead": 0,
+      "totalCount": 0,
+      "sampleData": null
+    }
+  },
+  "writeTest": {
+    "success": false,
+    "message": "Write operation failed: new row violates row-level security policy for table \"users\"",
+    "details": {
+      "errorCode": "42501",
+      "errorMessage": "new row violates row-level security policy for table \"users\"",
+      "isRLSError": true,
+      "possibleCause": "Row Level Security policy blocks writes with anonymous key - check RLS policies in Supabase dashboard"
+    }
+  },
+  "cleanupTest": {
+    "success": false,
+    "message": "Skipped - no test record was created"
+  },
+  "summary": {
+    "allTestsPassed": false,
+    "issuesFound": [
+      "Write access blocked by RLS policy (code 42501) - Anonymous key does not have INSERT permission on users table"
+    ],
+    "readyForMigration": false
+  }
+}
