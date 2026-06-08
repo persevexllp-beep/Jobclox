@@ -1,0 +1,282 @@
+{
+  "generatedAt": "2026-06-08T07:30:04.271Z",
+  "summary": {
+    "users": {
+      "matched": 3,
+      "unmatched": 3,
+      "duplicates": 0
+    },
+    "companies": {
+      "matched": 1,
+      "unmatched": 1,
+      "duplicates": 0
+    },
+    "candidateProfiles": {
+      "matched": 1,
+      "unmatched": 3,
+      "duplicates": 0
+    },
+    "orphanedReferences": {
+      "total": 14,
+      "unmapped": 4
+    },
+    "unmappedSupabaseRecords": 1
+  },
+  "users": [
+    {
+      "oldId": "u-admin",
+      "newId": "2d8a82c1-0d87-422e-984a-c944e9205c24"
+    },
+    {
+      "oldId": "u-comp1",
+      "newId": "17e8c472-e13b-41c0-9505-640acfce3fed"
+    },
+    {
+      "oldId": "u-cand1",
+      "newId": "374aff99-12d2-4f61-9c40-33a8b19b5f71"
+    }
+  ],
+  "companies": [
+    {
+      "oldId": "c-aws",
+      "newId": "ebca53fd-f3dd-4bce-b46c-e7633a769b75"
+    }
+  ],
+  "candidateProfiles": [
+    {
+      "oldId": "can-alex",
+      "newId": "a58996d0-0a8e-4dc9-a344-0543a4796f72"
+    }
+  ],
+  "unmatched": [
+    {
+      "entity": "users",
+      "oldId": "u-cand2",
+      "reason": "no_supabase_user_with_email",
+      "detail": {
+        "email": "monica@persevex.com",
+        "name": "Monica Geller",
+        "role": "candidate"
+      }
+    },
+    {
+      "entity": "users",
+      "oldId": "u-1780746610203",
+      "reason": "no_supabase_user_with_email",
+      "detail": {
+        "email": "helli@gmail.com",
+        "name": "Helli",
+        "role": "candidate"
+      }
+    },
+    {
+      "entity": "users",
+      "oldId": "u-1780750050439",
+      "reason": "no_supabase_user_with_email",
+      "detail": {
+        "email": "d23dcs162@charusat.edu.in",
+        "name": "D23dcs162",
+        "role": "candidate"
+      }
+    },
+    {
+      "entity": "companies",
+      "oldId": "c-1780901214859",
+      "reason": "company_name_mismatch",
+      "detail": {
+        "companyName": "Hr's Corp",
+        "resolvedUserId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+        "ownerResolution": "uuid-direct",
+        "supabaseCompaniesForUser": [
+          {
+            "id": "ebca53fd-f3dd-4bce-b46c-e7633a769b75",
+            "companyName": "Amazon Web Services (AWS)"
+          }
+        ]
+      }
+    },
+    {
+      "entity": "candidateProfiles",
+      "oldId": "can-monica",
+      "reason": "owner_user_unmapped",
+      "detail": {
+        "legacyUserId": "u-cand2"
+      }
+    },
+    {
+      "entity": "candidateProfiles",
+      "oldId": "can-1780746610203",
+      "reason": "owner_user_unmapped",
+      "detail": {
+        "legacyUserId": "u-1780746610203"
+      }
+    },
+    {
+      "entity": "candidateProfiles",
+      "oldId": "can-1780750050439",
+      "reason": "owner_user_unmapped",
+      "detail": {
+        "legacyUserId": "u-1780750050439"
+      }
+    }
+  ],
+  "duplicates": [],
+  "orphanedReferences": [
+    {
+      "source": "companies",
+      "recordId": "c-aws",
+      "field": "userId",
+      "legacyId": "u-comp1",
+      "resolvedNewId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "status": "mapped"
+    },
+    {
+      "source": "candidates",
+      "recordId": "can-alex",
+      "field": "userId",
+      "legacyId": "u-cand1",
+      "resolvedNewId": "374aff99-12d2-4f61-9c40-33a8b19b5f71",
+      "status": "mapped"
+    },
+    {
+      "source": "candidates",
+      "recordId": "can-monica",
+      "field": "userId",
+      "legacyId": "u-cand2",
+      "status": "unmapped"
+    },
+    {
+      "source": "candidates",
+      "recordId": "can-1780746610203",
+      "field": "userId",
+      "legacyId": "u-1780746610203",
+      "status": "unmapped"
+    },
+    {
+      "source": "candidates",
+      "recordId": "can-1780750050439",
+      "field": "userId",
+      "legacyId": "u-1780750050439",
+      "status": "unmapped"
+    },
+    {
+      "source": "jobs",
+      "recordId": "j-web",
+      "field": "companyId",
+      "legacyId": "c-aws",
+      "resolvedNewId": "ebca53fd-f3dd-4bce-b46c-e7633a769b75",
+      "status": "mapped"
+    },
+    {
+      "source": "jobs",
+      "recordId": "j-ui",
+      "field": "companyId",
+      "legacyId": "c-aws",
+      "resolvedNewId": "ebca53fd-f3dd-4bce-b46c-e7633a769b75",
+      "status": "mapped"
+    },
+    {
+      "source": "applications",
+      "recordId": "a-1",
+      "field": "candidateId",
+      "legacyId": "can-alex",
+      "resolvedNewId": "a58996d0-0a8e-4dc9-a344-0543a4796f72",
+      "status": "mapped"
+    },
+    {
+      "source": "applications",
+      "recordId": "a-1",
+      "field": "companyId",
+      "legacyId": "c-aws",
+      "resolvedNewId": "ebca53fd-f3dd-4bce-b46c-e7633a769b75",
+      "status": "mapped"
+    },
+    {
+      "source": "applications",
+      "recordId": "a-1",
+      "field": "jobId",
+      "legacyId": "j-web",
+      "status": "unmapped"
+    },
+    {
+      "source": "notifications",
+      "recordId": "n-2",
+      "field": "recipientId",
+      "legacyId": "u-comp1",
+      "resolvedNewId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "status": "mapped"
+    },
+    {
+      "source": "notifications",
+      "recordId": "n-1780744544253",
+      "field": "recipientId",
+      "legacyId": "u-comp1",
+      "resolvedNewId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "status": "mapped"
+    },
+    {
+      "source": "notifications",
+      "recordId": "n-1780744544255",
+      "field": "recipientId",
+      "legacyId": "u-cand1",
+      "resolvedNewId": "374aff99-12d2-4f61-9c40-33a8b19b5f71",
+      "status": "mapped"
+    },
+    {
+      "source": "notifications",
+      "recordId": "n-1780750537181",
+      "field": "recipientId",
+      "legacyId": "u-cand1",
+      "resolvedNewId": "374aff99-12d2-4f61-9c40-33a8b19b5f71",
+      "status": "mapped"
+    }
+  ],
+  "unmappedSupabaseRecords": [
+    {
+      "entity": "users",
+      "newId": "92ad43e3-fdc8-46c8-ab77-94bf235c49e8",
+      "detail": {
+        "id": "92ad43e3-fdc8-46c8-ab77-94bf235c49e8",
+        "email": "your-email@example.com",
+        "name": "Harsh Shukla",
+        "role": "candidate"
+      }
+    }
+  ],
+  "usersDetailed": [
+    {
+      "oldId": "u-admin",
+      "newId": "2d8a82c1-0d87-422e-984a-c944e9205c24",
+      "matchedBy": "email",
+      "confidence": "high"
+    },
+    {
+      "oldId": "u-comp1",
+      "newId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "matchedBy": "email",
+      "confidence": "high"
+    },
+    {
+      "oldId": "u-cand1",
+      "newId": "374aff99-12d2-4f61-9c40-33a8b19b5f71",
+      "matchedBy": "email",
+      "confidence": "high"
+    }
+  ],
+  "companiesDetailed": [
+    {
+      "oldId": "c-aws",
+      "newId": "ebca53fd-f3dd-4bce-b46c-e7633a769b75",
+      "matchedBy": "userId+companyName",
+      "confidence": "high"
+    }
+  ],
+  "candidateProfilesDetailed": [
+    {
+      "oldId": "can-alex",
+      "newId": "a58996d0-0a8e-4dc9-a344-0543a4796f72",
+      "matchedBy": "userId",
+      "confidence": "high"
+    }
+  ]
+}

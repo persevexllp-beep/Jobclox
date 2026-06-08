@@ -1,276 +1,225 @@
-/**
- * User Service Layer
- * Provides abstraction for user data operations
- * Supports both Supabase and JSON backends via feature flag
- */
+import { User, UserRole } from '../src/types';
+import { supabaseAdmin } from '../lib/supabase';
 
-import { User } from '../src/types'
-import { supabaseAdmin } from '../lib/supabase'
+export const USE_SUPABASE_USERS = true;
 
-/**
- * Feature flag: Set to true to use Supabase, false to use JSON
- * This allows safe rollback during migration testing
- */
-export const USE_SUPABASE_USERS = true
+type UserStatus = User['status'];
 
-/**
- * Reference to the in-memory database (when using JSON backend)
- * This will be injected by server.ts to avoid circular dependencies
- */
-let jsonDB: { users: User[] } | null = null
+type JsonUserDB = {
+  users: User[];
+};
 
-export function setJsonDB(db: { users: User[] }): void {
-  jsonDB = db
+type SupabaseUserRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus | null;
+  created_at: string | null;
+};
+
+export type CreateUserInput = {
+  id?: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status?: UserStatus;
+  createdAt?: string;
+};
+
+export type UpdateUserInput = Partial<{
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+}>;
+
+let jsonDB: JsonUserDB | null = null;
+
+export function setJsonDB(db: JsonUserDB): void {
+  jsonDB = db;
 }
 
-export class UserService {
-  /**
-   * Get user by ID
-   */
-  static async getUserById(id: string): Promise<User | null> {
-    if (USE_SUPABASE_USERS) {
-      try {
-        const { data, error } = await supabaseAdmin!
-          .from('users')
-          .select('*')
-          .eq('id', id)
-          .single()
+function requireSupabaseAdmin() {
+  if (!supabaseAdmin) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required when USE_SUPABASE_USERS is true');
+  }
+  return supabaseAdmin;
+}
 
-        if (error || !data) {
-          console.debug(`[Supabase] User not found: ${id}`)
-          return null
-        }
+function mapSupabaseUser(row: SupabaseUserRow): User {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    status: row.status || 'active',
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
 
-        // Map Supabase column names to User interface
-        return this.mapSupabaseToUser(data)
-      } catch (err) {
-        console.error('[UserService] Error fetching user by ID:', err)
-        throw err
-      }
-    } else {
-      // JSON backend
-      if (!jsonDB) throw new Error('JSON DB not initialized')
-      return jsonDB.users.find(u => u.id === id) || null
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getJsonDB(): JsonUserDB {
+  if (!jsonDB) {
+    throw new Error('JSON DB not initialized');
+  }
+  return jsonDB;
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+  if (USE_SUPABASE_USERS) {
+    if (!isUuid(id)) {
+      return null;
     }
-  }
 
-  /**
-   * Get user by email
-   */
-  static async getUserByEmail(email: string): Promise<User | null> {
-    const lowerEmail = email.toLowerCase()
+    const { data, error } = await requireSupabaseAdmin()
+      .from('users')
+      .select('id,name,email,role,status,created_at')
+      .eq('id', id)
+      .maybeSingle<SupabaseUserRow>();
 
-    if (USE_SUPABASE_USERS) {
-      try {
-        const { data, error } = await supabaseAdmin!
-          .from('users')
-          .select('*')
-          .ilike('email', lowerEmail)
-          .single()
-
-        if (error) {
-          // No rows found is not an error, just return null
-          if (error.code === 'PGRST116') {
-            console.debug(`[Supabase] User not found: ${email}`)
-            return null
-          }
-          throw error
-        }
-
-        if (!data) {
-          console.debug(`[Supabase] User not found: ${email}`)
-          return null
-        }
-
-        return this.mapSupabaseToUser(data)
-      } catch (err: any) {
-        // Handle case where multiple users found (should not happen with unique constraint)
-        if (err.message?.includes('multiple rows') || err.code === 'PGRST110') {
-          console.error('[UserService] Multiple users found with same email:', email)
-          // Return the first match
-          const { data } = await supabaseAdmin!
-            .from('users')
-            .select('*')
-            .ilike('email', lowerEmail)
-            .limit(1)
-
-          if (data && data.length > 0) {
-            return this.mapSupabaseToUser(data[0])
-          }
-          return null
-        }
-        console.error('[UserService] Error fetching user by email:', err)
-        throw err
-      }
-    } else {
-      // JSON backend
-      if (!jsonDB) throw new Error('JSON DB not initialized')
-      return jsonDB.users.find(u => u.email.toLowerCase() === lowerEmail) || null
+    if (error) {
+      throw error;
     }
+
+    return data ? mapSupabaseUser(data) : null;
   }
 
-  /**
-   * Check if user with email exists
-   */
-  static async userEmailExists(email: string): Promise<boolean> {
-    const user = await this.getUserByEmail(email)
-    return user !== null
-  }
+  return getJsonDB().users.find(user => user.id === id) || null;
+}
 
-  /**
-   * Create a new user
-   */
-  static async createUser(userData: Omit<User, 'createdAt'>): Promise<User> {
-    if (USE_SUPABASE_USERS) {
-      try {
-        const { data, error } = await supabaseAdmin!
-          .from('users')
-          .insert({
-            id: userData.id,
-            name: userData.name,
-            email: userData.email,
-            role: userData.role,
-            status: userData.status,
-            created_at: new Date().toISOString(),
-          })
-          .select()
-          .single()
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const lowerEmail = email.toLowerCase();
 
-        if (error) {
-          console.error('[UserService] Error creating user:', error)
-          throw error
-        }
+  if (USE_SUPABASE_USERS) {
+    const { data, error } = await requireSupabaseAdmin()
+      .from('users')
+      .select('id,name,email,role,status,created_at')
+      .ilike('email', lowerEmail)
+      .limit(1)
+      .maybeSingle<SupabaseUserRow>();
 
-        if (!data) {
-          throw new Error('No data returned from insert')
-        }
-
-        return this.mapSupabaseToUser(data)
-      } catch (err) {
-        console.error('[UserService] Exception creating user:', err)
-        throw err
-      }
-    } else {
-      // JSON backend
-      if (!jsonDB) throw new Error('JSON DB not initialized')
-      const newUser: User = {
-        ...userData,
-        createdAt: new Date().toISOString(),
-      }
-      jsonDB.users.push(newUser)
-      return newUser
+    if (error) {
+      throw error;
     }
+
+    return data ? mapSupabaseUser(data) : null;
   }
 
-  /**
-   * Update a user
-   */
-  static async updateUser(
-    id: string,
-    updates: Partial<Omit<User, 'id' | 'createdAt'>>
-  ): Promise<User | null> {
-    if (USE_SUPABASE_USERS) {
-      try {
-        const updateData: Record<string, any> = {}
+  return getJsonDB().users.find(user => user.email.toLowerCase() === lowerEmail) || null;
+}
 
-        if (updates.name !== undefined) updateData.name = updates.name
-        if (updates.email !== undefined) updateData.email = updates.email
-        if (updates.role !== undefined) updateData.role = updates.role
-        if (updates.status !== undefined) updateData.status = updates.status
+export async function createUser(user: CreateUserInput): Promise<User> {
+  const createdAt = user.createdAt || new Date().toISOString();
+  const status = user.status || 'active';
 
-        if (Object.keys(updateData).length === 0) {
-          // No updates to make, just return the user
-          return this.getUserById(id)
-        }
+  if (USE_SUPABASE_USERS) {
+    const insertData: {
+      id?: string;
+      name: string;
+      email: string;
+      role: UserRole;
+      status: UserStatus;
+      created_at: string;
+    } = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status,
+      created_at: createdAt,
+    };
 
-        const { data, error } = await supabaseAdmin!
-          .from('users')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single()
-
-        if (error) {
-          console.error('[UserService] Error updating user:', error)
-          throw error
-        }
-
-        if (!data) {
-          return null
-        }
-
-        return this.mapSupabaseToUser(data)
-      } catch (err) {
-        console.error('[UserService] Exception updating user:', err)
-        throw err
-      }
-    } else {
-      // JSON backend
-      if (!jsonDB) throw new Error('JSON DB not initialized')
-      const userIndex = jsonDB.users.findIndex(u => u.id === id)
-      if (userIndex === -1) return null
-
-      jsonDB.users[userIndex] = {
-        ...jsonDB.users[userIndex],
-        ...updates,
-      }
-      return jsonDB.users[userIndex]
+    if (user.id && isUuid(user.id)) {
+      insertData.id = user.id;
     }
-  }
 
-  /**
-   * Get all users
-   */
-  static async getAllUsers(): Promise<User[]> {
-    if (USE_SUPABASE_USERS) {
-      try {
-        const { data, error } = await supabaseAdmin!
-          .from('users')
-          .select('*')
+    const { data, error } = await requireSupabaseAdmin()
+      .from('users')
+      .insert(insertData)
+      .select('id,name,email,role,status,created_at')
+      .single<SupabaseUserRow>();
 
-        if (error) {
-          console.error('[UserService] Error fetching all users:', error)
-          throw error
-        }
-
-        if (!data) {
-          return []
-        }
-
-        return data.map(row => this.mapSupabaseToUser(row))
-      } catch (err) {
-        console.error('[UserService] Exception fetching all users:', err)
-        throw err
-      }
-    } else {
-      // JSON backend
-      if (!jsonDB) throw new Error('JSON DB not initialized')
-      return [...jsonDB.users]
+    if (error) {
+      throw error;
     }
+
+    return mapSupabaseUser(data);
   }
 
-  /**
-   * Map Supabase row to User interface
-   * Handles column name differences (created_at vs createdAt)
-   */
-  private static mapSupabaseToUser(row: any): User {
-    return {
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      role: row.role,
-      status: row.status,
-      createdAt: row.created_at || new Date().toISOString(),
+  const newUser: User = {
+    id: user.id || `u-${Date.now()}`,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status,
+    createdAt,
+  };
+
+  getJsonDB().users.push(newUser);
+  return newUser;
+}
+
+export async function updateUser(id: string, updates: UpdateUserInput): Promise<User | null> {
+  if (USE_SUPABASE_USERS) {
+    const updateData: Partial<{
+      name: string;
+      email: string;
+      role: UserRole;
+      status: UserStatus;
+    }> = {};
+
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.role !== undefined) updateData.role = updates.role;
+    if (updates.status !== undefined) updateData.status = updates.status;
+
+    if (Object.keys(updateData).length === 0) {
+      return getUserById(id);
     }
+
+    const { data, error } = await requireSupabaseAdmin()
+      .from('users')
+      .update(updateData)
+      .eq('id', id)
+      .select('id,name,email,role,status,created_at')
+      .maybeSingle<SupabaseUserRow>();
+
+    if (error) {
+      throw error;
+    }
+
+    return data ? mapSupabaseUser(data) : null;
   }
 
-  /**
-   * Debug helper: Show which backend is active
-   */
-  static getBackendInfo(): { backend: string; supabaseEnabled: boolean } {
-    return {
-      backend: USE_SUPABASE_USERS ? 'Supabase' : 'JSON',
-      supabaseEnabled: USE_SUPABASE_USERS,
-    }
+  const users = getJsonDB().users;
+  const userIndex = users.findIndex(user => user.id === id);
+  if (userIndex === -1) {
+    return null;
   }
+
+  users[userIndex] = {
+    ...users[userIndex],
+    ...updates,
+  };
+  return users[userIndex];
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  if (USE_SUPABASE_USERS) {
+    const { data, error } = await requireSupabaseAdmin()
+      .from('users')
+      .select('id,name,email,role,status,created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data || []).map(row => mapSupabaseUser(row as SupabaseUserRow));
+  }
+
+  return [...getJsonDB().users];
 }

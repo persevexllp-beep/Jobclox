@@ -67,6 +67,24 @@
         }
       ],
       "createdAt": "2026-05-12T14:00:00Z"
+    },
+    {
+      "id": "c-1780901214859",
+      "userId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "companyName": "Hr's Corp",
+      "website": "https://example.com",
+      "linkedin": "",
+      "industry": "Technology",
+      "companyEmail": "hr@amazon.com",
+      "contactPerson": "Hr",
+      "phone": "+1 555-010-0000",
+      "verificationStatus": "approved",
+      "documents": [
+        {
+          "name": "auto_verification_certs.pdf"
+        }
+      ],
+      "createdAt": "2026-06-08T06:46:54.859Z"
     }
   ],
   "jobs": [
@@ -124,6 +142,53 @@
       "deadline": "2026-07-20"
     }
   ],
+  "applications": [
+    {
+      "id": "a-1",
+      "candidateId": "can-alex",
+      "candidateName": "Alex Mercer",
+      "candidateEmail": "candidate@persevex.com",
+      "jobId": "j-web",
+      "jobTitle": "Full-Stack Engineer (React & Node)",
+      "companyId": "c-aws",
+      "companyName": "Amazon Web Services (AWS)",
+      "score": 75,
+      "matchedSkills": [
+        "React",
+        "Node.js",
+        "MongoDB"
+      ],
+      "missingSkills": [
+        "AWS"
+      ],
+      "status": "interviewing",
+      "notes": "Strong React background and basic REST knowledge. Missing heavy AWS experience, but has high potential. Recommended for second round.",
+      "appliedAt": "2026-05-18T10:00:00Z",
+      "interviewDate": "2026-06-15T14:00"
+    },
+    {
+      "id": "a-1780908530570",
+      "candidateId": "a58996d0-0a8e-4dc9-a344-0543a4796f72",
+      "candidateName": "Candidate",
+      "candidateEmail": "candidate@persevex.com",
+      "jobId": "010337ea-7b32-4f15-b876-117d76c979d2",
+      "jobTitle": "Full-Stack Engineer (React & Node)",
+      "companyId": "ebca53fd-f3dd-4bce-b46c-e7633a769b75",
+      "companyName": "Amazon Web Services (AWS)",
+      "score": 75,
+      "matchedSkills": [
+        "React",
+        "Node.js",
+        "MongoDB"
+      ],
+      "missingSkills": [
+        "AWS"
+      ],
+      "status": "applied",
+      "notes": "",
+      "appliedAt": "2026-06-08T08:48:50.570Z"
+    }
+  ],
   "candidates": [
     {
       "id": "can-alex",
@@ -177,31 +242,6 @@
       "createdAt": "2026-06-06T12:47:30.439Z"
     }
   ],
-  "applications": [
-    {
-      "id": "a-1",
-      "candidateId": "can-alex",
-      "candidateName": "Alex Mercer",
-      "candidateEmail": "candidate@persevex.com",
-      "jobId": "j-web",
-      "jobTitle": "Full-Stack Engineer (React & Node)",
-      "companyId": "c-aws",
-      "companyName": "Amazon Web Services (AWS)",
-      "score": 75,
-      "matchedSkills": [
-        "React",
-        "Node.js",
-        "MongoDB"
-      ],
-      "missingSkills": [
-        "AWS"
-      ],
-      "status": "interviewing",
-      "notes": "Strong React background and basic REST knowledge. Missing heavy AWS experience, but has high potential. Recommended for second round.",
-      "appliedAt": "2026-05-18T10:00:00Z",
-      "interviewDate": "2026-06-15T14:00"
-    }
-  ],
   "notifications": [
     {
       "id": "n-1",
@@ -250,6 +290,54 @@
       "message": "The hiring manager at Amazon Web Services (AWS) checked your profile and scheduled an interview. Details: 2026-06-15T14:00.",
       "isRead": false,
       "createdAt": "2026-06-06T12:55:37.181Z"
+    },
+    {
+      "id": "n-1780902226224",
+      "recipientId": "all_admin",
+      "title": "Company Profile Updated",
+      "message": "Hr updated profile for \"Amazon Web Services (AWS)\". Verification is pending.",
+      "isRead": false,
+      "createdAt": "2026-06-08T07:03:46.224Z"
+    },
+    {
+      "id": "n-1780902227156",
+      "recipientId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "title": "Company Account Approved",
+      "message": "Congratulations! Your corporate profile has been verified and approved by Persevex Admin. You can now publish job opportunities.",
+      "isRead": false,
+      "createdAt": "2026-06-08T07:03:47.156Z"
+    },
+    {
+      "id": "n-1780908527216",
+      "recipientId": "all_admin",
+      "title": "New Job Review Required",
+      "message": "Amazon Web Services (AWS) posted a new job \"Cloud Support Engineer\" and requests verification.",
+      "isRead": false,
+      "createdAt": "2026-06-08T08:48:47.216Z"
+    },
+    {
+      "id": "n-1780908528082",
+      "recipientId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "title": "Job Request Approved",
+      "message": "Your job post for \"Cloud Support Engineer\" has been reviewed, approved, and is now live for candidates!",
+      "isRead": false,
+      "createdAt": "2026-06-08T08:48:48.082Z"
+    },
+    {
+      "id": "n-1780908529352",
+      "recipientId": "17e8c472-e13b-41c0-9505-640acfce3fed",
+      "title": "Job Request Feedback",
+      "message": "Your job post request for \"Frontend UI Developer\" was rejected or deactivated by Persevex HR.",
+      "isRead": false,
+      "createdAt": "2026-06-08T08:48:49.352Z"
+    },
+    {
+      "id": "n-1780908530571",
+      "recipientId": "all_admin",
+      "title": "New Application Received",
+      "message": "Candidate applied for \"Full-Stack Engineer (React & Node)\" at Amazon Web Services (AWS) (Match Scored: 75%).",
+      "isRead": false,
+      "createdAt": "2026-06-08T08:48:50.571Z"
     }
   ],
   "emailAlerts": [

@@ -3,12 +3,41 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import "dotenv/config";
 import express from "express";
 import fs from "fs";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { User, Company, Job, Application, CandidateProfile, AppNotification, ApplicationStatus, EmailAlert } from "./src/types";
 import { GoogleGenAI } from "@google/genai";
+import { USE_SUPABASE_USERS, createUser, getUserByEmail, getUserById, setJsonDB } from "./services/userService";
+import {
+  createCompany,
+  getAllCompanies,
+  getCompanyById,
+  getCompanyByUserId,
+  setJsonDB as setCompanyJsonDB,
+  updateCompany,
+  updateVerificationStatus,
+} from "./services/companyService";
+import {
+  createProfile,
+  getProfileById,
+  getProfileByUserId,
+  setJsonDB as setCandidateJsonDB,
+  updateProfile,
+} from "./services/candidateProfileService";
+import {
+  createJob,
+  getAllJobs,
+  getJobById,
+  getJobsByCompanyId,
+  getJobsByStatus,
+  getPersevexInternalCompanyId,
+  incrementViewCount,
+  setJsonDB as setJobJsonDB,
+  updateJobStatus,
+} from "./services/jobService";
 
 const PORT = 3000;
 const DB_FILE = path.join(process.cwd(), "server_db.json");
@@ -166,6 +195,10 @@ function saveDB(db: Database) {
 
 // Initialize server DB
 let db = loadDB();
+setJsonDB(db);
+setCompanyJsonDB(db);
+setCandidateJsonDB(db);
+setJobJsonDB(db);
 
 function triggerEmailAlert(
   recipientEmail: string,
@@ -237,21 +270,106 @@ async function startServer() {
   // Simple authentication middleware helper
   // Since we are running in a secure, self-contained workspace preview sandbox,
   // we can use a custom request header "x-user-id" to authorize actions cleanly and make it bug-free!
-  const getActiveUser = (req: express.Request): User | null => {
+  const handleUserServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Users migration] User service error:", err);
+    return res.status(500).json({ error: "User service unavailable" });
+  };
+
+  const handleCompanyServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Companies migration] Company service error:", err);
+    return res.status(500).json({ error: "Company service unavailable" });
+  };
+
+  const handleCandidateProfileServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Candidate profiles migration] Profile service error:", err);
+    return res.status(500).json({ error: "Candidate profile service unavailable" });
+  };
+
+  const handleJobServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Jobs migration] Job service error:", err);
+    return res.status(500).json({ error: "Job service unavailable" });
+  };
+
+  const getActiveUser = async (req: express.Request): Promise<User | null> => {
     const userId = req.headers["x-user-id"] as string;
     if (!userId) return null;
-    return db.users.find(u => u.id === userId) || null;
+    if (USE_SUPABASE_USERS) {
+      try {
+        return await getUserById(userId);
+      } catch (err) {
+        console.error("[Users migration] Failed to load active user:", err);
+        return null;
+      }
+    } else {
+      return db.users.find(u => u.id === userId) || null;
+    }
+  };
+
+  const ensureLoginProfile = async (user: User): Promise<boolean> => {
+    if (user.role === "candidate") {
+      try {
+        const existingProfile = await getProfileByUserId(user.id);
+        if (!existingProfile) {
+          await createProfile({
+            userId: user.id,
+            education: "Not set",
+            skills: [],
+            experience: "",
+            resumeText: "",
+            resumeFileName: "",
+          });
+          return true;
+        }
+      } catch (err) {
+        console.error("[Candidate profiles migration] Failed to ensure candidate profile:", err);
+      }
+    }
+
+    if (user.role === "company") {
+      try {
+        const existingCompany = await getCompanyByUserId(user.id);
+        if (!existingCompany) {
+          await createCompany({
+            userId: user.id,
+            companyName: `${user.name}'s Corp`,
+            website: "https://example.com",
+            linkedin: "",
+            industry: "Technology",
+            companyEmail: user.email.toLowerCase(),
+            contactPerson: user.name,
+            phone: "+1 555-010-0000",
+            verificationStatus: "approved",
+            documents: [{ name: "auto_verification_certs.pdf" }],
+          });
+          return true;
+        }
+      } catch (err) {
+        console.error("[Companies migration] Failed to ensure company profile:", err);
+      }
+    }
+
+    return false;
   };
 
   // --- AUTH ENDPOINTS ---
 
-  app.post("/api/auth/login", (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
-    let user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    let user: User | null;
+    try {
+      if (USE_SUPABASE_USERS) {
+        user = await getUserByEmail(email);
+      } else {
+        user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+      }
+    } catch (err) {
+      return handleUserServiceError(res, err);
+    }
+
     if (!user) {
       // Auto-provision user dynamically if not found, to guarantee a flawless login outcome under test environments
       const lowerEmail = email.toLowerCase();
@@ -272,7 +390,7 @@ async function startServer() {
       const cleanedName = emailPart.replace(/[._-]/g, " ");
       const name = cleanedName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
-      const newUser: User = {
+      const newUserInput: User = {
         id: `u-${Date.now()}`,
         name: name || "Developer Tester",
         email: lowerEmail,
@@ -281,84 +399,86 @@ async function startServer() {
         createdAt: new Date().toISOString()
       };
 
-      db.users.push(newUser);
-
-      if (role === "candidate") {
-        const newCand: CandidateProfile = {
-          id: `can-${Date.now()}`,
-          userId: newUser.id,
-          education: "Not set",
-          skills: [],
-          experience: "",
-          resumeText: "",
-          resumeFileName: "",
-          createdAt: new Date().toISOString()
-        };
-        db.candidates.push(newCand);
-      } else if (role === "company") {
-        const newComp: Company = {
-          id: `c-${Date.now()}`,
-          userId: newUser.id,
-          companyName: `${newUser.name}'s Corp`,
-          website: "https://example.com",
-          linkedin: "",
-          industry: "Technology",
-          companyEmail: lowerEmail,
-          contactPerson: newUser.name,
-          phone: "+1 555-010-0000",
-          verificationStatus: "approved", // auto-approve so they can post jobs instantly during demonstrations
-          documents: [{ name: "auto_verification_certs.pdf" }],
-          createdAt: new Date().toISOString()
-        };
-        db.companies.push(newComp);
+      let newUser: User;
+      try {
+        if (USE_SUPABASE_USERS) {
+          newUser = await createUser(newUserInput);
+        } else {
+          db.users.push(newUserInput);
+          newUser = newUserInput;
+        }
+      } catch (err) {
+        return handleUserServiceError(res, err);
       }
 
-      saveDB(db);
       user = newUser;
+    }
+
+    if (await ensureLoginProfile(user)) {
+      saveDB(db);
     }
 
     res.json({ user });
   });
 
-  app.post("/api/auth/register", (req, res) => {
+  app.post("/api/auth/register", async (req, res) => {
     const { name, email, password, role } = req.body;
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "All profile fields are required" });
     }
 
-    const exists = db.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+    let exists: boolean;
+    try {
+      exists = USE_SUPABASE_USERS
+        ? Boolean(await getUserByEmail(email))
+        : db.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+    } catch (err) {
+      return handleUserServiceError(res, err);
+    }
     if (exists) {
       return res.status(400).json({ error: "A user with this email already exists" });
     }
 
-    const newUser: User = {
+    const newUserInput: User = {
       id: `u-${Date.now()}`,
       name,
       email,
-      role,
+      role: role as User["role"],
       status: "active",
       createdAt: new Date().toISOString()
     };
 
-    db.users.push(newUser);
+    let newUser: User;
+    try {
+      if (USE_SUPABASE_USERS) {
+        newUser = await createUser(newUserInput);
+      } else {
+        db.users.push(newUserInput);
+        newUser = newUserInput;
+      }
+    } catch (err) {
+      return handleUserServiceError(res, err);
+    }
 
     // If role is company, create a draft company profile
     if (role === "company") {
-      const newCompany: Company = {
-        id: `c-${Date.now()}`,
-        userId: newUser.id,
-        companyName: `${name}'s Firm`,
-        website: "",
-        linkedin: "",
-        industry: "",
-        companyEmail: email,
-        contactPerson: name,
-        phone: "",
-        verificationStatus: "pending",
-        documents: [],
-        createdAt: new Date().toISOString()
-      };
-      db.companies.push(newCompany);
+      let newCompany: Company;
+      try {
+        newCompany = await createCompany({
+          userId: newUser.id,
+          companyName: `${name}'s Firm`,
+          website: "",
+          linkedin: "",
+          industry: "",
+          companyEmail: email,
+          contactPerson: name,
+          phone: "",
+          verificationStatus: "pending",
+          documents: [],
+        });
+      } catch (err) {
+        return handleCompanyServiceError(res, err);
+      }
 
       db.notifications.push({
         id: `n-${Date.now()}`,
@@ -372,25 +492,26 @@ async function startServer() {
 
     // If role is candidate, create empty profile
     if (role === "candidate") {
-      const newCand: CandidateProfile = {
-        id: `can-${Date.now()}`,
-        userId: newUser.id,
-        education: "",
-        skills: [],
-        experience: "",
-        resumeText: "",
-        resumeFileName: "",
-        createdAt: new Date().toISOString()
-      };
-      db.candidates.push(newCand);
+      try {
+        await createProfile({
+          userId: newUser.id,
+          education: "",
+          skills: [],
+          experience: "",
+          resumeText: "",
+          resumeFileName: "",
+        });
+      } catch (err) {
+        return handleCandidateProfileServiceError(res, err);
+      }
     }
 
     saveDB(db);
     res.json({ user: newUser });
   });
 
-  app.get("/api/auth/me", (req, res) => {
-    const user = getActiveUser(req);
+  app.get("/api/auth/me", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) {
       return res.status(401).json({ error: "Unauthenticated" });
     }
@@ -399,73 +520,84 @@ async function startServer() {
 
   // --- COMPANIES ENDPOINTS ---
 
-  app.get("/api/companies", (req, res) => {
-    res.json({ companies: db.companies });
+  app.get("/api/companies", async (req, res) => {
+    try {
+      const companies = await getAllCompanies();
+      res.json({ companies });
+    } catch (err) {
+      return handleCompanyServiceError(res, err);
+    }
   });
 
-  app.get("/api/companies/my", (req, res) => {
-    const user = getActiveUser(req);
-    if (!user || user.role !== "company") {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    const company = db.companies.find(c => c.userId === user.id);
-    if (!company) {
-      return res.status(404).json({ error: "Company profile not found" });
-    }
-    res.json({ company });
-  });
-
-  app.post("/api/companies/update", (req, res) => {
-    const user = getActiveUser(req);
+  app.get("/api/companies/my", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role !== "company") {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    const index = db.companies.findIndex(c => c.userId === user.id);
-    if (index === -1) {
-      return res.status(404).json({ error: "Company profile not found" });
+    try {
+      const company = await getCompanyByUserId(user.id);
+      if (!company) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      res.json({ company });
+    } catch (err) {
+      return handleCompanyServiceError(res, err);
+    }
+  });
+
+  app.post("/api/companies/update", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role !== "company") {
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
-    const { companyName, website, linkedin, industry, companyEmail, contactPerson, phone, documentsName } = req.body;
+    try {
+      const currentComp = await getCompanyByUserId(user.id);
+      if (!currentComp) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
 
-    const currentComp = db.companies[index];
-    const docs = documentsName ? [{ name: documentsName }] : currentComp.documents;
+      const { companyName, website, linkedin, industry, companyEmail, contactPerson, phone, documentsName } = req.body;
+      const docs = documentsName ? [{ name: documentsName }] : currentComp.documents;
 
-    // If user changes critical fields, maybe reset verificationStatus to pending?
-    // Let's keep it pending if they update corporate metadata, or leave approved if it was already.
-    const updated: Company = {
-      ...currentComp,
-      companyName: companyName || currentComp.companyName,
-      website: website || currentComp.website,
-      linkedin: linkedin || currentComp.linkedin,
-      industry: industry || currentComp.industry,
-      companyEmail: companyEmail || currentComp.companyEmail,
-      contactPerson: contactPerson || currentComp.contactPerson,
-      phone: phone || currentComp.phone,
-      documents: docs,
-      verificationStatus: currentComp.verificationStatus === "rejected" ? "pending" : currentComp.verificationStatus
-    };
-
-    // If updating from empty companyName, let admin know
-    if (currentComp.companyName !== updated.companyName) {
-      db.notifications.push({
-        id: `n-${Date.now()}`,
-        recipientId: "all_admin",
-        title: "Company Profile Updated",
-        message: `${user.name} updated profile for "${updated.companyName}". Verification is pending.`,
-        isRead: false,
-        createdAt: new Date().toISOString()
+      const updated = await updateCompany(currentComp.id, {
+        companyName: companyName || currentComp.companyName,
+        website: website || currentComp.website,
+        linkedin: linkedin || currentComp.linkedin,
+        industry: industry || currentComp.industry,
+        companyEmail: companyEmail || currentComp.companyEmail,
+        contactPerson: contactPerson || currentComp.contactPerson,
+        phone: phone || currentComp.phone,
+        documents: docs,
+        verificationStatus: currentComp.verificationStatus === "rejected" ? "pending" : currentComp.verificationStatus,
       });
-    }
 
-    db.companies[index] = updated;
-    saveDB(db);
-    res.json({ company: updated });
+      if (!updated) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+
+      if (currentComp.companyName !== updated.companyName) {
+        db.notifications.push({
+          id: `n-${Date.now()}`,
+          recipientId: "all_admin",
+          title: "Company Profile Updated",
+          message: `${user.name} updated profile for "${updated.companyName}". Verification is pending.`,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+        saveDB(db);
+      }
+
+      res.json({ company: updated });
+    } catch (err) {
+      return handleCompanyServiceError(res, err);
+    }
   });
 
   // Admin approves/rejects corporate status
-  app.post("/api/companies/:id/status", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/companies/:id/status", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Requires administrator access" });
     }
@@ -473,65 +605,83 @@ async function startServer() {
     const { id } = req.params;
     const { status } = req.body; // 'approved' | 'rejected' | 'pending'
 
-    const companyIndex = db.companies.findIndex(c => c.id === id);
-    if (companyIndex === -1) {
-      return res.status(404).json({ error: "Company not found" });
+    try {
+      const existingCompany = await getCompanyById(id);
+      if (!existingCompany) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const updatedCompany = await updateVerificationStatus(id, status);
+      if (!updatedCompany) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      db.notifications.push({
+        id: `n-${Date.now()}`,
+        recipientId: updatedCompany.userId,
+        title: status === "approved" ? "Company Account Approved" : "Company Registration Update",
+        message: status === "approved"
+          ? "Congratulations! Your corporate profile has been verified and approved by Persevex Admin. You can now publish job opportunities."
+          : "Your company credentials verification has been rejected. Please review your credentials or contact support.",
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      saveDB(db);
+      res.json({ company: updatedCompany });
+    } catch (err) {
+      return handleCompanyServiceError(res, err);
     }
-
-    db.companies[companyIndex].verificationStatus = status;
-
-    // Send notification to company owner
-    const ownerId = db.companies[companyIndex].userId;
-    db.notifications.push({
-      id: `n-${Date.now()}`,
-      recipientId: ownerId,
-      title: status === "approved" ? "Company Account Approved" : "Company Registration Update",
-      message: status === "approved" 
-        ? "Congratulations! Your corporate profile has been verified and approved by Persevex Admin. You can now publish job opportunities."
-        : "Your company credentials verification has been rejected. Please review your credentials or contact support.",
-      isRead: false,
-      createdAt: new Date().toISOString()
-    });
-
-    saveDB(db);
-    res.json({ company: db.companies[companyIndex] });
   });
 
   // --- JOB MANAGEMENT ENDPOINTS ---
 
   // Get active/approved public jobs for candidates
-  app.get("/api/jobs", (req, res) => {
-    const user = getActiveUser(req);
-    
-    // Admin gets all, Company gets their own, Candidates get only approved
-    if (user && user.role === "admin") {
-      return res.json({ jobs: db.jobs });
-    } else if (user && user.role === "company") {
-      const company = db.companies.find(c => c.userId === user.id);
-      if (!company) {
-        return res.json({ jobs: [] });
+  app.get("/api/jobs", async (req, res) => {
+    const user = await getActiveUser(req);
+
+    try {
+      if (user && user.role === "admin") {
+        const jobs = await getAllJobs();
+        return res.json({ jobs });
       }
-      return res.json({ jobs: db.jobs.filter(j => j.companyId === company.id) });
-    } else {
-      // General or Candidates: only see approved jobs
-      return res.json({ jobs: db.jobs.filter(j => j.status === "approved") });
+
+      if (user && user.role === "company") {
+        let company: Company | null = null;
+        try {
+          company = await getCompanyByUserId(user.id);
+        } catch (err) {
+          return handleCompanyServiceError(res, err);
+        }
+        if (!company) {
+          return res.json({ jobs: [] });
+        }
+        const jobs = await getJobsByCompanyId(company.id);
+        return res.json({ jobs });
+      }
+
+      const jobs = await getJobsByStatus("approved");
+      return res.json({ jobs });
+    } catch (err) {
+      return handleJobServiceError(res, err);
     }
   });
 
   // Job view tracking
-  app.post("/api/jobs/:id/view", (req, res) => {
+  app.post("/api/jobs/:id/view", async (req, res) => {
     const { id } = req.params;
-    const jobIndex = db.jobs.findIndex(j => j.id === id);
-    if (jobIndex !== -1) {
-      db.jobs[jobIndex].viewCount += 1;
-      saveDB(db);
+
+    try {
+      await incrementViewCount(id);
+      res.sendStatus(200);
+    } catch (err) {
+      return handleJobServiceError(res, err);
     }
-    res.sendStatus(200);
   });
 
   // Create Job
-  app.post("/api/jobs/create", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/jobs/create", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role === "candidate") {
       return res.status(403).json({ error: "Candidates cannot publish jobs" });
     }
@@ -542,12 +692,17 @@ async function startServer() {
       return res.status(400).json({ error: "Missing required job specification fields" });
     }
 
-    let companyId = "persevex-internal";
-    let companyName = "Persevex Recruiting Partner";
-    let status: "approved" | "submitted" = "approved"; // Admin jobs are auto-approved
+    let companyId: string | null = null;
+    let companyName = "Persevex Internal";
+    let status: "approved" | "submitted" = "approved";
 
     if (user.role === "company") {
-      const company = db.companies.find(c => c.userId === user.id);
+      let company: Company | null = null;
+      try {
+        company = await getCompanyByUserId(user.id);
+      } catch (err) {
+        return handleCompanyServiceError(res, err);
+      }
       if (!company) {
         return res.status(404).json({ error: "Please configure your corporate registration first" });
       }
@@ -556,31 +711,40 @@ async function startServer() {
       }
       companyId = company.id;
       companyName = company.companyName;
-      status = "submitted"; // HR client listings go to queue
+      status = "submitted";
+    } else {
+      try {
+        companyId = await getPersevexInternalCompanyId();
+      } catch (err) {
+        return handleJobServiceError(res, err);
+      }
+      if (!companyId) {
+        return res.status(500).json({ error: "Persevex Internal company is not configured in Supabase" });
+      }
     }
 
-    const newJob: Job = {
-      id: `j-${Date.now()}`,
-      companyId,
-      companyName,
-      title,
-      department: department || "Operations",
-      location: location || "Remote",
-      jobType: jobType || "Full-time",
-      experience: experience || "Not Specified",
-      salary: salary || "Discussable",
-      description,
-      requirements: Array.isArray(requirements) ? requirements.filter(Boolean) : [requirements],
-      preferredSkills: Array.isArray(preferredSkills) ? preferredSkills.filter(Boolean) : [],
-      status,
-      viewCount: 0,
-      deadline: deadline || "",
-      createdAt: new Date().toISOString()
-    };
+    let newJob: Job;
+    try {
+      newJob = await createJob({
+        companyId,
+        companyName,
+        title,
+        department: department || "Operations",
+        location: location || "Remote",
+        jobType: jobType || "Full-time",
+        experience: experience || "Not Specified",
+        salary: salary || "Discussable",
+        description,
+        requirements: Array.isArray(requirements) ? requirements.filter(Boolean) : [requirements],
+        preferredSkills: Array.isArray(preferredSkills) ? preferredSkills.filter(Boolean) : [],
+        status,
+        viewCount: 0,
+        deadline: deadline || "",
+      });
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
 
-    db.jobs.push(newJob);
-
-    // Notification
     if (user.role === "company") {
       db.notifications.push({
         id: `n-${Date.now()}`,
@@ -590,32 +754,44 @@ async function startServer() {
         isRead: false,
         createdAt: new Date().toISOString()
       });
+      saveDB(db);
     }
 
-    saveDB(db);
     res.json({ job: newJob });
   });
 
   // Admin approves/rejects job post
-  app.post("/api/jobs/:id/status", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/jobs/:id/status", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Access Denied" });
     }
 
     const { id } = req.params;
-    const { status } = req.body; // 'approved' | 'rejected' | 'closed'
+    const { status } = req.body;
 
-    const jobIndex = db.jobs.findIndex(j => j.id === id);
-    if (jobIndex === -1) {
-      return res.status(404).json({ error: "Job opening not found" });
+    let currentJob: Job | null = null;
+    try {
+      currentJob = await getJobById(id);
+      if (!currentJob) {
+        return res.status(404).json({ error: "Job opening not found" });
+      }
+
+      const updatedJob = await updateJobStatus(id, status);
+      if (!updatedJob) {
+        return res.status(404).json({ error: "Job opening not found" });
+      }
+      currentJob = updatedJob;
+    } catch (err) {
+      return handleJobServiceError(res, err);
     }
 
-    const currentJob = db.jobs[jobIndex];
-    currentJob.status = status;
-
-    // Send feedback to listing creator company owner
-    const compProfile = db.companies.find(c => c.id === currentJob.companyId);
+    let compProfile: Company | null = null;
+    try {
+      compProfile = await getCompanyById(currentJob.companyId);
+    } catch (err) {
+      console.error("[Companies migration] Failed to load company for job status notification:", err);
+    }
     if (compProfile) {
       db.notifications.push({
         id: `n-${Date.now()}`,
@@ -627,57 +803,68 @@ async function startServer() {
         isRead: false,
         createdAt: new Date().toISOString()
       });
+      saveDB(db);
     }
 
-    saveDB(db);
     res.json({ job: currentJob });
   });
 
   // --- CANDIDATE PROFILE ENDPOINTS ---
 
-  app.get("/api/candidates/:userId", (req, res) => {
+  app.get("/api/candidates/:userId", async (req, res) => {
     const { userId } = req.params;
-    const profile = db.candidates.find(c => c.userId === userId);
-    if (!profile) {
-      return res.status(404).json({ error: "Candidate profile dataset not found" });
+
+    try {
+      const profile = await getProfileByUserId(userId);
+      if (!profile) {
+        return res.status(404).json({ error: "Candidate profile dataset not found" });
+      }
+      res.json({ profile });
+    } catch (err) {
+      return handleCandidateProfileServiceError(res, err);
     }
-    res.json({ profile });
   });
 
-  app.post("/api/candidates/profile/update", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/candidates/profile/update", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role !== "candidate") {
       return res.status(403).json({ error: "Candidate identity required" });
     }
 
-    const candIndex = db.candidates.findIndex(c => c.userId === user.id);
-    if (candIndex === -1) {
-      return res.status(404).json({ error: "Profile node absent" });
+    try {
+      const currentProfile = await getProfileByUserId(user.id);
+      if (!currentProfile) {
+        return res.status(404).json({ error: "Profile node absent" });
+      }
+
+      const { education, experience, skills, resumeText, resumeFileName } = req.body;
+      let finalSkills = skills;
+      if (typeof skills === "string") {
+        finalSkills = skills.split(",").map((s: string) => s.trim()).filter(Boolean);
+      }
+
+      const updated = await updateProfile(currentProfile.id, {
+        education: education !== undefined ? education : currentProfile.education,
+        experience: experience !== undefined ? experience : currentProfile.experience,
+        skills: Array.isArray(finalSkills) ? finalSkills : currentProfile.skills,
+        resumeText: resumeText !== undefined ? resumeText : currentProfile.resumeText,
+        resumeFileName: resumeFileName !== undefined ? resumeFileName : currentProfile.resumeFileName,
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: "Profile node absent" });
+      }
+
+      res.json({ profile: updated });
+    } catch (err) {
+      return handleCandidateProfileServiceError(res, err);
     }
-
-    const { education, experience, skills, resumeText, resumeFileName } = req.body;
-    let finalSkills = skills;
-    if (typeof skills === "string") {
-      finalSkills = skills.split(",").map((s: string) => s.trim()).filter(Boolean);
-    }
-
-    db.candidates[candIndex] = {
-      ...db.candidates[candIndex],
-      education: education !== undefined ? education : db.candidates[candIndex].education,
-      experience: experience !== undefined ? experience : db.candidates[candIndex].experience,
-      skills: Array.isArray(finalSkills) ? finalSkills : db.candidates[candIndex].skills,
-      resumeText: resumeText !== undefined ? resumeText : db.candidates[candIndex].resumeText,
-      resumeFileName: resumeFileName !== undefined ? resumeFileName : db.candidates[candIndex].resumeFileName
-    };
-
-    saveDB(db);
-    res.json({ profile: db.candidates[candIndex] });
   });
 
   // --- PDF RESUME EXTRACTION PROTOCOL ---
   app.post("/api/parser/pdf", async (req, res) => {
     try {
-      const user = getActiveUser(req);
+      const user = await getActiveUser(req);
       if (!user) {
         return res.status(401).json({ error: "Candidate identity required to parse files" });
       }
@@ -755,8 +942,8 @@ async function startServer() {
 
   // --- CANDIDATE RECRUTIMENT / APPLICATIONS PIPELINE ---
 
-  app.get("/api/applications", (req, res) => {
-    const user = getActiveUser(req);
+  app.get("/api/applications", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) {
       return res.status(401).json({ error: "Unauthorized access" });
     }
@@ -766,14 +953,24 @@ async function startServer() {
       return res.json({ applications: db.applications });
     } else if (user.role === "candidate") {
       // Find candidate profile
-      const candProfile = db.candidates.find(c => c.userId === user.id);
+      let candProfile: CandidateProfile | null = null;
+      try {
+        candProfile = await getProfileByUserId(user.id);
+      } catch (err) {
+        return handleCandidateProfileServiceError(res, err);
+      }
       if (!candProfile) {
         return res.json({ applications: [] });
       }
       return res.json({ applications: db.applications.filter(a => a.candidateId === candProfile.id) });
     } else if (user.role === "company") {
       // Company HR sees only application records that are "forwarded" to their company
-      const company = db.companies.find(c => c.userId === user.id);
+      let company: Company | null = null;
+      try {
+        company = await getCompanyByUserId(user.id);
+      } catch (err) {
+        return handleCompanyServiceError(res, err);
+      }
       if (!company) {
         return res.json({ applications: [] });
       }
@@ -788,8 +985,8 @@ async function startServer() {
   });
 
   // Smart matching and application trigger
-  app.post("/api/applications/apply", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/applications/apply", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role !== "candidate") {
       return res.status(403).json({ error: "Access limited to Job Candidates" });
     }
@@ -799,18 +996,28 @@ async function startServer() {
       return res.status(400).json({ error: "Job ID identifier is required" });
     }
 
-    const targetJob = db.jobs.find(j => j.id === jobId);
+    let targetJob: Job | null = null;
+    try {
+      targetJob = await getJobById(jobId);
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
     if (!targetJob) {
       return res.status(404).json({ error: "Job specification mismatch" });
     }
 
-    const candProfile = db.candidates.find(c => c.userId === user.id);
+    let candProfile: CandidateProfile | null = null;
+    try {
+      candProfile = await getProfileByUserId(user.id);
+    } catch (err) {
+      return handleCandidateProfileServiceError(res, err);
+    }
     if (!candProfile) {
       return res.status(404).json({ error: "Please complete profile configuration before applying" });
     }
 
     // Is there already an application for this candidate to this job? Let's remove the old one first so they can re-apply and update their resume/score.
-    const existingIndex = db.applications.findIndex(a => a.candidateId === candProfile.id && a.jobId === jobId);
+    const existingIndex = db.applications.findIndex(a => a.candidateId === candProfile!.id && a.jobId === jobId);
     if (existingIndex !== -1) {
       db.applications.splice(existingIndex, 1);
     }
@@ -852,12 +1059,27 @@ async function startServer() {
     }
 
     // Update candidate profile auto-skills with matched skills if empty
+    const profileUpdates: {
+      skills?: string[];
+      resumeText?: string;
+      resumeFileName?: string;
+    } = {};
     if (candProfile.skills.length === 0) {
-      candProfile.skills = matchedSkills;
+      profileUpdates.skills = matchedSkills;
     }
     if (uploadedResumeText) {
-      candProfile.resumeText = uploadedResumeText;
-      candProfile.resumeFileName = fileName;
+      profileUpdates.resumeText = uploadedResumeText;
+      profileUpdates.resumeFileName = fileName;
+    }
+    if (Object.keys(profileUpdates).length > 0) {
+      try {
+        const updatedProfile = await updateProfile(candProfile.id, profileUpdates);
+        if (updatedProfile) {
+          candProfile = updatedProfile;
+        }
+      } catch (err) {
+        return handleCandidateProfileServiceError(res, err);
+      }
     }
 
     const newApp: Application = {
@@ -897,8 +1119,8 @@ async function startServer() {
   });
 
   // Update application status (Admin screen candidate OR Company schedule Interview/Result)
-  app.post("/api/applications/:id/status", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/applications/:id/status", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) {
       return res.status(401).json({ error: "Access token missing" });
     }
@@ -940,7 +1162,12 @@ async function startServer() {
     if (rejectionReason !== undefined) currentApp.rejectionReason = rejectionReason;
 
     // Trigger Candidate notifications & Automated Email Alerts
-    const targetUserId = db.candidates.find(c => c.id === currentApp.candidateId)?.userId;
+    let targetUserId: string | undefined;
+    try {
+      targetUserId = (await getProfileById(currentApp.candidateId))?.userId;
+    } catch (err) {
+      console.error("[Candidate profiles migration] Failed to load candidate for status notification:", err);
+    }
     if (targetUserId) {
       let title = "Application Update";
       let msg = `Your profile status for ${currentApp.jobTitle} changed to ${status.replace("_", " ")}.`;
@@ -953,7 +1180,14 @@ async function startServer() {
         msg = `Great news! Persevex Senior Recruiters finalized review and forwarded your credentials to the official hiring team at ${currentApp.companyName}. Keep an eye out for scheduling!`;
         
         // Also fire notification to the company HR Owner
-        const companyOwner = db.companies.find(c => c.id === currentApp.companyId)?.userId;
+        let targetCompany: Company | null = null;
+        try {
+          targetCompany = await getCompanyById(currentApp.companyId);
+        } catch (err) {
+          console.error("[Companies migration] Failed to load company for forwarded application:", err);
+        }
+
+        const companyOwner = targetCompany?.userId;
         if (companyOwner) {
           db.notifications.push({
             id: `n-${Date.now()}`,
@@ -966,7 +1200,6 @@ async function startServer() {
         }
 
         // Send Corporate HR Owner an automated email notification!
-        const targetCompany = db.companies.find(c => c.id === currentApp.companyId);
         if (targetCompany && targetCompany.companyEmail) {
           const compSubject = `[Candidate Forwarded] Persevex matched a candidate for your role - ${currentApp.jobTitle}`;
           const compBody = `
@@ -1104,8 +1337,8 @@ async function startServer() {
   });
 
   // Admin writes review notes
-  app.post("/api/applications/:id/notes", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/applications/:id/notes", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Admin account required" });
     }
@@ -1125,8 +1358,8 @@ async function startServer() {
 
   // --- NOTIFICATIONS SYSTEM ---
 
-  app.get("/api/notifications", (req, res) => {
-    const user = getActiveUser(req);
+  app.get("/api/notifications", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) {
       return res.status(401).json({ error: "Access token missing" });
     }
@@ -1151,8 +1384,8 @@ async function startServer() {
     res.sendStatus(200);
   });
 
-  app.post("/api/notifications/read-all", (req, res) => {
-    const user = getActiveUser(req);
+  app.post("/api/notifications/read-all", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) return res.sendStatus(401);
 
     db.notifications.forEach(n => {
@@ -1168,8 +1401,8 @@ async function startServer() {
   });
 
   // --- AUTOMATED EMAIL ALERTS SERVICE ---
-  app.get("/api/email-alerts", (req, res) => {
-    const user = getActiveUser(req);
+  app.get("/api/email-alerts", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) {
       return res.status(401).json({ error: "Access token missing" });
     }
@@ -1180,20 +1413,25 @@ async function startServer() {
       const targetEmails = [user.email.toLowerCase()];
       
       if (user.role === "candidate") {
-        const profile = db.candidates.find(c => c.userId === user.id);
-        if (profile) {
-          const appWithCandidateEmail = db.applications.find(a => a.candidateId === profile.id);
-          if (appWithCandidateEmail && appWithCandidateEmail.candidateEmail) {
-            targetEmails.push(appWithCandidateEmail.candidateEmail.toLowerCase());
+        try {
+          const profile = await getProfileByUserId(user.id);
+          if (profile) {
+            const appWithCandidateEmail = db.applications.find(a => a.candidateId === profile.id);
+            if (appWithCandidateEmail && appWithCandidateEmail.candidateEmail) {
+              targetEmails.push(appWithCandidateEmail.candidateEmail.toLowerCase());
+            }
           }
+        } catch (err) {
+          return handleCandidateProfileServiceError(res, err);
         }
       } else if (user.role === "company") {
-        const company = db.companies.find(c => c.userId === user.id);
-        if (company) {
-          targetEmails.push(company.companyEmail.toLowerCase());
-          if (company.linkedin) { // or other references
-            // company email support
+        try {
+          const company = await getCompanyByUserId(user.id);
+          if (company) {
+            targetEmails.push(company.companyEmail.toLowerCase());
           }
+        } catch (err) {
+          return handleCompanyServiceError(res, err);
         }
       }
 
@@ -1206,18 +1444,32 @@ async function startServer() {
 
   // --- PLATFORM ANALYTICS DASHBBOARD DATA ---
 
-  app.get("/api/analytics/summary", (req, res) => {
-    const user = getActiveUser(req);
+  app.get("/api/analytics/summary", async (req, res) => {
+    const user = await getActiveUser(req);
     if (!user) return res.status(401).json({ error: "Access token missing" });
 
     // Calculate generic high-fidelity metrics
-    const totalCompanies = db.companies.length;
-    const verifiedCompanies = db.companies.filter(c => c.verificationStatus === "approved").length;
-    const pendingVerifications = db.companies.filter(c => c.verificationStatus === "pending").length;
+    let companies: Company[] = [];
+    try {
+      companies = await getAllCompanies();
+    } catch (err) {
+      return handleCompanyServiceError(res, err);
+    }
+
+    const totalCompanies = companies.length;
+    const verifiedCompanies = companies.filter(c => c.verificationStatus === "approved").length;
+    const pendingVerifications = companies.filter(c => c.verificationStatus === "pending").length;
     
-    const totalJobs = db.jobs.length;
-    const pendingJobs = db.jobs.filter(j => j.status === "submitted").length;
-    const approvedJobs = db.jobs.filter(j => j.status === "approved").length;
+    let allJobs: Job[] = [];
+    try {
+      allJobs = await getAllJobs();
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+
+    const totalJobs = allJobs.length;
+    const pendingJobs = allJobs.filter(j => j.status === "submitted").length;
+    const approvedJobs = allJobs.filter(j => j.status === "approved").length;
 
     const totalApplications = db.applications.length;
     const forwardedApplications = db.applications.filter(a => a.status === "forwarded").length;
@@ -1235,14 +1487,14 @@ async function startServer() {
     ];
 
     const jobsTrend = [
-      { name: "IT", value: db.jobs.filter(j => ["React", "node", "amplify", "developer"].some(term => j.title.toLowerCase().includes(term))).length + 5 },
+      { name: "IT", value: allJobs.filter(j => ["React", "node", "amplify", "developer"].some(term => j.title.toLowerCase().includes(term))).length + 5 },
       { name: "Operations", value: 3 },
       { name: "Product Design", value: 2 },
       { name: "Sales & Marketing", value: 1 }
     ];
 
-    const topCompanies = db.companies.map(c => {
-      const jobCount = db.jobs.filter(j => j.companyId === c.id).length;
+    const topCompanies = companies.map(c => {
+      const jobCount = allJobs.filter(j => j.companyId === c.id).length;
       return { name: c.companyName, jobs: jobCount, verified: c.verificationStatus === "approved" };
     });
 
