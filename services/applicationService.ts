@@ -183,7 +183,7 @@ export async function getApplicationsByCandidate(candidateId: string): Promise<A
       throw error;
     }
 
-    return (data || []).map(row => mapSupabaseApplication(row as SupabaseApplicationRow));
+    return (data || []).map(row => mapSupabaseApplication(row as unknown as SupabaseApplicationRow));
   }
 
   return getJsonDB().applications.filter(application => application.candidateId === candidateId);
@@ -202,7 +202,7 @@ export async function getApplicationsByCompany(companyId: string): Promise<Appli
       throw error;
     }
 
-    return (data || []).map(row => mapSupabaseApplication(row as SupabaseApplicationRow));
+    return (data || []).map(row => mapSupabaseApplication(row as unknown as SupabaseApplicationRow));
   }
 
   return getJsonDB().applications.filter(
@@ -330,7 +330,7 @@ export async function getAllApplications(): Promise<Application[]> {
       throw error;
     }
 
-    return (data || []).map(row => mapSupabaseApplication(row as SupabaseApplicationRow));
+    return (data || []).map(row => mapSupabaseApplication(row as unknown as SupabaseApplicationRow));
   }
 
   return [...getJsonDB().applications];
