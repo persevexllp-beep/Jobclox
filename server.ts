@@ -39,6 +39,19 @@ import {
   updateJobStatus,
 } from "./services/jobService";
 import {
+  USE_SUPABASE_NOTIFICATIONS,
+  createNotification,
+  getNotificationsByUser,
+  markAsRead,
+  setJsonDB as setNotificationJsonDB,
+} from "./services/notificationService";
+import {
+  USE_SUPABASE_EMAIL_LOGS,
+  createEmailLog,
+  getEmailLogs,
+  setJsonDB as setEmailLogJsonDB,
+} from "./services/emailLogService";
+import {
   USE_SUPABASE_APPLICATIONS,
   createApplication,
   deleteApplicationsByCandidateAndJob,
@@ -212,29 +225,28 @@ setCompanyJsonDB(db);
 setCandidateJsonDB(db);
 setJobJsonDB(db);
 setApplicationJsonDB(db);
+setNotificationJsonDB(db);
+setEmailLogJsonDB(db);
 
-function triggerEmailAlert(
+async function triggerEmailAlert(
   recipientEmail: string,
   recipientName: string,
   subject: string,
   bodyHtml: string,
   triggeredEvent: string
 ) {
-  const newEmail: EmailAlert = {
-    id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+  const emailId = `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const createdAt = new Date().toISOString();
+  const newEmail = await createEmailLog({
+    id: emailId,
     recipientEmail,
     recipientName,
     subject,
     body: bodyHtml,
     status: 'delivered',
     triggeredByEvent: triggeredEvent,
-    createdAt: new Date().toISOString()
-  };
-  
-  if (!db.emailAlerts) {
-    db.emailAlerts = [];
-  }
-  db.emailAlerts.push(newEmail);
+    createdAt,
+  });
   
   console.log(`\n================================================================`);
   console.log(`[AUTOMATED EMAIL ALERT SYSTEM] TRIGGERED EMAIL SENDER`);
@@ -244,6 +256,12 @@ function triggerEmailAlert(
   console.log(`----------------------------------------------------------------`);
   console.log(bodyHtml.replace(/<[^>]*>/g, ' ').slice(0, 300) + '...');
   console.log(`================================================================\n`);
+
+  if (!USE_SUPABASE_EMAIL_LOGS) {
+    saveDB(db);
+  }
+
+  return newEmail;
 }
 
 let aiClient: GoogleGenAI | null = null;
@@ -306,6 +324,23 @@ async function startServer() {
   const handleApplicationServiceError = (res: express.Response, err: unknown) => {
     console.error("[Applications migration] Application service error:", err);
     return res.status(500).json({ error: "Application service unavailable" });
+  };
+
+  const handleNotificationServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Notifications migration] Notification service error:", err);
+    return res.status(500).json({ error: "Notification service unavailable" });
+  };
+
+  const handleEmailLogServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Email logs migration] Email log service error:", err);
+    return res.status(500).json({ error: "Email log service unavailable" });
+  };
+
+  const recordNotification = async (notification: AppNotification) => {
+    await createNotification(notification);
+    if (!USE_SUPABASE_NOTIFICATIONS) {
+      saveDB(db);
+    }
   };
 
   const getActiveUser = async (req: express.Request): Promise<User | null> => {
@@ -498,7 +533,7 @@ async function startServer() {
         return handleCompanyServiceError(res, err);
       }
 
-      db.notifications.push({
+      await recordNotification({
         id: `n-${Date.now()}`,
         recipientId: "all_admin",
         title: "New Company Signup",
@@ -596,7 +631,7 @@ async function startServer() {
       }
 
       if (currentComp.companyName !== updated.companyName) {
-        db.notifications.push({
+        await recordNotification({
           id: `n-${Date.now()}`,
           recipientId: "all_admin",
           title: "Company Profile Updated",
@@ -604,7 +639,6 @@ async function startServer() {
           isRead: false,
           createdAt: new Date().toISOString()
         });
-        saveDB(db);
       }
 
       res.json({ company: updated });
@@ -634,7 +668,7 @@ async function startServer() {
         return res.status(404).json({ error: "Company not found" });
       }
 
-      db.notifications.push({
+      await recordNotification({
         id: `n-${Date.now()}`,
         recipientId: updatedCompany.userId,
         title: status === "approved" ? "Company Account Approved" : "Company Registration Update",
@@ -645,7 +679,6 @@ async function startServer() {
         createdAt: new Date().toISOString()
       });
 
-      saveDB(db);
       res.json({ company: updatedCompany });
     } catch (err) {
       return handleCompanyServiceError(res, err);
@@ -764,7 +797,7 @@ async function startServer() {
     }
 
     if (user.role === "company") {
-      db.notifications.push({
+      await recordNotification({
         id: `n-${Date.now()}`,
         recipientId: "all_admin",
         title: "New Job Review Required",
@@ -772,7 +805,6 @@ async function startServer() {
         isRead: false,
         createdAt: new Date().toISOString()
       });
-      saveDB(db);
     }
 
     res.json({ job: newJob });
@@ -811,7 +843,7 @@ async function startServer() {
       console.error("[Companies migration] Failed to load company for job status notification:", err);
     }
     if (compProfile) {
-      db.notifications.push({
+      await recordNotification({
         id: `n-${Date.now()}`,
         recipientId: compProfile.userId,
         title: status === "approved" ? "Job Request Approved" : "Job Request Feedback",
@@ -821,7 +853,6 @@ async function startServer() {
         isRead: false,
         createdAt: new Date().toISOString()
       });
-      saveDB(db);
     }
 
     res.json({ job: currentJob });
@@ -1159,7 +1190,7 @@ async function startServer() {
     }
 
     // Trigger Admin notification
-    db.notifications.push({
+    await recordNotification({
       id: `n-${Date.now()}`,
       recipientId: "all_admin",
       title: "New Application Received",
@@ -1168,7 +1199,6 @@ async function startServer() {
       createdAt: new Date().toISOString()
     });
 
-    saveDB(db);
     res.json({ application: newApp, score: matchScore });
   });
 
@@ -1265,7 +1295,7 @@ async function startServer() {
 
         const companyOwner = targetCompany?.userId;
         if (companyOwner) {
-          db.notifications.push({
+          await recordNotification({
             id: `n-${Date.now()}`,
             recipientId: companyOwner,
             title: "New Qualified Candidate Forwarded",
@@ -1317,7 +1347,7 @@ async function startServer() {
               </div>
             </div>
           `;
-          triggerEmailAlert(
+          await triggerEmailAlert(
             targetCompany.companyEmail,
             targetCompany.contactPerson || "Corporate Recruiter",
             compSubject,
@@ -1334,7 +1364,7 @@ async function startServer() {
       }
 
       // Add push notification inside platform DB
-      db.notifications.push({
+      await recordNotification({
         id: `n-${Date.now()}`,
         recipientId: targetUserId,
         title,
@@ -1398,7 +1428,7 @@ async function startServer() {
           emailSubject = `[Application Status Update] ${currentApp.jobTitle}`;
         }
 
-        triggerEmailAlert(
+        await triggerEmailAlert(
           currentApp.candidateEmail,
           currentApp.candidateName,
           emailSubject,
@@ -1408,7 +1438,9 @@ async function startServer() {
       }
     }
 
-    saveDB(db);
+    if (!USE_SUPABASE_APPLICATIONS) {
+      saveDB(db);
+    }
     res.json({ application: currentApp });
   });
 
@@ -1452,40 +1484,43 @@ async function startServer() {
       return res.status(401).json({ error: "Access token missing" });
     }
 
-    let notificationsList = db.notifications.filter(n => {
-      if (user.role === "admin") {
-        return n.recipientId === "all_admin" || n.recipientId === user.id;
-      }
-      return n.recipientId === user.id;
-    });
-
-    res.json({ notifications: notificationsList });
+    try {
+      const notifications = await getNotificationsByUser(user.id, user.role);
+      res.json({ notifications });
+    } catch (err) {
+      return handleNotificationServiceError(res, err);
+    }
   });
 
-  app.post("/api/notifications/:id/read", (req, res) => {
+  app.post("/api/notifications/:id/read", async (req, res) => {
     const { id } = req.params;
-    const index = db.notifications.findIndex(n => n.id === id);
-    if (index !== -1) {
-      db.notifications[index].isRead = true;
-      saveDB(db);
+    try {
+      await markAsRead(id);
+      if (!USE_SUPABASE_NOTIFICATIONS) {
+        saveDB(db);
+      }
+      res.sendStatus(200);
+    } catch (err) {
+      return handleNotificationServiceError(res, err);
     }
-    res.sendStatus(200);
   });
 
   app.post("/api/notifications/read-all", async (req, res) => {
     const user = await getActiveUser(req);
     if (!user) return res.sendStatus(401);
 
-    db.notifications.forEach(n => {
-      if (user.role === "admin" && n.recipientId === "all_admin") {
-        n.isRead = true;
-      } else if (n.recipientId === user.id) {
-        n.isRead = true;
+    try {
+      const notifications = await getNotificationsByUser(user.id, user.role);
+      for (const notification of notifications) {
+        await markAsRead(notification.id);
       }
-    });
-
-    saveDB(db);
-    res.sendStatus(200);
+      if (!USE_SUPABASE_NOTIFICATIONS) {
+        saveDB(db);
+      }
+      res.sendStatus(200);
+    } catch (err) {
+      return handleNotificationServiceError(res, err);
+    }
   });
 
   // --- AUTOMATED EMAIL ALERTS SERVICE ---
@@ -1496,7 +1531,12 @@ async function startServer() {
     }
 
     if (user.role === "admin") {
-      return res.json({ emailAlerts: db.emailAlerts || [] });
+      try {
+        const emailAlerts = await getEmailLogs();
+        return res.json({ emailAlerts });
+      } catch (err) {
+        return handleEmailLogServiceError(res, err);
+      }
     } else {
       const targetEmails = [user.email.toLowerCase()];
       
@@ -1523,10 +1563,14 @@ async function startServer() {
         }
       }
 
-      const filtered = (db.emailAlerts || []).filter(e => 
-        targetEmails.includes(e.recipientEmail.toLowerCase())
-      );
-      return res.json({ emailAlerts: filtered });
+      try {
+        const emailAlerts = (await getEmailLogs()).filter(e =>
+          targetEmails.includes(e.recipientEmail.toLowerCase())
+        );
+        return res.json({ emailAlerts });
+      } catch (err) {
+        return handleEmailLogServiceError(res, err);
+      }
     }
   });
 
