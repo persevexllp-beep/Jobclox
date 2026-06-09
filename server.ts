@@ -38,6 +38,18 @@ import {
   setJsonDB as setJobJsonDB,
   updateJobStatus,
 } from "./services/jobService";
+import {
+  USE_SUPABASE_APPLICATIONS,
+  createApplication,
+  deleteApplicationsByCandidateAndJob,
+  getAllApplications,
+  getApplicationById,
+  getApplicationsByCandidate,
+  getApplicationsByCompany,
+  setJsonDB as setApplicationJsonDB,
+  updateApplicationNotes,
+  updateApplicationStatus,
+} from "./services/applicationService";
 
 const PORT = 3000;
 const DB_FILE = path.join(process.cwd(), "server_db.json");
@@ -199,6 +211,7 @@ setJsonDB(db);
 setCompanyJsonDB(db);
 setCandidateJsonDB(db);
 setJobJsonDB(db);
+setApplicationJsonDB(db);
 
 function triggerEmailAlert(
   recipientEmail: string,
@@ -288,6 +301,11 @@ async function startServer() {
   const handleJobServiceError = (res: express.Response, err: unknown) => {
     console.error("[Jobs migration] Job service error:", err);
     return res.status(500).json({ error: "Job service unavailable" });
+  };
+
+  const handleApplicationServiceError = (res: express.Response, err: unknown) => {
+    console.error("[Applications migration] Application service error:", err);
+    return res.status(500).json({ error: "Application service unavailable" });
   };
 
   const getActiveUser = async (req: express.Request): Promise<User | null> => {
@@ -950,7 +968,14 @@ async function startServer() {
 
     if (user.role === "admin") {
       // Admin sees everything
-      return res.json({ applications: db.applications });
+      try {
+        const applications = USE_SUPABASE_APPLICATIONS
+          ? await getAllApplications()
+          : db.applications;
+        return res.json({ applications });
+      } catch (err) {
+        return handleApplicationServiceError(res, err);
+      }
     } else if (user.role === "candidate") {
       // Find candidate profile
       let candProfile: CandidateProfile | null = null;
@@ -962,7 +987,14 @@ async function startServer() {
       if (!candProfile) {
         return res.json({ applications: [] });
       }
-      return res.json({ applications: db.applications.filter(a => a.candidateId === candProfile.id) });
+      try {
+        const applications = USE_SUPABASE_APPLICATIONS
+          ? await getApplicationsByCandidate(candProfile.id)
+          : db.applications.filter(a => a.candidateId === candProfile!.id);
+        return res.json({ applications });
+      } catch (err) {
+        return handleApplicationServiceError(res, err);
+      }
     } else if (user.role === "company") {
       // Company HR sees only application records that are "forwarded" to their company
       let company: Company | null = null;
@@ -975,10 +1007,16 @@ async function startServer() {
         return res.json({ applications: [] });
       }
       // CRITICAL PRD rule: "Company HR sees only forwarded candidates"
-      const compApps = db.applications.filter(
-        a => a.companyId === company.id && ["forwarded", "interviewing", "selected", "rejected"].includes(a.status)
-      );
-      return res.json({ applications: compApps });
+      try {
+        const applications = USE_SUPABASE_APPLICATIONS
+          ? await getApplicationsByCompany(company.id)
+          : db.applications.filter(
+              a => a.companyId === company!.id && ["forwarded", "interviewing", "selected", "rejected"].includes(a.status)
+            );
+        return res.json({ applications });
+      } catch (err) {
+        return handleApplicationServiceError(res, err);
+      }
     }
 
     res.json({ applications: [] });
@@ -1017,9 +1055,17 @@ async function startServer() {
     }
 
     // Is there already an application for this candidate to this job? Let's remove the old one first so they can re-apply and update their resume/score.
-    const existingIndex = db.applications.findIndex(a => a.candidateId === candProfile!.id && a.jobId === jobId);
-    if (existingIndex !== -1) {
-      db.applications.splice(existingIndex, 1);
+    try {
+      if (USE_SUPABASE_APPLICATIONS) {
+        await deleteApplicationsByCandidateAndJob(candProfile.id, targetJob.id);
+      } else {
+        const existingIndex = db.applications.findIndex(a => a.candidateId === candProfile!.id && a.jobId === jobId);
+        if (existingIndex !== -1) {
+          db.applications.splice(existingIndex, 1);
+        }
+      }
+    } catch (err) {
+      return handleApplicationServiceError(res, err);
     }
 
     // Determine target resume text to parsing
@@ -1082,7 +1128,7 @@ async function startServer() {
       }
     }
 
-    const newApp: Application = {
+    const newAppInput: Application = {
       id: `a-${Date.now()}`,
       candidateId: candProfile.id,
       candidateName: user.name,
@@ -1099,10 +1145,18 @@ async function startServer() {
       appliedAt: new Date().toISOString()
     };
 
-    db.applications.push(newApp);
-
-    // Save back to db
-    saveDB(db);
+    let newApp: Application;
+    try {
+      if (USE_SUPABASE_APPLICATIONS) {
+        newApp = await createApplication(newAppInput);
+      } else {
+        db.applications.push(newAppInput);
+        newApp = newAppInput;
+        saveDB(db);
+      }
+    } catch (err) {
+      return handleApplicationServiceError(res, err);
+    }
 
     // Trigger Admin notification
     db.notifications.push({
@@ -1133,12 +1187,17 @@ async function startServer() {
       rejectionReason?: string 
     };
 
-    const index = db.applications.findIndex(a => a.id === id);
-    if (index === -1) {
+    let currentApp: Application | null = null;
+    try {
+      currentApp = USE_SUPABASE_APPLICATIONS
+        ? await getApplicationById(id)
+        : db.applications.find(a => a.id === id) || null;
+    } catch (err) {
+      return handleApplicationServiceError(res, err);
+    }
+    if (!currentApp) {
       return res.status(404).json({ error: "Application file not found" });
     }
-
-    const currentApp = db.applications[index];
 
     // Authorization checks
     if (user.role === "candidate") {
@@ -1156,10 +1215,27 @@ async function startServer() {
     }
 
     const previousStatus = currentApp.status;
-    currentApp.status = status;
-    if (interviewDate !== undefined) currentApp.interviewDate = interviewDate;
-    if (finalResult !== undefined) currentApp.finalResult = finalResult;
-    if (rejectionReason !== undefined) currentApp.rejectionReason = rejectionReason;
+    try {
+      if (USE_SUPABASE_APPLICATIONS) {
+        const updatedApplication = await updateApplicationStatus(id, {
+          status,
+          interviewDate,
+          finalResult,
+          rejectionReason,
+        });
+        if (!updatedApplication) {
+          return res.status(404).json({ error: "Application file not found" });
+        }
+        currentApp = updatedApplication;
+      } else {
+        currentApp.status = status;
+        if (interviewDate !== undefined) currentApp.interviewDate = interviewDate;
+        if (finalResult !== undefined) currentApp.finalResult = finalResult;
+        if (rejectionReason !== undefined) currentApp.rejectionReason = rejectionReason;
+      }
+    } catch (err) {
+      return handleApplicationServiceError(res, err);
+    }
 
     // Trigger Candidate notifications & Automated Email Alerts
     let targetUserId: string | undefined;
@@ -1346,14 +1422,26 @@ async function startServer() {
     const { id } = req.params;
     const { notes } = req.body;
 
-    const index = db.applications.findIndex(a => a.id === id);
-    if (index === -1) {
-      return res.status(404).json({ error: "Application dossier not found" });
-    }
+    try {
+      if (USE_SUPABASE_APPLICATIONS) {
+        const application = await updateApplicationNotes(id, notes || "");
+        if (!application) {
+          return res.status(404).json({ error: "Application dossier not found" });
+        }
+        return res.json({ application });
+      } else {
+        const index = db.applications.findIndex(a => a.id === id);
+        if (index === -1) {
+          return res.status(404).json({ error: "Application dossier not found" });
+        }
 
-    db.applications[index].notes = notes || "";
-    saveDB(db);
-    res.json({ application: db.applications[index] });
+        db.applications[index].notes = notes || "";
+        saveDB(db);
+        return res.json({ application: db.applications[index] });
+      }
+    } catch (err) {
+      return handleApplicationServiceError(res, err);
+    }
   });
 
   // --- NOTIFICATIONS SYSTEM ---
