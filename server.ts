@@ -5,18 +5,17 @@
 
 import "dotenv/config";
 import express from "express";
-import fs from "fs";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { User, Company, Job, Application, CandidateProfile, AppNotification, ApplicationStatus, EmailAlert } from "./src/types";
+import { User, Company, Job, Application, CandidateProfile, AppNotification, ApplicationStatus } from "./src/types";
 import { GoogleGenAI } from "@google/genai";
-import { USE_SUPABASE_USERS, createUser, getUserByEmail, getUserById, setJsonDB } from "./services/userService";
+import { supabaseAdmin } from "./lib/supabase";
+import { createUser, getUserByEmail } from "./services/userService";
 import {
   createCompany,
   getAllCompanies,
   getCompanyById,
   getCompanyByUserId,
-  setJsonDB as setCompanyJsonDB,
   updateCompany,
   updateVerificationStatus,
 } from "./services/companyService";
@@ -24,7 +23,6 @@ import {
   createProfile,
   getProfileById,
   getProfileByUserId,
-  setJsonDB as setCandidateJsonDB,
   updateProfile,
 } from "./services/candidateProfileService";
 import {
@@ -35,198 +33,86 @@ import {
   getJobsByStatus,
   getPersevexInternalCompanyId,
   incrementViewCount,
-  setJsonDB as setJobJsonDB,
   updateJobStatus,
 } from "./services/jobService";
 import {
-  USE_SUPABASE_NOTIFICATIONS,
   createNotification,
+  getNotificationById,
   getNotificationsByUser,
+  getUnreadCount,
   markAsRead,
-  setJsonDB as setNotificationJsonDB,
 } from "./services/notificationService";
 import {
-  USE_SUPABASE_EMAIL_LOGS,
-  createEmailLog,
+  getEmailLogById,
   getEmailLogs,
-  setJsonDB as setEmailLogJsonDB,
 } from "./services/emailLogService";
 import {
-  USE_SUPABASE_APPLICATIONS,
+  emailTemplates,
+  emitCommunicationEvent,
+  retryEmailLog,
+} from "./services/communicationService";
+import {
   createApplication,
   deleteApplicationsByCandidateAndJob,
   getAllApplications,
   getApplicationById,
   getApplicationsByCandidate,
   getApplicationsByCompany,
-  setJsonDB as setApplicationJsonDB,
   updateApplicationNotes,
   updateApplicationStatus,
 } from "./services/applicationService";
+import {
+  createSessionToken,
+  getBearerToken,
+  getPasswordHashForUser,
+  hashPassword,
+  setPasswordHashForUser,
+  validatePasswordStrength,
+  validateSessionToken,
+  verifyPassword,
+} from "./services/authService";
+import { runResumeIntelligencePipeline } from "./services/resumeIntelligenceService";
+import { validateStartupEnvironment } from "./services/configService";
+import { logger } from "./services/logger";
 
 const PORT = 3000;
-const DB_FILE = path.join(process.cwd(), "server_db.json");
+const HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
+const STARTED_AT = Date.now();
 
-interface Database {
-  users: User[];
-  companies: Company[];
-  jobs: Job[];
-  applications: Application[];
-  candidates: CandidateProfile[];
-  notifications: AppNotification[];
-  emailAlerts: EmailAlert[];
-}
-
-const defaultDB: Database = {
-  users: [
-    { id: "u-admin", name: "Olivia Vance", email: "admin@persevex.com", role: "admin", status: "active", createdAt: "2026-05-01T10:00:00Z" },
-    { id: "u-comp1", name: "Sarah Jenkins", email: "hr@amazon.com", role: "company", status: "active", createdAt: "2026-05-10T12:00:00Z" },
-    { id: "u-cand1", name: "Alex Mercer", email: "candidate@persevex.com", role: "candidate", status: "active", createdAt: "2026-05-15T08:30:00Z" },
-    { id: "u-cand2", name: "Monica Geller", email: "monica@persevex.com", role: "candidate", status: "active", createdAt: "2026-05-20T09:00:00Z" }
-  ],
-  companies: [
-    {
-      id: "c-aws",
-      userId: "u-comp1",
-      companyName: "Amazon Web Services (AWS)",
-      website: "https://aws.amazon.com",
-      linkedin: "https://linkedin.com/company/aws",
-      industry: "Cloud Computing & Technology",
-      companyEmail: "recruitment@amazon.com",
-      contactPerson: "Sarah Jenkins",
-      phone: "+1 555-019-2834",
-      verificationStatus: "approved",
-      documents: [{ name: "aws_incorporation_cert.pdf" }],
-      createdAt: "2026-05-12T14:00:00Z"
-    }
-  ],
-  jobs: [
-    {
-      id: "j-web",
-      companyId: "c-aws",
-      companyName: "Amazon Web Services (AWS)",
-      title: "Full-Stack Engineer (React & Node)",
-      department: "AWS Core Solutions",
-      location: "Seattle, WA (Hybrid)",
-      jobType: "Full-time",
-      experience: "3-5 years",
-      salary: "$120,000 - $145,000 / yr",
-      description: "We are seeking a talented developer to build responsive console interfaces and scalable server-side features. You will collaborate closely with system architects to structure API systems and ensure minimal paint latencies.",
-      requirements: ["React", "Node.js", "MongoDB", "AWS"],
-      preferredSkills: ["TypeScript", "Tailwind CSS", "GraphQL"],
-      status: "approved",
-      viewCount: 42,
-      createdAt: "2026-05-14T09:00:00Z",
-      deadline: "2026-07-15"
-    },
-    {
-      id: "j-ui",
-      companyId: "c-aws",
-      companyName: "Amazon Web Services (AWS)",
-      title: "Frontend UI Developer",
-      department: "AWS Amplify Team",
-      location: "Boston, MA (Remote)",
-      jobType: "Full-time",
-      experience: "1-3 years",
-      salary: "$95,000 - $115,000 / yr",
-      description: "Join the developer experience team to build sleek web experiences. Crafting beautiful interfaces, optimizing interactions, and writing high-fidelity, testable Tailwind code is what you will do everyday.",
-      requirements: ["React", "Tailwind CSS", "TypeScript"],
-      preferredSkills: ["Vite", "Figma", "Jest"],
-      status: "submitted",
-      viewCount: 18,
-      createdAt: "2026-06-01T15:30:00Z",
-      deadline: "2026-07-20"
-    }
-  ],
-  candidates: [
-    {
-      id: "can-alex",
-      userId: "u-cand1",
-      education: "B.S. in Computer Science - Georgia Institute of Technology",
-      skills: ["React", "Node.js", "MongoDB", "Tailwind CSS", "TypeScript", "Git"],
-      experience: "3 years as Frontend Developer. Developed low-latency interactive administration grids. Specialized in responsive grids with React, Context, state charts, and REST APIs.",
-      resumeText: "ALEX MERCER\nEmail: candidate@persevex.com\n\nPROFESSIONAL SUMMARY\nHighly energetic software developer with 3 years of engineering beautiful React interfaces and Node.js backend systems.\n\nTECHNICAL SKILLS\n- Frontend: React, Redux, Tailwind CSS, TypeScript, Javascript (ES6+)\n- Backend: Node.js, Express, MongoDB, RESTful APIs, Git, Unix CLI\n- Operations: Github Actions, Docker basics\n\nPROFESSIONAL EXPERIENCE\nSoftware Engineer | TechCraft Software (2023 - Present)\n- Led creation of user administration hub in React and Tailwind, pruning page load times by 20%.\n- Integrated MongoDB collections to serialize rich client profiles and trigger real-time dashboards.\n\nEDUCATION\nGeorgia Institute of Technology - B.S. in Computer Science",
-      resumeFileName: "alex_mercer_development_resume.pdf",
-      createdAt: "2026-05-16T11:00:00Z"
-    },
-    {
-      id: "can-monica",
-      userId: "u-cand2",
-      education: "Master of Computer Applications - NYU",
-      skills: ["React", "Figma", "Git"],
-      experience: "1 year of freelance interface coding. Crafted local HTML portfolios and assisted design mockups in Figma.",
-      resumeText: "MONICA GELLER\nEmail: monica@persevex.com\n\nSUMMARY\nCreative interface designer and junior frontend coder. Skilled in UI layout wireframing and modular React states.\n\nSKILLS\n- Design: Figma, Adobe XD, Typography, Vector Layouts\n- Engineering: HTML5, CSS3, Javascript, React, Git, Bootstrap\n\nEDUCATION\nNew York University - Master of Computer Applications",
-      resumeFileName: "monica_geller_designer.pdf",
-      createdAt: "2026-05-21T10:00:00Z"
-    }
-  ],
-  applications: [
-    {
-      id: "a-1",
-      candidateId: "can-alex",
-      candidateName: "Alex Mercer",
-      candidateEmail: "candidate@persevex.com",
-      jobId: "j-web",
-      jobTitle: "Full-Stack Engineer (React & Node)",
-      companyId: "c-aws",
-      companyName: "Amazon Web Services (AWS)",
-      score: 75,
-      matchedSkills: ["React", "Node.js", "MongoDB"],
-      missingSkills: ["AWS"],
-      status: "under_review",
-      notes: "Strong React background and basic REST knowledge. Missing heavy AWS experience, but has high potential. Recommended for second round.",
-      appliedAt: "2026-05-18T10:00:00Z"
-    }
-  ],
-  notifications: [
-    { id: "n-1", recipientId: "all_admin", title: "New Company Onboarding", message: "Amazon Web Services uploaded documents for verification.", isRead: false, createdAt: "2026-05-12T14:05:00Z" },
-    { id: "n-2", recipientId: "u-comp1", title: "Company Verified", message: "Your company registration has been approved by Persevex Admin.", isRead: true, createdAt: "2026-05-13T09:00:00Z" },
-    { id: "n-3", recipientId: "all_admin", title: "Job Approval Request", message: "AWS posted a new job: Frontend UI Developer.", isRead: false, createdAt: "2026-06-01T15:32:00Z" }
-  ],
-  emailAlerts: []
+type RateLimitBucket = {
+  count: number;
+  resetAt: number;
 };
 
-// Helper to load database
-function loadDB(): Database {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      return {
-        users: parsed.users || [],
-        companies: parsed.companies || [],
-        jobs: parsed.jobs || [],
-        applications: parsed.applications || [],
-        candidates: parsed.candidates || [],
-        notifications: parsed.notifications || [],
-        emailAlerts: parsed.emailAlerts || []
-      };
+const rateLimitBuckets = new Map<string, RateLimitBucket>();
+
+function getClientIp(req: express.Request): string {
+  const forwardedFor = req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwardedFor || req.socket.remoteAddress || "unknown";
+}
+
+function rateLimit(options: { windowMs: number; max: number; keyPrefix: string }) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const now = Date.now();
+    const key = `${options.keyPrefix}:${getClientIp(req)}`;
+    const current = rateLimitBuckets.get(key);
+    if (!current || current.resetAt <= now) {
+      rateLimitBuckets.set(key, { count: 1, resetAt: now + options.windowMs });
+      return next();
     }
-  } catch (err) {
-    console.error("Error reading database file, using fallback defaults", err);
-  }
-  saveDB(defaultDB);
-  return defaultDB;
+    current.count += 1;
+    if (current.count > options.max) {
+      res.setHeader("Retry-After", Math.ceil((current.resetAt - now) / 1000));
+      logger.warn("rate-limit", "request rejected", {
+        requestId: String(res.locals.requestId || ''),
+        path: req.path,
+        ip: getClientIp(req),
+      });
+      return res.status(429).json({ error: "Too many requests. Please retry later." });
+    }
+    next();
+  };
 }
-
-// Helper to save database
-function saveDB(db: Database) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Error writing database file", err);
-  }
-}
-
-// Initialize server DB
-let db = loadDB();
-setJsonDB(db);
-setCompanyJsonDB(db);
-setCandidateJsonDB(db);
-setJobJsonDB(db);
-setApplicationJsonDB(db);
-setNotificationJsonDB(db);
-setEmailLogJsonDB(db);
 
 async function triggerEmailAlert(
   recipientEmail: string,
@@ -235,41 +121,290 @@ async function triggerEmailAlert(
   bodyHtml: string,
   triggeredEvent: string
 ) {
-  const emailId = `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const createdAt = new Date().toISOString();
-  const newEmail = await createEmailLog({
-    id: emailId,
+  const result = await emitCommunicationEvent({
+    eventType: "APPLICATION_REVIEWED",
+    emails: [{ recipientEmail, recipientName, subject, html: bodyHtml }],
+    metadata: { legacyTrigger: triggeredEvent },
+  });
+
+  logger.info("email", "legacy email alert emitted", {
     recipientEmail,
     recipientName,
     subject,
-    body: bodyHtml,
-    status: 'delivered',
-    triggeredByEvent: triggeredEvent,
-    createdAt,
+    triggeredEvent,
+    status: result.emails[0]?.status || "not_logged",
   });
-  
-  console.log(`\n================================================================`);
-  console.log(`[AUTOMATED EMAIL ALERT SYSTEM] TRIGGERED EMAIL SENDER`);
-  console.log(`To: ${recipientName} <${recipientEmail}>`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Triggered By: ${triggeredEvent}`);
-  console.log(`----------------------------------------------------------------`);
-  console.log(bodyHtml.replace(/<[^>]*>/g, ' ').slice(0, 300) + '...');
-  console.log(`================================================================\n`);
 
-  if (!USE_SUPABASE_EMAIL_LOGS) {
-    saveDB(db);
-  }
-
-  return newEmail;
+  return result.emails[0] || null;
 }
 
 let aiClient: GoogleGenAI | null = null;
+type GeminiKeyStatus = "missing" | "suspicious" | "configured";
+
+function getGeminiApiKeyStatus(): GeminiKeyStatus {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) return "missing";
+  return /^AIza[0-9A-Za-z_-]{20,}$/.test(apiKey) ? "configured" : "suspicious";
+}
+
+function isGeminiAuthError(err: unknown): boolean {
+  const text = err instanceof Error ? `${err.name} ${err.message}` : String(err);
+  return /API_KEY_INVALID|API key not valid|invalid api key|permission_denied|unauthenticated/i.test(text);
+}
+
+function isGeminiQuotaError(err: unknown): boolean {
+  const text = err instanceof Error ? `${err.name} ${err.message}` : String(err);
+  return /quota|rate limit|resource_exhausted/i.test(text);
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+function sanitizeStorageName(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "resume.pdf";
+}
+
+function sanitizeImageName(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "profile-photo.jpg";
+}
+
+function getResumeBucket(): string {
+  return process.env.RESUME_STORAGE_BUCKET?.trim() || "resumes";
+}
+
+function getProfilePhotoBucket(): string {
+  return process.env.PROFILE_PHOTO_STORAGE_BUCKET?.trim() || "avatars";
+}
+
+function getCompanyDocumentBucket(): string {
+  return process.env.COMPANY_DOCUMENT_STORAGE_BUCKET?.trim() || "company-documents";
+}
+
+type RequiredStorageBucket = {
+  name: string;
+  isPublic: boolean;
+  allowedMimeTypes?: string[];
+};
+
+const requiredStorageBuckets: RequiredStorageBucket[] = [
+  {
+    name: getResumeBucket(),
+    isPublic: false,
+    allowedMimeTypes: ["application/pdf"],
+  },
+  {
+    name: getProfilePhotoBucket(),
+    isPublic: false,
+    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/avif"],
+  },
+  {
+    name: getCompanyDocumentBucket(),
+    isPublic: false,
+    allowedMimeTypes: ["application/pdf", "image/png", "image/jpeg", "image/webp"],
+  },
+];
+
+function buildStorageReference(bucket: string, storagePath: string): string {
+  return `${bucket}/${storagePath}`;
+}
+
+function splitStorageReference(reference: string): { bucket: string; path: string } | null {
+  if (!reference || /^https?:\/\//i.test(reference)) {
+    return null;
+  }
+  const [bucket, ...rest] = reference.split("/");
+  const pathValue = rest.join("/");
+  if (!bucket || !pathValue) {
+    return null;
+  }
+  return { bucket, path: pathValue };
+}
+
+async function ensureStorageBucket(bucket: RequiredStorageBucket): Promise<void> {
+  if (!supabaseAdmin) {
+    throw new Error("Supabase storage is not configured");
+  }
+
+  const { data, error } = await supabaseAdmin.storage.listBuckets();
+  if (error) {
+    throw error;
+  }
+
+  if (data?.some((item) => item.name === bucket.name)) {
+    return;
+  }
+
+  const { error: createError } = await supabaseAdmin.storage.createBucket(bucket.name, {
+    public: bucket.isPublic,
+    allowedMimeTypes: bucket.allowedMimeTypes,
+  });
+  if (createError) {
+    throw createError;
+  }
+  logger.info("storage", "created missing storage bucket", { bucket: bucket.name });
+}
+
+async function ensureRequiredStorageBuckets(): Promise<void> {
+  for (const bucket of requiredStorageBuckets) {
+    await ensureStorageBucket(bucket);
+  }
+}
+
+async function uploadBufferToStorage(bucket: string, storagePath: string, buffer: Buffer, contentType: string): Promise<string> {
+  if (!supabaseAdmin) {
+    throw new Error("Supabase storage is not configured");
+  }
+  const { error } = await supabaseAdmin.storage.from(bucket).upload(storagePath, buffer, {
+    contentType,
+    upsert: true,
+  });
+  if (error) {
+    throw error;
+  }
+  return buildStorageReference(bucket, storagePath);
+}
+
+async function resolveStorageUrl(reference: string): Promise<string> {
+  if (!reference) return "";
+  if (/^https?:\/\//i.test(reference)) return reference;
+  if (!supabaseAdmin) return "";
+
+  const parsed = splitStorageReference(reference);
+  if (!parsed) return "";
+
+  const signed = await supabaseAdmin.storage.from(parsed.bucket).createSignedUrl(parsed.path, 60 * 60);
+  if (!signed.error && signed.data?.signedUrl) {
+    return signed.data.signedUrl;
+  }
+
+  const { data } = supabaseAdmin.storage.from(parsed.bucket).getPublicUrl(parsed.path);
+  return data.publicUrl || "";
+}
+
+async function listStorageObjects(bucket: string, prefix: string, limit = 100) {
+  if (!supabaseAdmin) {
+    return [];
+  }
+  const { data, error } = await supabaseAdmin.storage.from(bucket).list(prefix, {
+    limit,
+    sortBy: { column: "created_at", order: "desc" },
+  });
+  if (error || !data?.length) {
+    return [];
+  }
+  return data.filter((item) => item.name && !item.name.endsWith("/"));
+}
+
+async function uploadResumeToStorage(userId: string, profileId: string, fileName: string, buffer: Buffer): Promise<string> {
+  const bucket = getResumeBucket();
+  const storagePath = `${userId}/${profileId}/${Date.now()}-${sanitizeStorageName(fileName)}`;
+  return uploadBufferToStorage(bucket, storagePath, buffer, "application/pdf");
+}
+
+async function getProfilePhotoUrl(userId: string, profileId: string): Promise<string> {
+  const bucket = getProfilePhotoBucket();
+  const prefix = `${userId}/${profileId}`;
+  const files = await listStorageObjects(bucket, prefix, 10);
+  const latest = files[0];
+  if (!latest?.name) return "";
+  const reference = buildStorageReference(bucket, `${prefix}/${latest.name}`);
+  if (bucket === "avatars" && supabaseAdmin) {
+    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(`${prefix}/${latest.name}`);
+    if (data.publicUrl) {
+      return data.publicUrl;
+    }
+  }
+  return resolveStorageUrl(reference);
+}
+
+async function removeProfilePhotos(userId: string, profileId: string): Promise<void> {
+  if (!supabaseAdmin) return;
+  const bucket = getProfilePhotoBucket();
+  const prefix = `${userId}/${profileId}`;
+  const files = await listStorageObjects(bucket, prefix);
+  const paths = files.map((item) => `${prefix}/${item.name}`);
+  if (paths.length) {
+    await supabaseAdmin.storage.from(bucket).remove(paths);
+  }
+}
+
+async function uploadProfilePhotoToStorage(userId: string, profileId: string, fileName: string, mimeType: string, buffer: Buffer): Promise<string> {
+  if (!/^image\/(png|jpe?g|webp|avif)$/i.test(mimeType)) {
+    throw Object.assign(new Error("Profile photo must be PNG, JPG, WebP, or AVIF."), { statusCode: 400 });
+  }
+  if (buffer.length > 3 * 1024 * 1024) {
+    throw Object.assign(new Error("Profile photo must be 3MB or smaller."), { statusCode: 400 });
+  }
+
+  const bucket = getProfilePhotoBucket();
+  await removeProfilePhotos(userId, profileId);
+  const storagePath = `${userId}/${profileId}/${Date.now()}-${sanitizeImageName(fileName)}`;
+  await uploadBufferToStorage(bucket, storagePath, buffer, mimeType);
+  return getProfilePhotoUrl(userId, profileId);
+}
+
+async function uploadCompanyDocumentToStorage(userId: string, companyId: string, fileName: string, mimeType: string, buffer: Buffer): Promise<Company["documents"][number]> {
+  if (!/^application\/pdf$|^image\/(png|jpe?g|webp)$/i.test(mimeType)) {
+    throw Object.assign(new Error("Verification document must be PDF, PNG, JPG, or WebP."), { statusCode: 400 });
+  }
+  if (buffer.length > 6 * 1024 * 1024) {
+    throw Object.assign(new Error("Verification document must be 6MB or smaller."), { statusCode: 400 });
+  }
+
+  const bucket = getCompanyDocumentBucket();
+  const storagePath = `${userId}/${companyId}/${Date.now()}-${sanitizeStorageName(fileName)}`;
+  const reference = await uploadBufferToStorage(bucket, storagePath, buffer, mimeType);
+  const signedUrl = await resolveStorageUrl(reference);
+  return {
+    name: fileName,
+    path: storagePath,
+    url: signedUrl || reference,
+    mimeType,
+    uploadedAt: new Date().toISOString(),
+  };
+}
+
+async function hydrateCompanyDocuments(documents: Company["documents"]): Promise<Company["documents"]> {
+  return Promise.all(
+    (documents || []).map(async (document) => {
+      const reference = document.path
+        ? buildStorageReference(getCompanyDocumentBucket(), document.path)
+        : document.url || "";
+      const resolvedUrl = reference ? await resolveStorageUrl(reference) : "";
+      return {
+        ...document,
+        url: resolvedUrl || document.url,
+      };
+    })
+  );
+}
+
+async function hydrateCompanyStorage(company: Company | null): Promise<Company | null> {
+  if (!company) return null;
+  return {
+    ...company,
+    documents: await hydrateCompanyDocuments(company.documents || []),
+  };
+}
+
 function getGeminiClient(): GoogleGenAI {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required to parse uploaded PDFs.");
+      throw new Error("Gemini API key missing");
     }
     aiClient = new GoogleGenAI({
       apiKey,
@@ -283,79 +418,186 @@ function getGeminiClient(): GoogleGenAI {
   return aiClient;
 }
 
+function logGeminiStartupStatus() {
+  const status = getGeminiApiKeyStatus();
+  if (status === "missing") {
+    logger.warn("resume-parser", "Gemini API key missing; local fallback remains active");
+  } else if (status === "suspicious") {
+    logger.warn("resume-parser", "Gemini API key format is suspicious; local fallback remains active");
+  } else {
+    logger.info("resume-parser", "Gemini API key detected");
+  }
+}
+
 async function startServer() {
+  const runtimeConfig = validateStartupEnvironment();
+  logger.info("startup", "environment validated", {
+    nodeEnv: runtimeConfig.nodeEnv,
+    version: runtimeConfig.version,
+    optionalConfigured: runtimeConfig.optionalConfigured.join(","),
+    optionalMissing: runtimeConfig.optionalMissing.join(","),
+  });
+  logGeminiStartupStatus();
+  await ensureRequiredStorageBuckets();
+
   const app = express();
+  app.disable("x-powered-by");
+
+  app.use((req, res, next) => {
+    const requestId = req.header("x-request-id") || `req-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const started = Date.now();
+    res.locals.requestId = requestId;
+    res.setHeader("X-Request-Id", requestId);
+    res.on("finish", () => {
+      logger.info("http", "request completed", {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - started,
+      });
+    });
+    next();
+  });
+
   app.use(express.json({ limit: "12mb" }));
 
   // CORS headers
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, x-user-id");
+    const configuredOrigin = process.env.CORS_ORIGIN?.trim();
+    const origin = configuredOrigin || (process.env.NODE_ENV === "production" ? "https://persevex.com" : "*");
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Cross-Origin-Resource-Policy", "same-site");
+    res.header("Referrer-Policy", "no-referrer");
+    res.header("X-Content-Type-Options", "nosniff");
+    res.header("X-Frame-Options", "DENY");
+    res.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    const devConnect = process.env.NODE_ENV === "production" ? "" : " http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*";
+    res.header("Content-Security-Policy", `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co${devConnect};`);
     if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
     next();
   });
 
-  // Simple authentication middleware helper
-  // Since we are running in a secure, self-contained workspace preview sandbox,
-  // we can use a custom request header "x-user-id" to authorize actions cleanly and make it bug-free!
+  // Authentication middleware helper. Production requests must carry a signed bearer session.
   const handleUserServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Users migration] User service error:", err);
+    logger.error("users", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "User service unavailable" });
   };
 
   const handleCompanyServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Companies migration] Company service error:", err);
+    logger.error("companies", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "Company service unavailable" });
   };
 
   const handleCandidateProfileServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Candidate profiles migration] Profile service error:", err);
+    logger.error("candidate-profiles", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "Candidate profile service unavailable" });
   };
 
   const handleJobServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Jobs migration] Job service error:", err);
+    logger.error("jobs", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "Job service unavailable" });
   };
 
   const handleApplicationServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Applications migration] Application service error:", err);
+    logger.error("applications", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "Application service unavailable" });
   };
 
   const handleNotificationServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Notifications migration] Notification service error:", err);
+    logger.error("notifications", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "Notification service unavailable" });
   };
 
   const handleEmailLogServiceError = (res: express.Response, err: unknown) => {
-    console.error("[Email logs migration] Email log service error:", err);
+    logger.error("email", "service error", err, { requestId: String(res.locals.requestId || '') });
     return res.status(500).json({ error: "Email log service unavailable" });
   };
 
   const recordNotification = async (notification: AppNotification) => {
     await createNotification(notification);
-    if (!USE_SUPABASE_NOTIFICATIONS) {
-      saveDB(db);
-    }
   };
 
   const getActiveUser = async (req: express.Request): Promise<User | null> => {
-    const userId = req.headers["x-user-id"] as string;
-    if (!userId) return null;
-    if (USE_SUPABASE_USERS) {
-      try {
-        return await getUserById(userId);
-      } catch (err) {
-        console.error("[Users migration] Failed to load active user:", err);
-        return null;
-      }
-    } else {
-      return db.users.find(u => u.id === userId) || null;
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return null;
+    try {
+      return await validateSessionToken(token);
+    } catch (err) {
+      logger.error("auth", "failed to validate session", err);
+      return null;
     }
+  };
+
+  const canAccessNotification = (user: User, notification: AppNotification): boolean => {
+    return notification.recipientId === user.id || (user.role === "admin" && notification.recipientId === "all_admin");
+  };
+
+  app.get("/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      version: runtimeConfig.version,
+      uptimeSeconds: Math.round((Date.now() - STARTED_AT) / 1000),
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  app.get("/ready", async (_req, res) => {
+    const started = Date.now();
+    const checks: Record<string, { status: "ok" | "error" | "disabled"; detail?: string; durationMs?: number }> = {
+      database: { status: "disabled", detail: "supabase admin client unavailable" },
+      gemini: { status: getGeminiApiKeyStatus() === "configured" ? "ok" : "disabled", detail: getGeminiApiKeyStatus() },
+      email: {
+        status: process.env.EMAIL_DELIVERY_ENABLED ? (process.env.EMAIL_WEBHOOK_URL ? "ok" : "error") : "disabled",
+        detail: process.env.EMAIL_DELIVERY_ENABLED ? "delivery flag enabled" : "delivery flag disabled",
+      },
+    };
+
+    if (supabaseAdmin) {
+      const dbStarted = Date.now();
+      try {
+        const { error } = await supabaseAdmin.from("users").select("id").limit(1);
+        checks.database = {
+          status: error ? "error" : "ok",
+          detail: error?.message,
+          durationMs: Date.now() - dbStarted,
+        };
+      } catch (err) {
+        checks.database = {
+          status: "error",
+          detail: err instanceof Error ? err.message : String(err),
+          durationMs: Date.now() - dbStarted,
+        };
+      }
+    }
+
+    const ready = Object.values(checks).every((check) => check.status !== "error");
+    res.status(ready ? 200 : 503).json({
+      status: ready ? "ready" : "not_ready",
+      version: runtimeConfig.version,
+      uptimeSeconds: Math.round((Date.now() - STARTED_AT) / 1000),
+      durationMs: Date.now() - started,
+      checks,
+    });
+  });
+
+  const tryBootstrapPassword = async (user: User, password: string): Promise<string | null> => {
+    const bootstrapEmail = process.env.AUTH_BOOTSTRAP_EMAIL?.trim().toLowerCase();
+    const bootstrapPassword = process.env.AUTH_BOOTSTRAP_PASSWORD;
+    if (!bootstrapEmail || !bootstrapPassword) {
+      return null;
+    }
+    if (user.email.toLowerCase() !== bootstrapEmail || password !== bootstrapPassword) {
+      return null;
+    }
+
+    const passwordHash = await hashPassword(password);
+    await setPasswordHashForUser(user.id, passwordHash);
+    return passwordHash;
   };
 
   const ensureLoginProfile = async (user: User): Promise<boolean> => {
@@ -374,7 +616,7 @@ async function startServer() {
           return true;
         }
       } catch (err) {
-        console.error("[Candidate profiles migration] Failed to ensure candidate profile:", err);
+        logger.error("candidate-profiles", "failed to ensure login profile", err, { userId: user.id });
       }
     }
 
@@ -397,7 +639,7 @@ async function startServer() {
           return true;
         }
       } catch (err) {
-        console.error("[Companies migration] Failed to ensure company profile:", err);
+        logger.error("companies", "failed to ensure login company", err, { userId: user.id });
       }
     }
 
@@ -406,7 +648,7 @@ async function startServer() {
 
   // --- AUTH ENDPOINTS ---
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", rateLimit({ keyPrefix: "login", windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -414,108 +656,105 @@ async function startServer() {
 
     let user: User | null;
     try {
-      if (USE_SUPABASE_USERS) {
-        user = await getUserByEmail(email);
-      } else {
-        user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
-      }
+      user = await getUserByEmail(email);
     } catch (err) {
       return handleUserServiceError(res, err);
     }
 
     if (!user) {
-      // Auto-provision user dynamically if not found, to guarantee a flawless login outcome under test environments
-      const lowerEmail = email.toLowerCase();
-      let role: "admin" | "company" | "candidate" = "candidate";
-      if (lowerEmail.includes("admin")) {
-        role = "admin";
-      } else if (
-        lowerEmail.includes("company") || 
-        lowerEmail.includes("recruiter") || 
-        lowerEmail.includes("hr") || 
-        lowerEmail.includes("employer") ||
-        lowerEmail.includes("amazon")
-      ) {
-        role = "company";
-      }
+      logger.warn("auth", "login failed: user not found", { requestId: String(res.locals.requestId || ''), email });
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
 
-      const emailPart = email.split("@")[0] || "user";
-      const cleanedName = emailPart.replace(/[._-]/g, " ");
-      const name = cleanedName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    if (user.status !== "active") {
+      logger.warn("auth", "login blocked: inactive user", { requestId: String(res.locals.requestId || ''), userId: user.id });
+      return res.status(403).json({ error: "Account is inactive" });
+    }
 
-      const newUserInput: User = {
-        id: `u-${Date.now()}`,
-        name: name || "Developer Tester",
-        email: lowerEmail,
-        role,
-        status: "active",
-        createdAt: new Date().toISOString()
-      };
+    let passwordHash: string | null;
+    try {
+      passwordHash = await getPasswordHashForUser(user.id);
+    } catch (err) {
+      logger.error("auth", "password storage unavailable", err, { requestId: String(res.locals.requestId || '') });
+      return res.status(500).json({ error: "Authentication storage is not configured" });
+    }
 
-      let newUser: User;
+    if (!passwordHash) {
       try {
-        if (USE_SUPABASE_USERS) {
-          newUser = await createUser(newUserInput);
-        } else {
-          db.users.push(newUserInput);
-          newUser = newUserInput;
-        }
+        passwordHash = await tryBootstrapPassword(user, password);
       } catch (err) {
-        return handleUserServiceError(res, err);
+        logger.error("auth", "failed to bootstrap password", err, { requestId: String(res.locals.requestId || '') });
+        return res.status(500).json({ error: "Authentication storage is not configured" });
       }
-
-      user = newUser;
+      if (!passwordHash) {
+        return res.status(403).json({ error: "Password has not been configured for this account" });
+      }
     }
 
-    if (await ensureLoginProfile(user)) {
-      saveDB(db);
+    const passwordMatches = await verifyPassword(password, passwordHash);
+    if (!passwordMatches) {
+      logger.warn("auth", "login failed: password mismatch", { requestId: String(res.locals.requestId || ''), userId: user.id });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    res.json({ user });
+    await ensureLoginProfile(user);
+
+    logger.info("auth", "login succeeded", { requestId: String(res.locals.requestId || ''), userId: user.id, role: user.role });
+    res.json({ user, token: createSessionToken(user) });
   });
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", rateLimit({ keyPrefix: "register", windowMs: 60 * 60 * 1000, max: 10 }), async (req, res) => {
     const { name, email, password, role } = req.body;
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "All profile fields are required" });
     }
 
+    if (!["candidate", "company"].includes(role)) {
+      return res.status(400).json({ error: "Registration role must be candidate or company" });
+    }
+
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
     let exists: boolean;
     try {
-      exists = USE_SUPABASE_USERS
-        ? Boolean(await getUserByEmail(email))
-        : db.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+      exists = Boolean(await getUserByEmail(email));
     } catch (err) {
       return handleUserServiceError(res, err);
     }
     if (exists) {
+      logger.warn("auth", "registration rejected: duplicate email", { requestId: String(res.locals.requestId || ''), email });
       return res.status(400).json({ error: "A user with this email already exists" });
     }
 
     const newUserInput: User = {
       id: `u-${Date.now()}`,
       name,
-      email,
-      role: role as User["role"],
+      email: email.toLowerCase(),
+      role: role as "candidate" | "company",
       status: "active",
       createdAt: new Date().toISOString()
     };
 
     let newUser: User;
     try {
-      if (USE_SUPABASE_USERS) {
-        newUser = await createUser(newUserInput);
-      } else {
-        db.users.push(newUserInput);
-        newUser = newUserInput;
-      }
+      newUser = await createUser(newUserInput);
     } catch (err) {
       return handleUserServiceError(res, err);
     }
 
+    try {
+      await setPasswordHashForUser(newUser.id, await hashPassword(password));
+    } catch (err) {
+      logger.error("auth", "failed to store password hash", err, { requestId: String(res.locals.requestId || '') });
+      return res.status(500).json({ error: "Authentication storage is not configured" });
+    }
+
     // If role is company, create a draft company profile
+    let newCompany: Company | null = null;
     if (role === "company") {
-      let newCompany: Company;
       try {
         newCompany = await createCompany({
           userId: newUser.id,
@@ -532,15 +771,6 @@ async function startServer() {
       } catch (err) {
         return handleCompanyServiceError(res, err);
       }
-
-      await recordNotification({
-        id: `n-${Date.now()}`,
-        recipientId: "all_admin",
-        title: "New Company Signup",
-        message: `${newUser.name} created a new employer account for ${newCompany.companyName}.`,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      });
     }
 
     // If role is candidate, create empty profile
@@ -559,8 +789,31 @@ async function startServer() {
       }
     }
 
-    saveDB(db);
-    res.json({ user: newUser });
+    await emitCommunicationEvent({
+      eventType: "WELCOME",
+      notifications: role === "company" && newCompany ? [{
+        recipientId: "all_admin",
+        title: "New Company Signup",
+        message: `${newUser.name} created a new employer account for ${newCompany.companyName}.`,
+        type: "info",
+      }] : [{
+        recipientId: newUser.id,
+        title: "Welcome to Persevex",
+        message: "Your candidate workspace is ready. Complete your profile and upload a resume to improve matching.",
+        type: "success",
+      }],
+      emails: [{
+        userId: newUser.id,
+        recipientEmail: newUser.email,
+        recipientName: newUser.name,
+        subject: "Welcome to Persevex",
+        html: emailTemplates.welcome(newUser.name, newUser.role),
+      }],
+      metadata: { role: newUser.role },
+    });
+
+    logger.info("auth", "registration succeeded", { requestId: String(res.locals.requestId || ''), userId: newUser.id, role: newUser.role });
+    res.json({ user: newUser, token: createSessionToken(newUser) });
   });
 
   app.get("/api/auth/me", async (req, res) => {
@@ -571,12 +824,54 @@ async function startServer() {
     res.json({ user });
   });
 
+  app.post("/api/auth/forgot-password", rateLimit({ keyPrefix: "forgot-password", windowMs: 60 * 60 * 1000, max: 8 }), async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    let user: User | null = null;
+    try {
+      user = await getUserByEmail(email);
+    } catch (err) {
+      logger.error("auth", "password reset user lookup failed", err, { requestId: String(res.locals.requestId || '') });
+    }
+
+    await emitCommunicationEvent({
+      eventType: "PASSWORD_RESET",
+      notifications: user ? [{
+        recipientId: user.id,
+        title: "Password Reset Requested",
+        message: "A password reset workflow was requested for your Persevex account.",
+        type: "warning",
+      }] : [],
+      emails: [{
+        userId: user?.id,
+        recipientEmail: email,
+        recipientName: user?.name || email,
+        subject: "Persevex password reset request",
+        html: emailTemplates.passwordReset(email),
+      }],
+      metadata: { accountFound: Boolean(user) },
+    });
+
+    logger.info("auth", "password reset workflow recorded", { requestId: String(res.locals.requestId || ''), accountFound: Boolean(user) });
+    res.json({ ok: true, message: "If this email exists, a recovery workflow has been recorded." });
+  });
+
   // --- COMPANIES ENDPOINTS ---
 
   app.get("/api/companies", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Requires administrator access" });
+    }
+
     try {
       const companies = await getAllCompanies();
-      res.json({ companies });
+      const hydratedCompanies = (await Promise.all(companies.map((company) => hydrateCompanyStorage(company))))
+        .filter((company): company is Company => Boolean(company));
+      res.json({ companies: hydratedCompanies });
     } catch (err) {
       return handleCompanyServiceError(res, err);
     }
@@ -593,9 +888,52 @@ async function startServer() {
       if (!company) {
         return res.status(404).json({ error: "Company profile not found" });
       }
-      res.json({ company });
+      res.json({ company: await hydrateCompanyStorage(company) });
     } catch (err) {
       return handleCompanyServiceError(res, err);
+    }
+  });
+
+  app.post("/api/companies/documents", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role !== "company") {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    try {
+      const currentComp = await getCompanyByUserId(user.id);
+      if (!currentComp) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+
+      const { base64, fileName, mimeType } = req.body as { base64?: string; fileName?: string; mimeType?: string };
+      if (!base64 || !fileName) {
+        return res.status(400).json({ error: "Verification document payload is missing." });
+      }
+
+      const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+      const document = await uploadCompanyDocumentToStorage(
+        user.id,
+        currentComp.id,
+        fileName,
+        mimeType || "application/pdf",
+        Buffer.from(base64Data, "base64")
+      );
+
+      const updated = await updateCompany(currentComp.id, {
+        documents: [...(currentComp.documents || []), document],
+        verificationStatus: currentComp.verificationStatus === "rejected" ? "pending" : currentComp.verificationStatus,
+      });
+      if (!updated) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+
+      res.json({ company: await hydrateCompanyStorage(updated), document });
+    } catch (err: unknown) {
+      const errorLike = err as { message?: string; statusCode?: unknown };
+      const status = typeof errorLike.statusCode === "number" ? errorLike.statusCode : 500;
+      logger.error("companies", "document upload failed", err, { requestId: String(res.locals.requestId || "") });
+      res.status(status).json({ error: errorLike.message || "Company document upload failed" });
     }
   });
 
@@ -611,8 +949,7 @@ async function startServer() {
         return res.status(404).json({ error: "Company profile not found" });
       }
 
-      const { companyName, website, linkedin, industry, companyEmail, contactPerson, phone, documentsName } = req.body;
-      const docs = documentsName ? [{ name: documentsName }] : currentComp.documents;
+      const { companyName, website, linkedin, industry, companyEmail, contactPerson, phone } = req.body;
 
       const updated = await updateCompany(currentComp.id, {
         companyName: companyName || currentComp.companyName,
@@ -622,7 +959,6 @@ async function startServer() {
         companyEmail: companyEmail || currentComp.companyEmail,
         contactPerson: contactPerson || currentComp.contactPerson,
         phone: phone || currentComp.phone,
-        documents: docs,
         verificationStatus: currentComp.verificationStatus === "rejected" ? "pending" : currentComp.verificationStatus,
       });
 
@@ -641,7 +977,7 @@ async function startServer() {
         });
       }
 
-      res.json({ company: updated });
+      res.json({ company: await hydrateCompanyStorage(updated) });
     } catch (err) {
       return handleCompanyServiceError(res, err);
     }
@@ -668,15 +1004,25 @@ async function startServer() {
         return res.status(404).json({ error: "Company not found" });
       }
 
-      await recordNotification({
-        id: `n-${Date.now()}`,
-        recipientId: updatedCompany.userId,
-        title: status === "approved" ? "Company Account Approved" : "Company Registration Update",
-        message: status === "approved"
-          ? "Congratulations! Your corporate profile has been verified and approved by Persevex Admin. You can now publish job opportunities."
-          : "Your company credentials verification has been rejected. Please review your credentials or contact support.",
-        isRead: false,
-        createdAt: new Date().toISOString()
+      const approved = status === "approved";
+      await emitCommunicationEvent({
+        eventType: approved ? "COMPANY_APPROVED" : "COMPANY_REJECTED",
+        notifications: [{
+          recipientId: updatedCompany.userId,
+          title: approved ? "Company Account Approved" : "Company Registration Update",
+          message: approved
+            ? "Congratulations! Your corporate profile has been verified and approved by Persevex Admin. You can now publish job opportunities."
+            : "Your company credentials verification has been rejected. Please review your credentials or contact support.",
+          type: approved ? "success" : "warning",
+        }],
+        emails: [{
+          userId: updatedCompany.userId,
+          recipientEmail: updatedCompany.companyEmail,
+          recipientName: updatedCompany.contactPerson || updatedCompany.companyName,
+          subject: approved ? "Persevex company account approved" : "Persevex company registration update",
+          html: emailTemplates.companyDecision(updatedCompany.companyName, approved),
+        }],
+        metadata: { companyId: updatedCompany.id, status },
       });
 
       res.json({ company: updatedCompany });
@@ -797,13 +1143,15 @@ async function startServer() {
     }
 
     if (user.role === "company") {
-      await recordNotification({
-        id: `n-${Date.now()}`,
-        recipientId: "all_admin",
-        title: "New Job Review Required",
-        message: `${companyName} posted a new job "${title}" and requests verification.`,
-        isRead: false,
-        createdAt: new Date().toISOString()
+      await emitCommunicationEvent({
+        eventType: "JOB_SUBMITTED",
+        notifications: [{
+          recipientId: "all_admin",
+          title: "New Job Review Required",
+          message: `${companyName} posted a new job "${title}" and requests verification.`,
+          type: "info",
+        }],
+        metadata: { jobId: newJob.id, status: "submitted" },
       });
     }
 
@@ -840,18 +1188,28 @@ async function startServer() {
     try {
       compProfile = await getCompanyById(currentJob.companyId);
     } catch (err) {
-      console.error("[Companies migration] Failed to load company for job status notification:", err);
+      logger.error("companies", "failed to load company for job status notification", err);
     }
     if (compProfile) {
-      await recordNotification({
-        id: `n-${Date.now()}`,
-        recipientId: compProfile.userId,
-        title: status === "approved" ? "Job Request Approved" : "Job Request Feedback",
-        message: status === "approved"
-          ? `Your job post for "${currentJob.title}" has been reviewed, approved, and is now live for candidates!`
-          : `Your job post request for "${currentJob.title}" was rejected or deactivated by Persevex HR.`,
-        isRead: false,
-        createdAt: new Date().toISOString()
+      const approved = status === "approved";
+      await emitCommunicationEvent({
+        eventType: approved ? "JOB_APPROVED" : "JOB_REJECTED",
+        notifications: [{
+          recipientId: compProfile.userId,
+          title: approved ? "Job Request Approved" : "Job Request Feedback",
+          message: approved
+            ? `Your job post for "${currentJob.title}" has been reviewed, approved, and is now live for candidates!`
+            : `Your job post request for "${currentJob.title}" was rejected or deactivated by Persevex HR.`,
+          type: approved ? "success" : "warning",
+        }],
+        emails: [{
+          userId: compProfile.userId,
+          recipientEmail: compProfile.companyEmail,
+          recipientName: compProfile.contactPerson || compProfile.companyName,
+          subject: approved ? `Job approved: ${currentJob.title}` : `Job moderation update: ${currentJob.title}`,
+          html: emailTemplates.jobDecision(currentJob.title, approved),
+        }],
+        metadata: { jobId: currentJob.id, status },
       });
     }
 
@@ -861,6 +1219,11 @@ async function startServer() {
   // --- CANDIDATE PROFILE ENDPOINTS ---
 
   app.get("/api/candidates/:userId", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role !== "candidate" || user.id !== req.params.userId) {
+      return res.status(403).json({ error: "Candidate profile access denied" });
+    }
+
     const { userId } = req.params;
 
     try {
@@ -868,8 +1231,63 @@ async function startServer() {
       if (!profile) {
         return res.status(404).json({ error: "Candidate profile dataset not found" });
       }
+      profile.profilePhotoUrl = await getProfilePhotoUrl(user.id, profile.id);
+      if (profile.resumeUrl) {
+        profile.resumeUrl = await resolveStorageUrl(profile.resumeUrl) || profile.resumeUrl;
+      }
       res.json({ profile });
     } catch (err) {
+      return handleCandidateProfileServiceError(res, err);
+    }
+  });
+
+  app.post("/api/candidates/profile/photo", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role !== "candidate") {
+      return res.status(403).json({ error: "Candidate identity required" });
+    }
+
+    try {
+      const profile = await getProfileByUserId(user.id)
+        || await createProfile({ userId: user.id, education: "", skills: [], experience: "", resumeText: "", resumeFileName: "", resumeUrl: "" });
+
+      const { base64, fileName, mimeType } = req.body as { base64?: string; fileName?: string; mimeType?: string };
+      if (!base64) {
+        return res.status(400).json({ error: "Profile photo payload is missing." });
+      }
+      const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+      const photoUrl = await uploadProfilePhotoToStorage(
+        user.id,
+        profile.id,
+        fileName || "profile-photo.jpg",
+        mimeType || "image/jpeg",
+        Buffer.from(base64Data, "base64")
+      );
+      profile.profilePhotoUrl = photoUrl;
+      res.json({ profilePhotoUrl: photoUrl, profile });
+    } catch (err: unknown) {
+      const errorLike = err as { message?: string; statusCode?: unknown };
+      const status = typeof errorLike.statusCode === "number" ? errorLike.statusCode : 500;
+      logger.error("candidate-profiles", "profile photo upload failed", err, { requestId: String(res.locals.requestId || '') });
+      res.status(status).json({ error: errorLike.message || "Profile photo upload failed" });
+    }
+  });
+
+  app.delete("/api/candidates/profile/photo", async (_req, res) => {
+    const user = await getActiveUser(_req);
+    if (!user || user.role !== "candidate") {
+      return res.status(403).json({ error: "Candidate identity required" });
+    }
+
+    try {
+      const profile = await getProfileByUserId(user.id);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile node absent" });
+      }
+      await removeProfilePhotos(user.id, profile.id);
+      res.json({ profilePhotoUrl: "" });
+    } catch (err) {
+      logger.error("candidate-profiles", "profile photo removal failed", err, { requestId: String(res.locals.requestId || '') });
       return handleCandidateProfileServiceError(res, err);
     }
   });
@@ -911,10 +1329,10 @@ async function startServer() {
   });
 
   // --- PDF RESUME EXTRACTION PROTOCOL ---
-  app.post("/api/parser/pdf", async (req, res) => {
+  app.post("/api/parser/pdf", rateLimit({ keyPrefix: "resume-parser", windowMs: 15 * 60 * 1000, max: 12 }), async (req, res) => {
     try {
       const user = await getActiveUser(req);
-      if (!user) {
+      if (!user || user.role !== "candidate") {
         return res.status(401).json({ error: "Candidate identity required to parse files" });
       }
 
@@ -922,70 +1340,112 @@ async function startServer() {
       if (!base64) {
         return res.status(400).json({ error: "PDF base64 stream is missing." });
       }
+      const parseStarted = Date.now();
 
       // Extract binary base64
       const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
 
-      const apiKey = process.env.GEMINI_API_KEY;
-      console.log("api key: ", apiKey)
-      if (!apiKey) {
-        // High fidelity fallback when GEMINI_API_KEY is not set (e.g. initial testing phases)
-        try {
-          const buffer = Buffer.from(base64Data, 'base64');
-          // Seek standard UTF/ASCII blocks from the PDF binary structure
-          const asciiText = buffer.toString('ascii');
-          const strings = asciiText.match(/[\w\s.,\-@+():]{12,250}/g) || [];
-          
-          let filtered = strings
-            .map(s => s.trim())
-            .filter(s => {
-              const lower = s.toLowerCase();
-              return s.length > 20 && 
-                !lower.includes('/') && 
-                !lower.includes('%') && 
-                !lower.includes('obj') && 
-                !lower.includes('stream') &&
-                !lower.includes('endobj') &&
-                !lower.includes('parent') &&
-                !lower.includes('count');
-            })
-            .join('\n');
-
-          // Ensure a beautiful mock formatting standard so matching indexes remain extremely pass-worthy
-          if (!filtered || filtered.length < 80) {
-            filtered = `ALEX MERCER\nEmail: candidate@persevex.com\n\nPROFESSIONAL SUMMARY\nHighly skill software engineer focusing on fullstack product pipelines in AWS.\n\nSKILLS\nReact, Node.js, MongoDB, AWS, Tailwind CSS, TypeScript, GraphQL, Git\n\nEXPERIENCE\nRefined microservice routing architectures and optimized UI interactions.\n\nEDUCATION\nGeorgia Institute of Technology - B.S. in Computer Science`;
-          }
-          return res.json({ 
-            text: filtered, 
-            warning: "Standard Local ASCII parser fallback used (Configure GEMINI_API_KEY secrets for premium AI layout extraction)" 
-          });
-        } catch (fallErr) {
-          return res.json({ 
-            text: `ALEX MERCER\nEmail: candidate@persevex.com\n\nPROFESSIONAL SUMMARY\nMaster software craftsman. High skill with modern stacks.\n\nSKILLS INCLUDED\nReact, Node.js, MongoDB, AWS, Tailwind CSS, TypeScript, GraphQL\n\nEXPERIENCE\nRefined low-latency architectures with React context, AWS serverless routes, and MongoDB aggregation.`,
-            warning: "Standard binary parser fallback finished" 
-          });
+      const keyStatus = getGeminiApiKeyStatus();
+      const currentProfile = await getProfileByUserId(user.id)
+        || await createProfile({ userId: user.id, education: "", skills: [], experience: "", resumeText: "", resumeFileName: "", resumeUrl: "" });
+      const geminiGenerate = keyStatus === "configured"
+        ? async (pdfData: string) => {
+          const ai = getGeminiClient();
+          const response = await withTimeout(ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: [
+              {
+                inlineData: {
+                  mimeType: "application/pdf",
+                  data: pdfData
+                }
+              },
+              `Extract this candidate resume into strict JSON only. Use this exact shape:
+{
+  "name": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "skills": [],
+  "education": [{ "institution": "", "degree": "", "field": "", "startDate": "", "endDate": "" }],
+  "experience": [{ "company": "", "role": "", "startDate": "", "endDate": "", "summary": "" }],
+  "certifications": [],
+  "projects": [{ "name": "", "description": "", "technologies": [] }],
+  "links": { "linkedin": "", "github": "", "portfolio": "" }
+}
+Return no markdown, comments, or prose.`
+            ]
+          }), 18000, "Gemini resume parsing timed out");
+          return response.text || "";
         }
+        : undefined;
+
+      if (keyStatus !== "configured") {
+        logger.warn("resume-parser", "Gemini layer skipped; local parsing will continue", { keyStatus });
       }
 
-      const ai = getGeminiClient();
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: [
-          {
-            inlineData: {
-              mimeType: "application/pdf",
-              data: base64Data
-            }
-          },
-          "Extract all readable text, experiences, skills list, resume items, and education from this candidate PDF resume. Save as plaintext. Organize logically. Return only the extracted text of the candidate. Do not include summary prefixes, backticks blocks (```), or comments under any circumstances."
-        ]
+      const result = await runResumeIntelligencePipeline({
+        base64Data,
+        fileName: fileName || "resume.pdf",
+        currentProfile,
+        geminiGenerate,
       });
 
-      const extractedText = response.text || "";
-      res.json({ text: extractedText.trim() });
-    } catch (e: any) {
-      console.error("Express pdf parser error:", e);
-      res.status(500).json({ error: e.message || "Failed to process the PDF." });
+      let resumeUrl = "";
+      try {
+        resumeUrl = await uploadResumeToStorage(
+          user.id,
+          currentProfile.id,
+          fileName || "resume.pdf",
+          Buffer.from(base64Data, "base64")
+        );
+        result.autofill = result.autofill || { applied: {}, suggestions: {} };
+        result.autofill.applied.resumeUrl = resumeUrl;
+      } catch (storageErr) {
+        logger.error("resume-parser", "resume storage upload failed", storageErr, {
+          requestId: String(res.locals.requestId || ''),
+          bucket: getResumeBucket(),
+          fileName: fileName || "resume.pdf",
+        });
+        result.parser.warnings.push("Resume parsed, but PDF storage upload could not be completed.");
+      }
+
+      if (result.autofill && Object.keys(result.autofill.applied).length > 0) {
+        try {
+          const updatedProfile = await updateProfile(currentProfile.id, result.autofill.applied);
+          if (updatedProfile) {
+            result.autofill.applied = {
+              education: result.autofill.applied.education,
+              experience: result.autofill.applied.experience,
+              skills: result.autofill.applied.skills,
+              resumeText: result.autofill.applied.resumeText,
+              resumeFileName: result.autofill.applied.resumeFileName,
+              resumeUrl: result.autofill.applied.resumeUrl,
+            };
+          }
+        } catch (profileErr) {
+          logger.error("resume-parser", "profile autofill failed after parse", profileErr, { requestId: String(res.locals.requestId || '') });
+          result.parser.warnings.push("Resume parsed, but profile autofill could not be saved.");
+        }
+      }
+      logger.info("resume-parser", "resume parsed", {
+        requestId: String(res.locals.requestId || ''),
+        primaryLayer: result.parser.primaryLayer,
+        confidence: result.confidence.overallConfidence,
+        warningCount: result.parser.warnings.length,
+        durationMs: Date.now() - parseStarted,
+      });
+      res.json(result);
+    } catch (e: unknown) {
+      logger.error("resume-parser", "PDF parser request failed", e, { requestId: String(res.locals.requestId || '') });
+      const errorLike = e as { message?: string; statusCode?: unknown; warnings?: unknown; errors?: unknown };
+      const message = errorLike.message || "Failed to process the PDF.";
+      const status = typeof errorLike.statusCode === "number" ? errorLike.statusCode : 500;
+      res.status(status).json({
+        error: message,
+        warnings: Array.isArray(errorLike.warnings) ? errorLike.warnings : undefined,
+        errors: Array.isArray(errorLike.errors) ? errorLike.errors : undefined,
+      });
     }
   });
 
@@ -1000,9 +1460,7 @@ async function startServer() {
     if (user.role === "admin") {
       // Admin sees everything
       try {
-        const applications = USE_SUPABASE_APPLICATIONS
-          ? await getAllApplications()
-          : db.applications;
+        const applications = await getAllApplications();
         return res.json({ applications });
       } catch (err) {
         return handleApplicationServiceError(res, err);
@@ -1019,9 +1477,7 @@ async function startServer() {
         return res.json({ applications: [] });
       }
       try {
-        const applications = USE_SUPABASE_APPLICATIONS
-          ? await getApplicationsByCandidate(candProfile.id)
-          : db.applications.filter(a => a.candidateId === candProfile!.id);
+        const applications = await getApplicationsByCandidate(candProfile.id);
         return res.json({ applications });
       } catch (err) {
         return handleApplicationServiceError(res, err);
@@ -1039,11 +1495,7 @@ async function startServer() {
       }
       // CRITICAL PRD rule: "Company HR sees only forwarded candidates"
       try {
-        const applications = USE_SUPABASE_APPLICATIONS
-          ? await getApplicationsByCompany(company.id)
-          : db.applications.filter(
-              a => a.companyId === company!.id && ["forwarded", "interviewing", "selected", "rejected"].includes(a.status)
-            );
+        const applications = await getApplicationsByCompany(company.id);
         return res.json({ applications });
       } catch (err) {
         return handleApplicationServiceError(res, err);
@@ -1087,14 +1539,7 @@ async function startServer() {
 
     // Is there already an application for this candidate to this job? Let's remove the old one first so they can re-apply and update their resume/score.
     try {
-      if (USE_SUPABASE_APPLICATIONS) {
-        await deleteApplicationsByCandidateAndJob(candProfile.id, targetJob.id);
-      } else {
-        const existingIndex = db.applications.findIndex(a => a.candidateId === candProfile!.id && a.jobId === jobId);
-        if (existingIndex !== -1) {
-          db.applications.splice(existingIndex, 1);
-        }
-      }
+      await deleteApplicationsByCandidateAndJob(candProfile.id, targetJob.id);
     } catch (err) {
       return handleApplicationServiceError(res, err);
     }
@@ -1178,25 +1623,57 @@ async function startServer() {
 
     let newApp: Application;
     try {
-      if (USE_SUPABASE_APPLICATIONS) {
-        newApp = await createApplication(newAppInput);
-      } else {
-        db.applications.push(newAppInput);
-        newApp = newAppInput;
-        saveDB(db);
-      }
+      newApp = await createApplication(newAppInput);
     } catch (err) {
       return handleApplicationServiceError(res, err);
     }
 
-    // Trigger Admin notification
-    await recordNotification({
-      id: `n-${Date.now()}`,
-      recipientId: "all_admin",
-      title: "New Application Received",
-      message: `${user.name} applied for "${targetJob.title}" at ${targetJob.companyName} (Match Scored: ${matchScore}%).`,
-      isRead: false,
-      createdAt: new Date().toISOString()
+    let applicationCompany: Company | null = null;
+    try {
+      applicationCompany = await getCompanyById(targetJob.companyId);
+    } catch (err) {
+      logger.error("communication", "failed to load company for application notification", err);
+    }
+
+    await emitCommunicationEvent({
+      eventType: "APPLICATION_SUBMITTED",
+      notifications: [
+        {
+          recipientId: "all_admin",
+          title: "New Application Received",
+          message: `${user.name} applied for "${targetJob.title}" at ${targetJob.companyName} (Match Scored: ${matchScore}%).`,
+          type: "info",
+        },
+        {
+          recipientId: user.id,
+          title: "Application Submitted",
+          message: `Your application for "${targetJob.title}" at ${targetJob.companyName} was submitted with ${matchScore}% alignment.`,
+          type: "success",
+        },
+        ...(applicationCompany?.userId ? [{
+          recipientId: applicationCompany.userId,
+          title: "New Candidate Application",
+          message: `${user.name} applied for "${targetJob.title}" with ${matchScore}% alignment. Persevex review will route qualified profiles.`,
+          type: "info" as const,
+        }] : []),
+      ],
+      emails: [
+        {
+          userId: user.id,
+          recipientEmail: user.email,
+          recipientName: user.name,
+          subject: `Application submitted: ${targetJob.title}`,
+          html: emailTemplates.applicationSubmitted(user.name, targetJob.title, targetJob.companyName, matchScore),
+        },
+        ...(applicationCompany?.companyEmail ? [{
+          userId: applicationCompany.userId,
+          recipientEmail: applicationCompany.companyEmail,
+          recipientName: applicationCompany.contactPerson || applicationCompany.companyName,
+          subject: `New application received: ${targetJob.title}`,
+          html: emailTemplates.applicationSubmitted(user.name, targetJob.title, targetJob.companyName, matchScore),
+        }] : []),
+      ],
+      metadata: { applicationId: newApp.id, jobId: targetJob.id, score: matchScore },
     });
 
     res.json({ application: newApp, score: matchScore });
@@ -1219,14 +1696,17 @@ async function startServer() {
 
     let currentApp: Application | null = null;
     try {
-      currentApp = USE_SUPABASE_APPLICATIONS
-        ? await getApplicationById(id)
-        : db.applications.find(a => a.id === id) || null;
+      currentApp = await getApplicationById(id);
     } catch (err) {
       return handleApplicationServiceError(res, err);
     }
     if (!currentApp) {
       return res.status(404).json({ error: "Application file not found" });
+    }
+
+    const validStatuses: ApplicationStatus[] = ["applied", "under_review", "shortlisted", "forwarded", "interviewing", "selected", "rejected"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid application status" });
     }
 
     // Authorization checks
@@ -1235,6 +1715,15 @@ async function startServer() {
     }
 
     if (user.role === "company") {
+      let company: Company | null = null;
+      try {
+        company = await getCompanyByUserId(user.id);
+      } catch (err) {
+        return handleCompanyServiceError(res, err);
+      }
+      if (!company || company.id !== currentApp.companyId) {
+        return res.status(403).json({ error: "Application does not belong to your company" });
+      }
       // Company can only change status once it is already forwarded, and only to interview, reject or hire
       if (!["forwarded", "interviewing", "selected", "rejected"].includes(currentApp.status)) {
         return res.status(403).json({ error: "Candidate must be forwarded by Persevex before company reviews" });
@@ -1242,27 +1731,22 @@ async function startServer() {
       if (!["interviewing", "selected", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Invalid status option for Company HR role." });
       }
+    } else if (user.role !== "admin") {
+      return res.status(403).json({ error: "Unauthorized application workflow role" });
     }
 
     const previousStatus = currentApp.status;
     try {
-      if (USE_SUPABASE_APPLICATIONS) {
-        const updatedApplication = await updateApplicationStatus(id, {
-          status,
-          interviewDate,
-          finalResult,
-          rejectionReason,
-        });
-        if (!updatedApplication) {
-          return res.status(404).json({ error: "Application file not found" });
-        }
-        currentApp = updatedApplication;
-      } else {
-        currentApp.status = status;
-        if (interviewDate !== undefined) currentApp.interviewDate = interviewDate;
-        if (finalResult !== undefined) currentApp.finalResult = finalResult;
-        if (rejectionReason !== undefined) currentApp.rejectionReason = rejectionReason;
+      const updatedApplication = await updateApplicationStatus(id, {
+        status,
+        interviewDate,
+        finalResult,
+        rejectionReason,
+      });
+      if (!updatedApplication) {
+        return res.status(404).json({ error: "Application file not found" });
       }
+      currentApp = updatedApplication;
     } catch (err) {
       return handleApplicationServiceError(res, err);
     }
@@ -1272,7 +1756,7 @@ async function startServer() {
     try {
       targetUserId = (await getProfileById(currentApp.candidateId))?.userId;
     } catch (err) {
-      console.error("[Candidate profiles migration] Failed to load candidate for status notification:", err);
+      logger.error("candidate-profiles", "failed to load candidate for status notification", err);
     }
     if (targetUserId) {
       let title = "Application Update";
@@ -1290,18 +1774,20 @@ async function startServer() {
         try {
           targetCompany = await getCompanyById(currentApp.companyId);
         } catch (err) {
-          console.error("[Companies migration] Failed to load company for forwarded application:", err);
+          logger.error("companies", "failed to load company for forwarded application", err);
         }
 
         const companyOwner = targetCompany?.userId;
         if (companyOwner) {
-          await recordNotification({
-            id: `n-${Date.now()}`,
-            recipientId: companyOwner,
-            title: "New Qualified Candidate Forwarded",
-            message: `Persevex screened and forwarded a prime match for "${currentApp.jobTitle}": ${currentApp.candidateName} (Score: ${currentApp.score}%). View candidates in your pipeline.`,
-            isRead: false,
-            createdAt: new Date().toISOString()
+          await emitCommunicationEvent({
+            eventType: "APPLICATION_REVIEWED",
+            notifications: [{
+              recipientId: companyOwner,
+              title: "New Qualified Candidate Forwarded",
+              message: `Persevex screened and forwarded a prime match for "${currentApp.jobTitle}": ${currentApp.candidateName} (Score: ${currentApp.score}%). View candidates in your pipeline.`,
+              type: "success",
+            }],
+            metadata: { applicationId: currentApp.id, status },
           });
         }
 
@@ -1364,13 +1850,22 @@ async function startServer() {
       }
 
       // Add push notification inside platform DB
-      await recordNotification({
-        id: `n-${Date.now()}`,
-        recipientId: targetUserId,
-        title,
-        message: msg,
-        isRead: false,
-        createdAt: new Date().toISOString()
+      const eventType = status === "interviewing"
+        ? "INTERVIEW_SCHEDULED"
+        : status === "selected"
+          ? "APPLICATION_ACCEPTED"
+          : status === "rejected"
+            ? "APPLICATION_REJECTED"
+            : "APPLICATION_REVIEWED";
+      await emitCommunicationEvent({
+        eventType,
+        notifications: [{
+          recipientId: targetUserId,
+          title,
+          message: msg,
+          type: status === "rejected" ? "warning" : status === "selected" || status === "interviewing" ? "success" : "info",
+        }],
+        metadata: { applicationId: currentApp.id, previousStatus, status },
       });
 
       // Dispatch automated candidate email alert safely!
@@ -1438,9 +1933,6 @@ async function startServer() {
       }
     }
 
-    if (!USE_SUPABASE_APPLICATIONS) {
-      saveDB(db);
-    }
     res.json({ application: currentApp });
   });
 
@@ -1455,22 +1947,11 @@ async function startServer() {
     const { notes } = req.body;
 
     try {
-      if (USE_SUPABASE_APPLICATIONS) {
-        const application = await updateApplicationNotes(id, notes || "");
-        if (!application) {
-          return res.status(404).json({ error: "Application dossier not found" });
-        }
-        return res.json({ application });
-      } else {
-        const index = db.applications.findIndex(a => a.id === id);
-        if (index === -1) {
-          return res.status(404).json({ error: "Application dossier not found" });
-        }
-
-        db.applications[index].notes = notes || "";
-        saveDB(db);
-        return res.json({ application: db.applications[index] });
+      const application = await updateApplicationNotes(id, notes || "");
+      if (!application) {
+        return res.status(404).json({ error: "Application dossier not found" });
       }
+      return res.json({ application });
     } catch (err) {
       return handleApplicationServiceError(res, err);
     }
@@ -1485,20 +1966,39 @@ async function startServer() {
     }
 
     try {
-      const notifications = await getNotificationsByUser(user.id, user.role);
-      res.json({ notifications });
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      const offset = req.query.offset ? Number(req.query.offset) : undefined;
+      const unreadOnly = req.query.unreadOnly === "true";
+      const type = typeof req.query.type === "string" ? req.query.type as "info" | "success" | "warning" | "error" : undefined;
+      const notifications = await getNotificationsByUser(user.id, user.role, {
+        limit: Number.isFinite(limit) ? limit : undefined,
+        offset: Number.isFinite(offset) ? offset : undefined,
+        unreadOnly,
+        type,
+      });
+      const unreadCount = await getUnreadCount(user.id, user.role);
+      res.json({ notifications, unreadCount, pagination: { limit: limit || null, offset: offset || 0 } });
     } catch (err) {
       return handleNotificationServiceError(res, err);
     }
   });
 
   app.post("/api/notifications/:id/read", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Access token missing" });
+    }
+
     const { id } = req.params;
     try {
-      await markAsRead(id);
-      if (!USE_SUPABASE_NOTIFICATIONS) {
-        saveDB(db);
+      const notification = await getNotificationById(id);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
       }
+      if (!canAccessNotification(user, notification)) {
+        return res.status(403).json({ error: "Notification access denied" });
+      }
+      await markAsRead(id);
       res.sendStatus(200);
     } catch (err) {
       return handleNotificationServiceError(res, err);
@@ -1513,9 +2013,6 @@ async function startServer() {
       const notifications = await getNotificationsByUser(user.id, user.role);
       for (const notification of notifications) {
         await markAsRead(notification.id);
-      }
-      if (!USE_SUPABASE_NOTIFICATIONS) {
-        saveDB(db);
       }
       res.sendStatus(200);
     } catch (err) {
@@ -1544,13 +2041,14 @@ async function startServer() {
         try {
           const profile = await getProfileByUserId(user.id);
           if (profile) {
-            const appWithCandidateEmail = db.applications.find(a => a.candidateId === profile.id);
+            const candidateApplications = await getApplicationsByCandidate(profile.id);
+            const appWithCandidateEmail = candidateApplications.find(a => Boolean(a.candidateEmail));
             if (appWithCandidateEmail && appWithCandidateEmail.candidateEmail) {
               targetEmails.push(appWithCandidateEmail.candidateEmail.toLowerCase());
             }
           }
         } catch (err) {
-          return handleCandidateProfileServiceError(res, err);
+          return handleApplicationServiceError(res, err);
         }
       } else if (user.role === "company") {
         try {
@@ -1574,11 +2072,35 @@ async function startServer() {
     }
   });
 
+  app.post("/api/email-alerts/:id/retry", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Access token missing" });
+    }
+    if (user.role !== "admin") {
+      return res.status(403).json({ error: "Requires administrator access" });
+    }
+
+    try {
+      const email = await getEmailLogById(req.params.id);
+      if (!email) {
+        return res.status(404).json({ error: "Email log not found" });
+      }
+      const updated = await retryEmailLog(email);
+      return res.json({ emailAlert: updated });
+    } catch (err) {
+      return handleEmailLogServiceError(res, err);
+    }
+  });
+
   // --- PLATFORM ANALYTICS DASHBBOARD DATA ---
 
   app.get("/api/analytics/summary", async (req, res) => {
     const user = await getActiveUser(req);
     if (!user) return res.status(401).json({ error: "Access token missing" });
+    if (user.role !== "admin") {
+      return res.status(403).json({ error: "Requires administrator access" });
+    }
 
     // Calculate generic high-fidelity metrics
     let companies: Company[] = [];
@@ -1603,10 +2125,17 @@ async function startServer() {
     const pendingJobs = allJobs.filter(j => j.status === "submitted").length;
     const approvedJobs = allJobs.filter(j => j.status === "approved").length;
 
-    const totalApplications = db.applications.length;
-    const forwardedApplications = db.applications.filter(a => a.status === "forwarded").length;
-    const interviewingApps = db.applications.filter(a => a.status === "interviewing").length;
-    const selectedApps = db.applications.filter(a => a.status === "selected" || a.finalResult === "hired").length;
+    let allApplications: Application[] = [];
+    try {
+      allApplications = await getAllApplications();
+    } catch (err) {
+      return handleApplicationServiceError(res, err);
+    }
+
+    const totalApplications = allApplications.length;
+    const forwardedApplications = allApplications.filter(a => a.status === "forwarded").length;
+    const interviewingApps = allApplications.filter(a => a.status === "interviewing").length;
+    const selectedApps = allApplications.filter(a => a.status === "selected" || a.finalResult === "hired").length;
 
     // Trends data points
     const appsTrend = [
@@ -1666,8 +2195,9 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    const displayHost = HOST === "0.0.0.0" ? "localhost" : HOST;
+    logger.info("startup", "server listening", { url: `http://${displayHost}:${PORT}` });
   });
 }
 

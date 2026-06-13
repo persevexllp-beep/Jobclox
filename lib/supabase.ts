@@ -1,14 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Get environment variables - works in both browser (Vite) and Node.js (server)
+// Supabase is consumed by server-side services in this app, so keep this helper
+// Node-safe to avoid CJS bundle warnings from import.meta.
 const getEnv = (key: string): string | undefined => {
-  // In Node.js/server context, use process.env
   if (typeof process !== 'undefined' && process.env) {
     return process.env[key]
-  }
-  // In browser context, use import.meta.env (Vite)
-  if (typeof import.meta !== 'undefined' && 'env' in import.meta) {
-    return (import.meta.env as any)[key]
   }
   return undefined
 }

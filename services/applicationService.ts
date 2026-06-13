@@ -1,13 +1,7 @@
 import { Application, ApplicationStatus } from '../src/types';
 import { supabaseAdmin } from '../lib/supabase';
 
-export const USE_SUPABASE_APPLICATIONS = true;
-
 type FinalResult = NonNullable<Application['finalResult']>;
-
-type JsonApplicationDB = {
-  applications: Application[];
-};
 
 type SupabaseApplicationRow = {
   id: string;
@@ -78,24 +72,11 @@ const APPLICATION_SELECT = [
   'rejection_reason',
 ].join(',');
 
-let jsonDB: JsonApplicationDB | null = null;
-
-export function setJsonDB(db: JsonApplicationDB): void {
-  jsonDB = db;
-}
-
 function requireSupabaseAdmin() {
   if (!supabaseAdmin) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required when USE_SUPABASE_APPLICATIONS is true');
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for application persistence');
   }
   return supabaseAdmin;
-}
-
-function getJsonDB(): JsonApplicationDB {
-  if (!jsonDB) {
-    throw new Error('JSON DB not initialized');
-  }
-  return jsonDB;
 }
 
 function isUuid(value: string): boolean {
@@ -124,6 +105,13 @@ function mapSupabaseApplication(row: SupabaseApplicationRow): Application {
   };
 }
 
+function mapSupabaseApplications(data: unknown): Application[] {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  return (data as SupabaseApplicationRow[]).map(mapSupabaseApplication);
+}
+
 function buildApplicationInsert(application: CreateApplicationInput): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     candidate_id: application.candidateId,
@@ -150,213 +138,129 @@ function buildApplicationInsert(application: CreateApplicationInput): Record<str
 }
 
 export async function getApplicationById(id: string): Promise<Application | null> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    if (!isUuid(id)) {
-      return null;
-    }
-
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .select(APPLICATION_SELECT)
-      .eq('id', id)
-      .maybeSingle<SupabaseApplicationRow>();
-
-    if (error) {
-      throw error;
-    }
-
-    return data ? mapSupabaseApplication(data) : null;
+  if (!isUuid(id)) {
+    return null;
   }
 
-  return getJsonDB().applications.find(application => application.id === id) || null;
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .select(APPLICATION_SELECT)
+    .eq('id', id)
+    .maybeSingle<SupabaseApplicationRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? mapSupabaseApplication(data) : null;
 }
 
 export async function getApplicationsByCandidate(candidateId: string): Promise<Application[]> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .select(APPLICATION_SELECT)
-      .eq('candidate_id', candidateId)
-      .order('created_at', { ascending: false });
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .select(APPLICATION_SELECT)
+    .eq('candidate_id', candidateId)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(row => mapSupabaseApplication(row as unknown as SupabaseApplicationRow));
+  if (error) {
+    throw error;
   }
 
-  return getJsonDB().applications.filter(application => application.candidateId === candidateId);
+  return mapSupabaseApplications(data);
 }
 
 export async function getApplicationsByCompany(companyId: string): Promise<Application[]> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .select(APPLICATION_SELECT)
-      .eq('company_id', companyId)
-      .in('status', ['forwarded', 'interviewing', 'selected', 'rejected'])
-      .order('created_at', { ascending: false });
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .select(APPLICATION_SELECT)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(row => mapSupabaseApplication(row as unknown as SupabaseApplicationRow));
+  if (error) {
+    throw error;
   }
 
-  return getJsonDB().applications.filter(
-    application =>
-      application.companyId === companyId &&
-      ['forwarded', 'interviewing', 'selected', 'rejected'].includes(application.status)
-  );
+  return mapSupabaseApplications(data);
 }
 
 export async function createApplication(application: CreateApplicationInput): Promise<Application> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .insert(buildApplicationInsert(application))
-      .select(APPLICATION_SELECT)
-      .single<SupabaseApplicationRow>();
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .insert(buildApplicationInsert(application))
+    .select(APPLICATION_SELECT)
+    .single<SupabaseApplicationRow>();
 
-    if (error) {
-      throw error;
-    }
-
-    return mapSupabaseApplication(data);
+  if (error) {
+    throw error;
   }
 
-  const newApplication: Application = {
-    id: application.id || `a-${Date.now()}`,
-    candidateId: application.candidateId,
-    candidateName: application.candidateName,
-    candidateEmail: application.candidateEmail,
-    jobId: application.jobId,
-    jobTitle: application.jobTitle,
-    companyId: application.companyId,
-    companyName: application.companyName,
-    score: application.score,
-    matchedSkills: application.matchedSkills,
-    missingSkills: application.missingSkills,
-    status: application.status || 'applied',
-    notes: application.notes || '',
-    appliedAt: application.appliedAt || new Date().toISOString(),
-    interviewDate: application.interviewDate,
-    finalResult: application.finalResult,
-    rejectionReason: application.rejectionReason,
-  };
-
-  getJsonDB().applications.push(newApplication);
-  return newApplication;
+  return mapSupabaseApplication(data);
 }
 
 export async function updateApplicationStatus(
   id: string,
   updates: UpdateApplicationStatusInput
 ): Promise<Application | null> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const payload: Record<string, unknown> = {
-      status: updates.status,
-    };
-    if (updates.interviewDate !== undefined) payload.interview_date = updates.interviewDate;
-    if (updates.finalResult !== undefined) payload.final_result = updates.finalResult;
-    if (updates.rejectionReason !== undefined) payload.rejection_reason = updates.rejectionReason;
-
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .update(payload)
-      .eq('id', id)
-      .select(APPLICATION_SELECT)
-      .maybeSingle<SupabaseApplicationRow>();
-
-    if (error) {
-      throw error;
-    }
-
-    return data ? mapSupabaseApplication(data) : null;
-  }
-
-  const applications = getJsonDB().applications;
-  const applicationIndex = applications.findIndex(application => application.id === id);
-  if (applicationIndex === -1) {
-    return null;
-  }
-
-  applications[applicationIndex] = {
-    ...applications[applicationIndex],
+  const payload: Record<string, unknown> = {
     status: updates.status,
-    ...(updates.interviewDate !== undefined ? { interviewDate: updates.interviewDate } : {}),
-    ...(updates.finalResult !== undefined ? { finalResult: updates.finalResult } : {}),
-    ...(updates.rejectionReason !== undefined ? { rejectionReason: updates.rejectionReason } : {}),
   };
-  return applications[applicationIndex];
+  if (updates.interviewDate !== undefined) payload.interview_date = updates.interviewDate;
+  if (updates.finalResult !== undefined) payload.final_result = updates.finalResult;
+  if (updates.rejectionReason !== undefined) payload.rejection_reason = updates.rejectionReason;
+
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .update(payload)
+    .eq('id', id)
+    .select(APPLICATION_SELECT)
+    .maybeSingle<SupabaseApplicationRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? mapSupabaseApplication(data) : null;
 }
 
 export async function updateApplicationNotes(id: string, notes: string): Promise<Application | null> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .update({ notes })
-      .eq('id', id)
-      .select(APPLICATION_SELECT)
-      .maybeSingle<SupabaseApplicationRow>();
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .update({ notes })
+    .eq('id', id)
+    .select(APPLICATION_SELECT)
+    .maybeSingle<SupabaseApplicationRow>();
 
-    if (error) {
-      throw error;
-    }
-
-    return data ? mapSupabaseApplication(data) : null;
+  if (error) {
+    throw error;
   }
 
-  const applications = getJsonDB().applications;
-  const applicationIndex = applications.findIndex(application => application.id === id);
-  if (applicationIndex === -1) {
-    return null;
-  }
-
-  applications[applicationIndex].notes = notes;
-  return applications[applicationIndex];
+  return data ? mapSupabaseApplication(data) : null;
 }
 
 export async function getAllApplications(): Promise<Application[]> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('applications')
-      .select(APPLICATION_SELECT)
-      .order('created_at', { ascending: false });
+  const { data, error } = await requireSupabaseAdmin()
+    .from('applications')
+    .select(APPLICATION_SELECT)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(row => mapSupabaseApplication(row as unknown as SupabaseApplicationRow));
+  if (error) {
+    throw error;
   }
 
-  return [...getJsonDB().applications];
+  return mapSupabaseApplications(data);
 }
 
 export async function deleteApplicationsByCandidateAndJob(
   candidateId: string,
   jobId: string
 ): Promise<void> {
-  if (USE_SUPABASE_APPLICATIONS) {
-    const { error } = await requireSupabaseAdmin()
-      .from('applications')
-      .delete()
-      .eq('candidate_id', candidateId)
-      .eq('job_id', jobId);
+  const { error } = await requireSupabaseAdmin()
+    .from('applications')
+    .delete()
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId);
 
-    if (error) {
-      throw error;
-    }
-    return;
-  }
-
-  const applications = getJsonDB().applications;
-  for (let i = applications.length - 1; i >= 0; i -= 1) {
-    if (applications[i].candidateId === candidateId && applications[i].jobId === jobId) {
-      applications.splice(i, 1);
-    }
+  if (error) {
+    throw error;
   }
 }

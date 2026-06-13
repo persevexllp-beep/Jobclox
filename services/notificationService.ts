@@ -1,12 +1,6 @@
 import { AppNotification } from '../src/types';
 import { supabaseAdmin } from '../lib/supabase';
 
-export const USE_SUPABASE_NOTIFICATIONS = true;
-
-type JsonNotificationDB = {
-  notifications: AppNotification[];
-};
-
 type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
 type SupabaseNotificationRow = {
@@ -29,24 +23,20 @@ export type CreateNotificationInput = {
   createdAt?: string;
 };
 
-let jsonDB: JsonNotificationDB | null = null;
+export type NotificationQuery = {
+  unreadOnly?: boolean;
+  type?: NotificationType;
+  limit?: number;
+  offset?: number;
+};
 
-export function setJsonDB(db: JsonNotificationDB): void {
-  jsonDB = db;
-}
+const NOTIFICATION_SELECT = 'id,recipient_id,title,message,type,is_read,created_at';
 
 function requireSupabaseAdmin() {
   if (!supabaseAdmin) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required when USE_SUPABASE_NOTIFICATIONS is true');
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for notification persistence');
   }
   return supabaseAdmin;
-}
-
-function getJsonDB(): JsonNotificationDB {
-  if (!jsonDB) {
-    throw new Error('JSON DB not initialized');
-  }
-  return jsonDB;
 }
 
 function mapSupabaseNotification(row: SupabaseNotificationRow): AppNotification {
@@ -60,127 +50,110 @@ function mapSupabaseNotification(row: SupabaseNotificationRow): AppNotification 
   };
 }
 
-export async function getNotificationsByUser(userId: string, role?: string): Promise<AppNotification[]> {
-  if (USE_SUPABASE_NOTIFICATIONS) {
-    const recipientIds = role === 'admin' ? ['all_admin', userId] : [userId];
-    const { data, error } = await requireSupabaseAdmin()
-      .from('notifications')
-      .select('id,recipient_id,title,message,type,is_read,created_at')
-      .in('recipient_id', recipientIds)
-      .order('created_at', { ascending: false });
+export async function getNotificationsByUser(userId: string, role?: string, query: NotificationQuery = {}): Promise<AppNotification[]> {
+  const recipientIds = role === 'admin' ? ['all_admin', userId] : [userId];
+  let request = requireSupabaseAdmin()
+    .from('notifications')
+    .select(NOTIFICATION_SELECT)
+    .in('recipient_id', recipientIds)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(row => mapSupabaseNotification(row as SupabaseNotificationRow));
+  if (query.unreadOnly) {
+    request = request.eq('is_read', false);
+  }
+  if (query.type) {
+    request = request.eq('type', query.type);
+  }
+  if (query.limit !== undefined) {
+    const limit = Math.max(1, Math.min(100, query.limit));
+    const offset = Math.max(0, query.offset || 0);
+    request = request.range(offset, offset + limit - 1);
   }
 
-  return getJsonDB().notifications.filter(notification => {
-    if (role === 'admin') {
-      return notification.recipientId === 'all_admin' || notification.recipientId === userId;
-    }
-    return notification.recipientId === userId;
-  });
+  const { data, error } = await request;
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map(row => mapSupabaseNotification(row as SupabaseNotificationRow));
+}
+
+export async function getNotificationById(id: string): Promise<AppNotification | null> {
+  const { data, error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .select(NOTIFICATION_SELECT)
+    .eq('id', id)
+    .maybeSingle<SupabaseNotificationRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? mapSupabaseNotification(data) : null;
 }
 
 export async function createNotification(input: CreateNotificationInput): Promise<AppNotification> {
-  if (USE_SUPABASE_NOTIFICATIONS) {
-    const id = input.id || `n-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const createdAt = input.createdAt || new Date().toISOString();
-    const { data, error } = await requireSupabaseAdmin()
-      .from('notifications')
-      .insert({
-        id,
-        recipient_id: input.recipientId,
-        title: input.title,
-        message: input.message,
-        type: input.type || 'info',
-        is_read: input.isRead ?? false,
-        created_at: createdAt,
-      })
-      .select('id,recipient_id,title,message,type,is_read,created_at')
-      .single<SupabaseNotificationRow>();
+  const id = input.id || `n-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const createdAt = input.createdAt || new Date().toISOString();
+  const { data, error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .insert({
+      id,
+      recipient_id: input.recipientId,
+      title: input.title,
+      message: input.message,
+      type: input.type || 'info',
+      is_read: input.isRead ?? false,
+      created_at: createdAt,
+    })
+    .select(NOTIFICATION_SELECT)
+    .single<SupabaseNotificationRow>();
 
-    if (error) {
-      throw error;
-    }
-
-    return mapSupabaseNotification(data);
+  if (error) {
+    throw error;
   }
 
-  const notification: AppNotification = {
-    id: input.id || `n-${Date.now()}`,
-    recipientId: input.recipientId,
-    title: input.title,
-    message: input.message,
-    isRead: input.isRead ?? false,
-    createdAt: input.createdAt || new Date().toISOString(),
-  };
-  getJsonDB().notifications.push(notification);
-  return notification;
+  return mapSupabaseNotification(data);
 }
 
 export async function markAsRead(id: string): Promise<boolean> {
-  if (USE_SUPABASE_NOTIFICATIONS) {
-    const { error } = await requireSupabaseAdmin()
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id);
+  const { error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', id);
 
-    if (error) {
-      throw error;
-    }
-
-    return true;
+  if (error) {
+    throw error;
   }
 
-  const notification = getJsonDB().notifications.find(item => item.id === id);
-  if (!notification) {
-    return false;
-  }
-  notification.isRead = true;
   return true;
 }
 
 export async function deleteNotification(id: string): Promise<boolean> {
-  if (USE_SUPABASE_NOTIFICATIONS) {
-    const { error } = await requireSupabaseAdmin()
-      .from('notifications')
-      .delete()
-      .eq('id', id);
+  const { error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .delete()
+    .eq('id', id);
 
-    if (error) {
-      throw error;
-    }
-
-    return true;
+  if (error) {
+    throw error;
   }
 
-  const notifications = getJsonDB().notifications;
-  const index = notifications.findIndex(item => item.id === id);
-  if (index === -1) {
-    return false;
-  }
-  notifications.splice(index, 1);
   return true;
 }
 
 export async function getUnreadCount(userId: string, role?: string): Promise<number> {
-  if (USE_SUPABASE_NOTIFICATIONS) {
-    const recipientIds = role === 'admin' ? ['all_admin', userId] : [userId];
-    const { count, error } = await requireSupabaseAdmin()
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .in('recipient_id', recipientIds)
-      .eq('is_read', false);
+  const recipientIds = role === 'admin' ? ['all_admin', userId] : [userId];
+  const { count, error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .in('recipient_id', recipientIds)
+    .eq('is_read', false);
 
-    if (error) {
-      throw error;
-    }
-
-    return count || 0;
+  if (error) {
+    throw error;
   }
 
-  return (await getNotificationsByUser(userId, role)).filter(notification => !notification.isRead).length;
+  return count || 0;
 }

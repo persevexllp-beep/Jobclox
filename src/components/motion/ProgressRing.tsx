@@ -14,6 +14,7 @@ interface ProgressRingProps {
   color?: string;
   backgroundColor?: string;
   showPercentage?: boolean;
+  label?: string;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export default function ProgressRing({
   color = tokens.colors.primary.emerald[500],
   backgroundColor = 'rgba(255, 255, 255, 0.1)',
   showPercentage = true,
+  label,
   className = '',
 }: ProgressRingProps) {
   const radius = (size - strokeWidth) / 2;
@@ -31,7 +33,7 @@ export default function ProgressRing({
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className={`relative inline-flex items-center justify-center ${className}`}>
+    <div className={`relative inline-flex items-center justify-center ${className}`} aria-label={label}>
       <svg width={size} height={size} className="transform -rotate-90">
         {/* Background circle */}
         <circle

@@ -3,9 +3,40 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { useState, useEffect } from 'react';
-import { User, Company, Job, Application } from '../types';
-import { Building2, PlusCircle, UserCheck, ShieldCheck, HelpCircle, Calendar, MessageSquare, Check, XCircle, Award, ChevronRight, MapPin, DollarSign, Clock, FileText, Upload } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  BarChart3,
+  BriefcaseBusiness,
+  Calendar,
+  Check,
+  CheckCircle2,
+  Clock,
+  Copy,
+  DollarSign,
+  Edit3,
+  Eye,
+  FileText,
+  Filter,
+  GraduationCap,
+  HelpCircle,
+  LineChart,
+  MapPin,
+  PauseCircle,
+  PlusCircle,
+  Search,
+  Send,
+  ShieldCheck,
+  SlidersHorizontal,
+  Star,
+  Target,
+  TrendingUp,
+  Upload,
+  UserCheck,
+  UsersRound,
+  XCircle,
+} from 'lucide-react';
+import { Application, Company, Job, User } from '../types';
 import SkeletonLoader from './SkeletonLoader';
 
 interface CompanyDashboardProps {
@@ -13,14 +44,44 @@ interface CompanyDashboardProps {
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
 }
 
+type RecruiterTab = 'command' | 'post_job' | 'jobs' | 'pipeline' | 'profile' | 'analytics';
+type WizardStep = 0 | 1 | 2 | 3 | 4;
+type JobSort = 'recent' | 'status' | 'applications';
+
+const recruiterTabs: Array<{ id: RecruiterTab; label: string; icon: React.ElementType }> = [
+  { id: 'command', label: 'Command', icon: BriefcaseBusiness },
+  { id: 'post_job', label: 'Post Job', icon: PlusCircle },
+  { id: 'jobs', label: 'Manage Jobs', icon: SlidersHorizontal },
+  { id: 'pipeline', label: 'Applicants', icon: UsersRound },
+  { id: 'profile', label: 'Company', icon: ShieldCheck },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+];
+
+const wizardSteps = ['Job Basics', 'Requirements', 'Compensation', 'Screening', 'Review'];
+const pipelineColumns = [
+  { key: 'applied', label: 'Applied' },
+  { key: 'reviewing', label: 'Reviewing' },
+  { key: 'interview', label: 'Interview' },
+  { key: 'offer', label: 'Offer' },
+  { key: 'hired', label: 'Hired' },
+];
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'post_job' | 'company_profile'>('pipeline');
+  const [activeTab, setActiveTab] = useState<RecruiterTab>('command');
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
 
-  // Job creation form fields state
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('Engineering');
   const [location, setLocation] = useState('Remote (US)');
@@ -31,19 +92,23 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
   const [requirementsStr, setRequirementsStr] = useState('React, Node.js, MongoDB');
   const [preferredStr, setPreferredStr] = useState('TypeScript, Tailwind CSS');
   const [deadline, setDeadline] = useState('2026-08-30');
-  
+
+  const [wizardStep, setWizardStep] = useState<WizardStep>(0);
+  const [previewJob, setPreviewJob] = useState(false);
   const [postingJob, setPostingJob] = useState(false);
   const [postError, setPostError] = useState('');
   const [postSuccess, setPostSuccess] = useState('');
 
-  // Schedulers interaction states
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [interviewDate, setInterviewDate] = useState('2026-06-15T14:00');
   const [schedulingStatus, setSchedulingStatus] = useState(false);
-  
   const [declineReason, setDeclineReason] = useState('');
+  const [candidateNotes, setCandidateNotes] = useState<Record<string, string>>({});
 
-  // Company profile values
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobStatusFilter, setJobStatusFilter] = useState('all');
+  const [jobSort, setJobSort] = useState<JobSort>('recent');
+
   const [companyName, setCompanyName] = useState('');
   const [website, setWebsite] = useState('');
   const [linkedin, setLinkedin] = useState('');
@@ -56,52 +121,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
   const [dragActive, setDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      processFile(file);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      processFile(file);
-    }
-  };
-
-  const processFile = (file: File) => {
-    if (!file) return;
-    setIsUploading(true);
-    setUploadProgress(10);
-    
-    // Simulate high-fidelity upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setDocumentsName(file.name);
-          return 100;
-        }
-        return prev + 20;
-      });
-    }, 80);
-  };
+  const [documentError, setDocumentError] = useState('');
 
   useEffect(() => {
     fetchCompanyData();
@@ -113,7 +133,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
       const [{ company: remoteComp }, { jobs: remoteJobs }, { applications: remoteApps }] = await Promise.all([
         apiFetch('/api/companies/my'),
         apiFetch('/api/jobs'),
-        apiFetch('/api/applications')
+        apiFetch('/api/applications'),
       ]);
 
       if (remoteComp) {
@@ -125,6 +145,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
         setCompanyEmail(remoteComp.companyEmail || '');
         setContactPerson(remoteComp.contactPerson || '');
         setPhone(remoteComp.phone || '');
+        setDocumentsName(remoteComp.documents?.[remoteComp.documents.length - 1]?.name || 'cert_incorporation_registered.pdf');
       }
       setJobs(remoteJobs || []);
       setApplications(remoteApps || []);
@@ -135,11 +156,59 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
     }
   };
 
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) processFile(e.target.files[0]);
+  };
+
+  const processFile = async (file: File) => {
+    if (!file) return;
+    setDocumentError('');
+    setIsUploading(true);
+    setUploadProgress(15);
+
+    try {
+      const base64 = await readFileAsDataUrl(file);
+      setUploadProgress(45);
+      const response = await apiFetch('/api/companies/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, fileName: file.name, mimeType: file.type || 'application/pdf' }),
+      });
+      setUploadProgress(100);
+      if (response.company) {
+        setCompany(response.company);
+        setDocumentsName(file.name);
+      } else if (response.error) {
+        setDocumentError(response.error);
+      }
+    } catch (err: any) {
+      setDocumentError(err.message || 'Failed to upload verification document.');
+    } finally {
+      window.setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 180);
+    }
+  };
+
   const handlePostJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPostError('');
     setPostSuccess('');
-    
+
     if (!title || !description || !requirementsStr) {
       setPostError('Specify job title, raw description text, and mandatory requirements.');
       return;
@@ -147,8 +216,8 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
 
     setPostingJob(true);
     try {
-      const requirements = requirementsStr.split(',').map(s => s.trim()).filter(Boolean);
-      const preferredSkills = preferredStr.split(',').map(s => s.trim()).filter(Boolean);
+      const requirements = requirementsStr.split(',').map((s) => s.trim()).filter(Boolean);
+      const preferredSkills = preferredStr.split(',').map((s) => s.trim()).filter(Boolean);
 
       const response = await apiFetch('/api/jobs/create', {
         method: 'POST',
@@ -163,17 +232,17 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
           description,
           requirements,
           preferredSkills,
-          deadline
-        })
+          deadline,
+        }),
       });
 
       if (response.error) {
         setPostError(response.error);
       } else {
-        setPostSuccess('Job opportunity submitted successfully! Admin will moderates and approve shortly.');
+        setPostSuccess('Job opportunity submitted successfully! Admin will moderate and approve shortly.');
         setTitle('');
         setDescription('');
-        // Refresh job listings
+        setWizardStep(0);
         fetchCompanyData();
       }
     } catch (err: any) {
@@ -198,8 +267,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
           companyEmail,
           contactPerson,
           phone,
-          documentsName
-        })
+        }),
       });
       if (response.company) {
         alert('Corporate credentials updated successfully! Changes saved.');
@@ -213,14 +281,13 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
     }
   };
 
-  // Status transitions
   const updateApplicationStatus = async (appId: string, payload: { status: string; interviewDate?: string; rejectionReason?: string; finalResult?: string }) => {
     setSchedulingStatus(true);
     try {
       const response = await apiFetch(`/api/applications/${appId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       if (response.application) {
         setSelectedApp(null);
@@ -235,747 +302,804 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
     }
   };
 
+  const metrics = useMemo(() => {
+    const interviews = applications.filter((app) => app.status === 'interviewing').length;
+    const hires = applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length;
+    return {
+      activeJobs: jobs.filter((job) => job.status === 'approved' || job.status === 'submitted').length,
+      applications: applications.length,
+      interviews,
+      hires,
+    };
+  }, [applications, jobs]);
+
+  const filteredJobs = useMemo(() => {
+    const term = jobSearch.toLowerCase();
+    return [...jobs]
+      .filter((job) => {
+        const textMatch = job.title.toLowerCase().includes(term)
+          || job.companyName.toLowerCase().includes(term)
+          || job.location.toLowerCase().includes(term)
+          || job.requirements.some((skill) => skill.toLowerCase().includes(term));
+        const statusMatch = jobStatusFilter === 'all' || job.status === jobStatusFilter;
+        return textMatch && statusMatch;
+      })
+      .sort((a, b) => {
+        if (jobSort === 'status') return a.status.localeCompare(b.status);
+        if (jobSort === 'applications') return getJobApplicationCount(b.id, applications) - getJobApplicationCount(a.id, applications);
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }, [applications, jobSearch, jobSort, jobStatusFilter, jobs]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Verification warning indicator flags */}
+    <div className="platform-page recruiter-os mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
       {company && company.verificationStatus !== 'approved' && (
-        <div id="kyc-warning-banner" className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="flex items-start space-x-3 text-amber-900 text-xs text-left">
-            <HelpCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Company Profile Under Verification Waiting Line</p>
-              <p className="text-amber-700 mt-1 leading-normal">
-                Your credentials are currently state: <strong>{company.verificationStatus.toUpperCase()}</strong>. Persevex KYC compliance analysts are reviewing your incorporation details. Once validated, you can post approved live jobs!
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveTab('company_profile')}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0"
-          >
-            Update Documentation
-          </button>
-        </div>
+        <VerificationBanner status={company.verificationStatus} onUpdate={() => setActiveTab('profile')} />
       )}
 
-      {/* Main statistics grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase block">Verification Status</span>
-            <span className="font-display font-bold text-lg text-slate-800 uppercase block leading-none mt-1">
-              {company?.verificationStatus || 'Pending'}
-            </span>
-          </div>
-        </div>
+      <RecruiterHeader company={company} currentUser={currentUser} />
 
-        <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-slate-50 text-slate-700 rounded-2xl">
-            <PlusCircle className="h-6 w-6" />
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase block">Jobs Created</span>
-            <span className="font-display font-bold text-xl text-slate-800 block mt-1">
-              {jobs.length} Specifications
-            </span>
-          </div>
-        </div>
+      <section className="rec-metrics">
+        <RecruiterMetricCard title="Active Jobs" value={metrics.activeJobs} trend="+12% this month" icon={BriefcaseBusiness} />
+        <RecruiterMetricCard title="Applications" value={metrics.applications} trend={`${applications.filter((app) => app.status === 'under_review').length} in review`} icon={FileText} />
+        <RecruiterMetricCard title="Interviews" value={metrics.interviews} trend="Schedule ready" icon={Calendar} />
+        <RecruiterMetricCard title="Hires" value={metrics.hires} trend="Offer pipeline" icon={UserCheck} />
+      </section>
 
-        <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-amber-55 text-yellow-750 bg-amber-50 rounded-2xl">
-            <Clock className="h-6 w-6 text-amber-600" />
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase block">Approval Queue</span>
-            <span className="font-display font-bold text-xl text-slate-800 block mt-1">
-              {jobs.filter(j => j.status === 'submitted').length} Pending
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-emerald-500/20 rounded-3xl p-5 shadow-sm bg-emerald-50/20 flex items-center space-x-4">
-          <div className="p-3 bg-emerald-500 text-slate-950 rounded-2xl">
-            <UserCheck className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <span className="text-[10px] text-emerald-800 font-mono tracking-wider uppercase block">Forwarded Pipelines</span>
-            <span className="font-display font-bold text-xl text-emerald-950 block mt-1">
-              {applications.length} Screened Matches
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs list */}
-      <div className="flex border-b border-slate-200 mb-6">
-        <button
-          onClick={() => setActiveTab('pipeline')}
-          className={`pb-3.5 px-4 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'pipeline' 
-              ? 'border-emerald-600 text-slate-900 font-bold' 
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          Forwarded Pipelines ({applications.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('post_job')}
-          className={`pb-3.5 px-4 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'post_job' 
-              ? 'border-emerald-600 text-slate-900 font-bold' 
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          Publish Technical Openings
-        </button>
-        <button
-          onClick={() => setActiveTab('company_profile')}
-          className={`pb-3.5 px-4 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'company_profile' 
-              ? 'border-emerald-600 text-slate-900 font-bold' 
-              : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          Company Registry Settings
-        </button>
-      </div>
-
-      {/* RENDER ACTIVE TAB BODY */}
+      <nav className="rec-tabs" aria-label="Recruiter workspace">
+        {recruiterTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-pressed={activeTab === tab.id}>
+              <Icon className="h-4 w-4" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       {loading ? (
-        activeTab === 'pipeline' ? (
-          <SkeletonLoader type="table" count={4} />
-        ) : activeTab === 'post_job' ? (
-          <SkeletonLoader type="profile" />
-        ) : (
-          <SkeletonLoader type="profile" />
-        )
+        <SkeletonLoader type={activeTab === 'pipeline' || activeTab === 'jobs' ? 'table' : 'profile'} count={4} />
       ) : (
         <>
-          {activeTab === 'pipeline' && (
-        <div className="space-y-6">
-          <div className="bg-slate-940 text-slate-900">
-            <h3 className="font-display font-bold text-lg">
-              Screened Candidate Deliveries
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              You only view candidates that have been thoroughly checked by Persevex quality specialists and scored.
-            </p>
-          </div>
-
-          {applications.length === 0 ? (
-            <div className="bg-white border border-slate-150 rounded-2xl p-12 text-center text-slate-400 text-sm">
-              Your pipeline is currently clear. When Persevex Admin reviews and forwards qualified applications to your active job descriptions, they appear instantly here.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {applications.map(app => (
-                <div 
-                  key={app.id} 
-                  id={`pipeline-card-${app.id}`}
-                  className="bg-white border border-slate-150 p-6 rounded-2xl shadow-sm text-left flex flex-col justify-between"
-                >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-rose-100/50 pb-4 mb-4 gap-4">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-display font-bold text-basis text-slate-900">
-                          {app.candidateName}
-                        </h4>
-                        <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-mono rounded text-slate-600">
-                          App #{app.id.substring(app.id.length - 4)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                        Forwarded for position slot: <span className="text-slate-800 font-semibold">{app.jobTitle}</span>
-                      </p>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 font-mono tracking-wider block">Match Score Analysis</span>
-                        <span className="text-sm font-bold font-display text-emerald-800">
-                          {app.score}% Word-Match Coverage
-                        </span>
-                      </div>
-                      <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-extrabold ${
-                        app.score >= 90 ? 'bg-emerald-100 text-emerald-900' :
-                        app.score >= 75 ? 'bg-green-105 bg-green-100 text-green-900' :
-                        'bg-yellow-100 text-yellow-900'
-                      }`}>
-                        {app.score}%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Skills layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-xs">
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-[9px] font-bold text-emerald-800 uppercase block mb-1">
-                        ✓ Verified Competences
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {app.matchedSkills.map((sk, index) => (
-                          <span key={index} className="px-2 py-0.5 bg-emerald-50 text-emerald-900 rounded font-bold text-[10px]">
-                            {sk}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-[9px] font-bold text-red-800 uppercase block mb-1">
-                        ✗ Vacancies
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {app.missingSkills.length === 0 ? (
-                          <span className="text-emerald-850 font-semibold text-[10px] flex items-center">
-                            ✓ Fully Matches All Required Specifications!
-                          </span>
-                        ) : (
-                          app.missingSkills.map((sk, index) => (
-                            <span key={index} className="px-2 py-0.5 bg-red-50 text-red-700 rounded text-[10px]">
-                              {sk}
-                            </span>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Administrator comments check */}
-                  {app.notes && (
-                    <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 italic mb-4">
-                      <span className="text-[9px] font-bold text-slate-400 block tracking-widest uppercase mb-1">
-                        Persevex Screener Comments
-                      </span>
-                      "{app.notes}"
-                    </div>
-                  )}
-
-                  {/* Operational controls */}
-                  <div className="p-3Bg-slate-50 rounded-xl border border-slate-150 pt-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-3 gap-4 border-t">
-                    <div className="text-xs">
-                      <span className="text-slate-400 font-medium">Pipeline status:</span>
-                      <span className="ml-1.5 px-2 py-1 bg-amber-50 text-amber-800 rounded-full font-bold text-[10px] uppercase font-mono shadow-xs">
-                        {app.status.replace('_', ' ')}
-                      </span>
-                      {app.interviewDate && (
-                        <span className="ml-3 text-slate-600 block sm:inline font-semibold">
-                          📅 Scheduled: {new Date(app.interviewDate).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setSelectedApp(app)}
-                        className="px-3.5 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-                      >
-                        Action Portal Control
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {activeTab === 'command' && (
+            <HiringCommandCenter jobs={jobs} applications={applications} onPost={() => setActiveTab('post_job')} onPipeline={() => setActiveTab('pipeline')} />
           )}
-        </div>
-      )}
 
-      {/* JOBS POSTING TAB */}
+          {activeTab === 'post_job' && (
+            <PostJobWizard
+              company={company}
+              wizardStep={wizardStep}
+              setWizardStep={setWizardStep}
+              previewJob={previewJob}
+              setPreviewJob={setPreviewJob}
+              postingJob={postingJob}
+              postError={postError}
+              postSuccess={postSuccess}
+              title={title}
+              setTitle={setTitle}
+              department={department}
+              setDepartment={setDepartment}
+              location={location}
+              setLocation={setLocation}
+              jobType={jobType}
+              setJobType={setJobType}
+              experience={experience}
+              setExperience={setExperience}
+              salary={salary}
+              setSalary={setSalary}
+              description={description}
+              setDescription={setDescription}
+              requirementsStr={requirementsStr}
+              setRequirementsStr={setRequirementsStr}
+              preferredStr={preferredStr}
+              setPreferredStr={setPreferredStr}
+              deadline={deadline}
+              setDeadline={setDeadline}
+              onSubmit={handlePostJobSubmit}
+            />
+          )}
 
-      {activeTab === 'post_job' && (
-        <div className="bg-white border border-slate-150 rounded-3xl p-6 sm:p-8 shadow-sm">
-          <form onSubmit={handlePostJobSubmit} className="space-y-6 text-left">
-            <div className="border-b border-slate-100 pb-4">
-              <span className="text-xs font-bold text-emerald-600 font-mono tracking-wider uppercase">Publish Openings Console</span>
-              <h3 className="font-display font-bold text-lg text-slate-900 mt-1">
-                Define the job variables
-              </h3>
-              <p className="text-xs text-slate-500">
-                Post tech stacks and experience bounds. These inputs feed into our Weighted Engine to automatically index applicants.
-              </p>
-            </div>
+          {activeTab === 'jobs' && (
+            <ManageJobs
+              jobs={filteredJobs}
+              applications={applications}
+              search={jobSearch}
+              statusFilter={jobStatusFilter}
+              sort={jobSort}
+              setSearch={setJobSearch}
+              setStatusFilter={setJobStatusFilter}
+              setSort={setJobSort}
+            />
+          )}
 
-            {postError && (
-              <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded text-red-700 text-xs">
-                {postError}
-              </div>
-            )}
+          {activeTab === 'pipeline' && (
+            <ApplicantTracking
+              applications={applications}
+              notes={candidateNotes}
+              setNotes={setCandidateNotes}
+              onReview={setSelectedApp}
+              onMove={(app, status) => updateApplicationStatus(app.id, status === 'selected' ? { status, finalResult: 'hired' } : { status })}
+            />
+          )}
 
-            {postSuccess && (
-              <div className="p-3 bg-emerald-50 border-l-4 border-emerald-500 rounded text-emerald-800 text-xs">
-                {postSuccess}
-              </div>
-            )}
+          {activeTab === 'profile' && (
+            <CompanyProfilePanel
+              company={company}
+              values={{ companyName, website, linkedin, industry, companyEmail, contactPerson, phone, documentsName }}
+              setters={{ setCompanyName, setWebsite, setLinkedin, setIndustry, setCompanyEmail, setContactPerson, setPhone, setDocumentsName }}
+              savingProfile={savingProfile}
+              dragActive={dragActive}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              documentError={documentError}
+              handleDrag={handleDrag}
+              handleDrop={handleDrop}
+              handleFileChange={handleFileChange}
+              onSubmit={handleProfileSave}
+            />
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Job Position Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="e.g. Senior Frontend UI Engineer"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Department / division group
-                </label>
-                <input
-                  type="text"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="e.g. Cloud Security Team"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Job Type Agreement
-                </label>
-                <select
-                  value={jobType}
-                  onChange={(e) => setJobType(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none text-slate-800 font-medium"
-                >
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Internship">Internship</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Experience boundary
-                </label>
-                <input
-                  type="text"
-                  value={experience}
-                  onChange={(e) => setExperience(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="e.g. 3-5 Years"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Salary Band compensation Range
-                </label>
-                <input
-                  type="text"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-mono"
-                  placeholder="e.g. $120,000 - $140,000 / yr"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Primary Must-Have Skills (Mandatory match list, comma separated)
-                </label>
-                <input
-                  type="text"
-                  value={requirementsStr}
-                  onChange={(e) => setRequirementsStr(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-mono"
-                  placeholder="React, Node.js, MongoDB, AWS"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Additional Preferred Skills (Nice to have, comma separated)
-                </label>
-                <input
-                  type="text"
-                  value={preferredStr}
-                  onChange={(e) => setPreferredStr(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-mono"
-                  placeholder="TypeScript, Tailwind CSS, GraphQL"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Workspace Locations
-                </label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="e.g. Hybrid, Washington DC"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Application Expiry Date
-                </label>
-                <input
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800 text-slate-700"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Full Role specification and criteria details
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={5}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800 leading-relaxed"
-                placeholder="Detail key responsibilities..."
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={postingJob || (company && company.verificationStatus !== 'approved')}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 border-none rounded-xl text-white text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-emerald-600/10 cursor-pointer disabled:opacity-50"
-            >
-              {postingJob ? 'Submitting specification...' : 'Submit specification to Admin moderation'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* COMPANY PROFILE TAB */}
-
-      {activeTab === 'company_profile' && (
-        <div className="bg-white border border-slate-150 rounded-3xl p-6 sm:p-8 shadow-sm">
-          <form onSubmit={handleProfileSave} className="space-y-6 text-left">
-            <div className="border-b border-slate-100 pb-4">
-              <span className="text-xs font-bold text-emerald-600 font-mono tracking-wider uppercase">KYC Settings Verification Registry</span>
-              <h3 className="font-display font-bold text-lg text-slate-900 mt-1">
-                Corporate Credentials
-              </h3>
-              <p className="text-xs text-slate-500">
-                To protect our talent pool from fraudulent postings, we require proof of business name verification.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Registered Legal Entity Name
-                </label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="e.g. Acme Corporation Inc."
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Business Domain Sector (Industry)
-                </label>
-                <input
-                  type="text"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="e.g. Fintech, Healthcare System"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Primary Enterprise Website Domain
-                </label>
-                <input
-                  type="url"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="https://acmecorp.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  LinkedIn Portal URL link
-                </label>
-                <input
-                  type="url"
-                  value={linkedin}
-                  onChange={(e) => setLinkedin(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-850"
-                  placeholder="https://linkedin.com/company/acme"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Corporate email channel
-                </label>
-                <input
-                  type="email"
-                  value={companyEmail}
-                  onChange={(e) => setCompanyEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="hr@acmecorp.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Contact HR officer Name
-                </label>
-                <input
-                  type="text"
-                  value={contactPerson}
-                  onChange={(e) => setContactPerson(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800"
-                  placeholder="Sarah Jenkins"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">
-                  Cell / Telephone line number
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-800 font-mono"
-                  placeholder="+1 555-010-2342"
-                />
-              </div>
-            </div>
-
-            <div className="p-5 bg-slate-50 dark:bg-slate-900/45 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">
-                  KYC Incorporation Certificates / GST Audit files
-                </label>
-                
-                {/* Drag and Drop Container Zone */}
-                <div 
-                  onDragEnter={handleDrag}
-                  onDragOver={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all relative ${
-                    dragActive 
-                      ? 'border-emerald-500 bg-emerald-500/5' 
-                      : 'border-slate-200 dark:border-slate-800 bg-white/50 hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <input
-                    type="file"
-                    id="company-cert-upload"
-                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                    onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  
-                  {isUploading ? (
-                    <div className="space-y-3 py-2">
-                      <div className="flex justify-between items-center text-xs text-slate-500 max-w-xs mx-auto">
-                        <span className="font-medium animate-pulse">Uploading legal archives...</span>
-                        <span className="font-mono">{uploadProgress}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden max-w-xs mx-auto">
-                        <div 
-                          className="bg-emerald-500 h-full transition-all duration-150 rounded-full"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : documentsName ? (
-                    <div className="flex flex-col items-center space-y-2">
-                      <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-2xl">
-                        <Check className="h-6 w-6 stroke-[3]" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono break-all px-4">
-                          {documentsName}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          Document uploaded successfully. Drag and drop a new file or click here to replace.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full w-12 h-12 flex items-center justify-center mx-auto">
-                        <Upload className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Drag & drop your company certificate here, or <span className="text-emerald-500 underline cursor-pointer">browse file</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          Supports PDF, DOCX, PNG, or JPG (Max 5MB)
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Optional manual parameter fallback input */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800/60 pb-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">File Name Blueprint Reference</span>
-                  <p className="text-[10px] text-slate-400">Adjust the registered file name identifier manually if needed</p>
-                </div>
-                <div className="flex items-center space-x-2 w-full sm:w-auto">
-                  <div className="bg-white/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 flex items-center space-x-2 shrink-0">
-                    <FileText className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs text-slate-600 dark:text-slate-400 font-mono font-medium max-w-[120px] truncate">{documentsName || 'No document'}</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={documentsName}
-                    onChange={(e) => setDocumentsName(e.target.value)}
-                    className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-2 px-3 text-xs focus:outline-none text-slate-700 dark:text-slate-300 font-mono w-full sm:w-48"
-                    placeholder="aws_incorporation.pdf"
-                  />
-                </div>
-              </div>
-
-              <p className="text-[10px] text-slate-400 leading-relaxed">
-                If changing corporate audit documents, the legal status converts to "Pending" waiting list review. Please permit 24 hours for review processing.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingProfile}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-emerald-600/10 cursor-pointer"
-            >
-              {savingProfile ? 'Updating details...' : 'Submit registry modification details'}
-            </button>
-          </form>
-        </div>
-      )}
+          {activeTab === 'analytics' && (
+            <RecruiterAnalytics jobs={jobs} applications={applications} />
+          )}
         </>
       )}
 
-      {/* COMPACT MODAL FOR CANDIDATE SUB-ACTION SCHEDULING OR RESULTS */}
       {selectedApp && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-slate-900">
-            <div className="bg-slate-900 text-white p-5">
-              <span className="text-[10px] font-mono tracking-widest text-emerald-400 block uppercase">
-                Active Candidate Delivery Pipeline Actions
-              </span>
-              <h3 className="font-display font-bold text-base mt-0.5">
-                Manage "{selectedApp.candidateName}" Pipeline
-              </h3>
-            </div>
-
-            <div className="p-6 space-y-5">
-              {/* Interview scheduling block */}
-              <div className="space-y-2 p-4 bg-slate-50 border border-slate-150 rounded-2xl">
-                <label className="block text-xs font-bold text-slate-600 uppercase">
-                  Schedule Corporate Interview Session
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="datetime-local"
-                    value={interviewDate}
-                    onChange={(e) => setInterviewDate(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-xl p-2 text-xs focus:outline-none font-mono flex-grow"
-                  />
-                  <button
-                    disabled={schedulingStatus}
-                    onClick={() => updateApplicationStatus(selectedApp.id, { status: 'interviewing', interviewDate })}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shrink-0 cursor-pointer"
-                  >
-                    Set Date
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-400 italic">
-                  This schedules virtual calendars and triggers automated inbox directives to the candidate.
-                </p>
-              </div>
-
-              {/* Hire and select trigger */}
-              <div className="p-4 bg-emerald-50/70 border border-emerald-150 rounded-2xl flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-emerald-900 uppercase block">Authorize Hiring Offer</span>
-                  <p className="text-[10px] text-emerald-700">Submit direct offer credentials congrats outcome.</p>
-                </div>
-                <button
-                  disabled={schedulingStatus}
-                  onClick={() => updateApplicationStatus(selectedApp.id, { status: 'selected', finalResult: 'hired' })}
-                  className="px-4 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase cursor-pointer transition-colors"
-                >
-                  Confirm Hired
-                </button>
-              </div>
-
-              {/* Reject / decline form */}
-              <div className="space-y-2 p-4 bg-red-50/70 border border-red-100 rounded-2xl">
-                <label className="block text-xs font-bold text-red-900 uppercase">
-                  Decline / Reject Candidate Delivery
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={declineReason}
-                    onChange={(e) => setDeclineReason(e.target.value)}
-                    placeholder="Specify rejection reason details..."
-                    className="bg-white border border-slate-250 rounded-xl p-2 text-xs focus:outline-none flex-grow"
-                  />
-                  <button
-                    disabled={schedulingStatus || !declineReason}
-                    onClick={() => updateApplicationStatus(selectedApp.id, { status: 'rejected', rejectionReason: declineReason })}
-                    className="px-4 py-2 bg-red-650 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase shrink-0 cursor-pointer"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedApp(null)}
-                className="w-full px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold uppercase text-slate-700 cursor-pointer"
-              >
-                Close Control Panel
-              </button>
-            </div>
-          </div>
-        </div>
+        <CandidateReviewModal
+          app={selectedApp}
+          interviewDate={interviewDate}
+          setInterviewDate={setInterviewDate}
+          declineReason={declineReason}
+          setDeclineReason={setDeclineReason}
+          schedulingStatus={schedulingStatus}
+          onClose={() => setSelectedApp(null)}
+          onUpdate={updateApplicationStatus}
+        />
       )}
     </div>
   );
+}
+
+function VerificationBanner({ status, onUpdate }: { status: string; onUpdate: () => void }) {
+  return (
+    <div className="rec-verification">
+      <HelpCircle className="h-5 w-5" />
+      <div>
+        <strong>Company profile under verification</strong>
+        <span>Current state: {status.toUpperCase()}. Complete documentation to unlock approved live posting.</span>
+      </div>
+      <button type="button" onClick={onUpdate}>Update documents</button>
+    </div>
+  );
+}
+
+function RecruiterHeader({ company, currentUser }: { company: Company | null; currentUser: User }) {
+  return (
+    <header className="rec-header">
+      <div>
+        <span>Hiring Operating System</span>
+        <h1>{company?.companyName || currentUser.name} recruiting command center</h1>
+        <p>Post roles, review candidates, and move qualified talent through the funnel with less context switching.</p>
+      </div>
+      <div className="rec-header-badge">
+        <ShieldCheck className="h-5 w-5" />
+        <span>{company?.verificationStatus || 'pending'} profile</span>
+      </div>
+    </header>
+  );
+}
+
+function RecruiterMetricCard({ title, value, trend, icon: Icon }: { title: string; value: React.ReactNode; trend: string; icon: React.ElementType }) {
+  return (
+    <article className="rec-metric-card">
+      <div>
+        <Icon className="h-5 w-5" />
+        <span>{title}</span>
+      </div>
+      <strong>{value}</strong>
+      <small><TrendingUp className="h-3.5 w-3.5" />{trend}</small>
+    </article>
+  );
+}
+
+function HiringCommandCenter({ jobs, applications, onPost, onPipeline }: { jobs: Job[]; applications: Application[]; onPost: () => void; onPipeline: () => void }) {
+  return (
+    <section className="rec-command-grid">
+      <div className="rec-panel">
+        <SectionHeader eyebrow="Today" title="Hiring focus" action={<button type="button" onClick={onPost}>Post job</button>} />
+        <div className="rec-focus-list">
+          <FocusRow icon={BriefcaseBusiness} title={`${jobs.filter((job) => job.status === 'submitted').length} jobs awaiting approval`} body="Submitted roles stay visible here while moderation completes." />
+          <FocusRow icon={UsersRound} title={`${applications.filter((app) => app.status === 'under_review' || app.status === 'shortlisted').length} candidates need review`} body="Move qualified profiles into interview or offer stages." />
+          <FocusRow icon={Calendar} title={`${applications.filter((app) => app.interviewDate).length} interviews scheduled`} body="Interview details are surfaced from the application records." />
+        </div>
+      </div>
+      <div className="rec-panel">
+        <SectionHeader eyebrow="Pipeline" title="Hiring funnel" action={<button type="button" onClick={onPipeline}>Open pipeline</button>} />
+        <MiniFunnel applications={applications} />
+      </div>
+    </section>
+  );
+}
+
+function SectionHeader({ eyebrow, title, action }: { eyebrow: string; title: string; action?: React.ReactNode }) {
+  return (
+    <div className="rec-section-header">
+      <div>
+        <span>{eyebrow}</span>
+        <h2>{title}</h2>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function FocusRow({ icon: Icon, title, body }: { icon: React.ElementType; title: string; body: string }) {
+  return (
+    <article className="rec-focus-row">
+      <Icon className="h-4 w-4" />
+      <div>
+        <strong>{title}</strong>
+        <span>{body}</span>
+      </div>
+    </article>
+  );
+}
+
+function PostJobWizard(props: {
+  company: Company | null;
+  wizardStep: WizardStep;
+  setWizardStep: (step: WizardStep) => void;
+  previewJob: boolean;
+  setPreviewJob: (value: boolean) => void;
+  postingJob: boolean;
+  postError: string;
+  postSuccess: string;
+  title: string;
+  setTitle: (value: string) => void;
+  department: string;
+  setDepartment: (value: string) => void;
+  location: string;
+  setLocation: (value: string) => void;
+  jobType: Job['jobType'];
+  setJobType: (value: Job['jobType']) => void;
+  experience: string;
+  setExperience: (value: string) => void;
+  salary: string;
+  setSalary: (value: string) => void;
+  description: string;
+  setDescription: (value: string) => void;
+  requirementsStr: string;
+  setRequirementsStr: (value: string) => void;
+  preferredStr: string;
+  setPreferredStr: (value: string) => void;
+  deadline: string;
+  setDeadline: (value: string) => void;
+  onSubmit: (event: React.FormEvent) => void;
+}) {
+  const nextStep = () => props.setWizardStep(Math.min(4, props.wizardStep + 1) as WizardStep);
+  const previousStep = () => props.setWizardStep(Math.max(0, props.wizardStep - 1) as WizardStep);
+
+  return (
+    <section className="rec-panel">
+      <SectionHeader
+        eyebrow="Post Job"
+        title="Multi-step publishing wizard"
+        action={<button type="button" onClick={() => props.setPreviewJob(!props.previewJob)}><Eye className="h-4 w-4" />Preview</button>}
+      />
+      <div className="rec-wizard-progress">
+        {wizardSteps.map((step, index) => (
+          <button key={step} type="button" className={index <= props.wizardStep ? 'is-active' : ''} onClick={() => props.setWizardStep(index as WizardStep)}>
+            <span>{index + 1}</span>
+            {step}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={props.onSubmit} className="rec-wizard">
+        <div className="rec-autosave"><CheckCircle2 className="h-4 w-4" />Autosaved draft locally</div>
+        {props.postError && <AlertBox tone="danger" message={props.postError} />}
+        {props.postSuccess && <AlertBox tone="success" message={props.postSuccess} />}
+
+        {!props.previewJob ? (
+          <div className="rec-wizard-card">
+            {props.wizardStep === 0 && (
+              <div className="rec-form-grid">
+                <TextField label="Job Title" value={props.title} onChange={props.setTitle} placeholder="Senior Frontend Engineer" required />
+                <TextField label="Department" value={props.department} onChange={props.setDepartment} placeholder="Engineering" />
+                <TextField label="Location" value={props.location} onChange={props.setLocation} placeholder="Remote, Bengaluru, Hybrid" />
+                <label className="rec-field">
+                  <span>Employment Type</span>
+                  <select value={props.jobType} onChange={(e) => props.setJobType(e.target.value as Job['jobType'])}>
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                  </select>
+                </label>
+              </div>
+            )}
+            {props.wizardStep === 1 && (
+              <div className="rec-form-grid">
+                <TextField label="Experience" value={props.experience} onChange={props.setExperience} placeholder="3+ Years" />
+                <TextField label="Required Skills" value={props.requirementsStr} onChange={props.setRequirementsStr} placeholder="React, Node.js, MongoDB" required />
+                <TextField label="Preferred Skills" value={props.preferredStr} onChange={props.setPreferredStr} placeholder="TypeScript, Tailwind CSS" />
+                <TextArea label="Role Description" value={props.description} onChange={props.setDescription} placeholder="Detail responsibilities, outcomes, and hiring criteria." required />
+              </div>
+            )}
+            {props.wizardStep === 2 && (
+              <div className="rec-form-grid">
+                <TextField label="Salary" value={props.salary} onChange={props.setSalary} placeholder="$110,000 - $130,000 / yr" />
+                <TextField label="Application Deadline" value={props.deadline} onChange={props.setDeadline} type="date" />
+                <PreviewStat icon={DollarSign} label="Compensation visible" value={props.salary || 'Not set'} />
+                <PreviewStat icon={Clock} label="Deadline" value={props.deadline || 'Not set'} />
+              </div>
+            )}
+            {props.wizardStep === 3 && (
+              <div className="rec-screening">
+                <PreviewStat icon={Target} label="Screening" value="Resume keyword match enabled" />
+                <PreviewStat icon={FileText} label="Questions" value="Role fit, availability, salary expectation" />
+                <PreviewStat icon={Star} label="Priority" value="Persevex score and skill gaps" />
+              </div>
+            )}
+            {props.wizardStep === 4 && <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />}
+          </div>
+        ) : (
+          <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />
+        )}
+
+        <div className="rec-wizard-actions">
+          <button type="button" onClick={previousStep} disabled={props.wizardStep === 0}>Back</button>
+          {props.wizardStep < 4 ? (
+            <button type="button" onClick={nextStep}>Continue</button>
+          ) : (
+            <button type="submit" disabled={props.postingJob || (props.company && props.company.verificationStatus !== 'approved')}>
+              {props.postingJob ? 'Submitting...' : 'Publish to moderation'}
+            </button>
+          )}
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function ManageJobs(props: {
+  jobs: Job[];
+  applications: Application[];
+  search: string;
+  statusFilter: string;
+  sort: JobSort;
+  setSearch: (value: string) => void;
+  setStatusFilter: (value: string) => void;
+  setSort: (value: JobSort) => void;
+}) {
+  return (
+    <section className="rec-panel">
+      <SectionHeader eyebrow="Manage Jobs" title="Dense job operations" />
+      <div className="rec-toolbar">
+        <label>
+          <Search className="h-4 w-4" />
+          <input value={props.search} onChange={(e) => props.setSearch(e.target.value)} placeholder="Search jobs, skills, location" />
+        </label>
+        <select value={props.statusFilter} onChange={(e) => props.setStatusFilter(e.target.value)}>
+          <option value="all">All statuses</option>
+          <option value="approved">Approved</option>
+          <option value="submitted">Submitted</option>
+          <option value="closed">Closed</option>
+          <option value="rejected">Rejected</option>
+          <option value="draft">Draft</option>
+        </select>
+        <select value={props.sort} onChange={(e) => props.setSort(e.target.value as JobSort)}>
+          <option value="recent">Newest</option>
+          <option value="status">Status</option>
+          <option value="applications">Applications</option>
+        </select>
+      </div>
+      <JobTable jobs={props.jobs} applications={props.applications} />
+    </section>
+  );
+}
+
+function JobTable({ jobs, applications }: { jobs: Job[]; applications: Application[] }) {
+  if (jobs.length === 0) return <EmptyState icon={BriefcaseBusiness} title="No jobs match the current filters" body="Adjust filters or post a new opening." />;
+  return (
+    <div className="rec-table-wrap">
+      <table className="rec-job-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Location</th>
+            <th>Applicants</th>
+            <th>Deadline</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((job) => (
+            <tr key={job.id}>
+              <td>
+                <strong>{job.title}</strong>
+                <span>{job.department} - {job.jobType}</span>
+              </td>
+              <td><StatusBadge status={job.status} /></td>
+              <td>{job.location}</td>
+              <td>{getJobApplicationCount(job.id, applications)}</td>
+              <td>{job.deadline || 'Open'}</td>
+              <td>
+                <div className="rec-row-actions">
+                  <button type="button" title="Edit"><Edit3 className="h-4 w-4" /></button>
+                  <button type="button" title="Duplicate"><Copy className="h-4 w-4" /></button>
+                  <button type="button" title="Pause"><PauseCircle className="h-4 w-4" /></button>
+                  <button type="button" title="Close"><XCircle className="h-4 w-4" /></button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ApplicantTracking({ applications, notes, setNotes, onReview, onMove }: {
+  applications: Application[];
+  notes: Record<string, string>;
+  setNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onReview: (app: Application) => void;
+  onMove: (app: Application, status: Application['status']) => void;
+}) {
+  if (applications.length === 0) return <EmptyState icon={UsersRound} title="No applicants yet" body="Forwarded and screened candidates will appear in this pipeline." />;
+  return (
+    <section className="rec-kanban">
+      {pipelineColumns.map((column) => {
+        const apps = applications.filter((app) => getPipelineColumn(app) === column.key);
+        return (
+          <PipelineColumn key={column.key} label={column.label} count={apps.length}>
+            {apps.map((app) => (
+              <ApplicantCard
+                key={app.id}
+                app={app}
+                note={notes[app.id] || ''}
+                setNote={(value) => setNotes((current) => ({ ...current, [app.id]: value }))}
+                onReview={() => onReview(app)}
+                onMove={(status) => onMove(app, status)}
+              />
+            ))}
+          </PipelineColumn>
+        );
+      })}
+    </section>
+  );
+}
+
+function PipelineColumn({ label, count, children }: { label: string; count: number; children: React.ReactNode }) {
+  return (
+    <section className="rec-pipeline-column">
+      <header>
+        <strong>{label}</strong>
+        <span>{count}</span>
+      </header>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function ApplicantCard({ app, note, setNote, onReview, onMove }: {
+  app: Application;
+  note: string;
+  setNote: (value: string) => void;
+  onReview: () => void;
+  onMove: (status: Application['status']) => void;
+}) {
+  return (
+    <article className="rec-applicant-card" draggable>
+      <div className="rec-applicant-top">
+        <span className="rec-score">{app.score}%</span>
+        <div>
+          <strong>{app.candidateName}</strong>
+          <small>{app.jobTitle}</small>
+        </div>
+        <StatusBadge status={app.status} />
+      </div>
+      <div className="rec-skill-tags">
+        {app.matchedSkills.slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}
+      </div>
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Candidate notes..." rows={2} />
+      <div className="rec-card-actions">
+        <button type="button" onClick={onReview}>Review</button>
+        <button type="button" onClick={() => onMove('interviewing')}>Interview</button>
+        <button type="button" onClick={() => onMove('selected')}>Offer</button>
+      </div>
+    </article>
+  );
+}
+
+function CompanyProfilePanel(props: {
+  company: Company | null;
+  values: Record<'companyName' | 'website' | 'linkedin' | 'industry' | 'companyEmail' | 'contactPerson' | 'phone' | 'documentsName', string>;
+  setters: {
+    setCompanyName: (value: string) => void;
+    setWebsite: (value: string) => void;
+    setLinkedin: (value: string) => void;
+    setIndustry: (value: string) => void;
+    setCompanyEmail: (value: string) => void;
+    setContactPerson: (value: string) => void;
+    setPhone: (value: string) => void;
+    setDocumentsName: (value: string) => void;
+  };
+  savingProfile: boolean;
+  dragActive: boolean;
+  isUploading: boolean;
+  uploadProgress: number;
+  documentError: string;
+  handleDrag: (event: React.DragEvent) => void;
+  handleDrop: (event: React.DragEvent) => void;
+  handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (event: React.FormEvent) => void;
+}) {
+  return (
+    <section className="rec-panel">
+      <SectionHeader eyebrow="Company Profile" title="Trusted hiring identity" />
+      <form onSubmit={props.onSubmit} className="rec-profile-grid">
+        <TextField label="Registered Legal Entity" value={props.values.companyName} onChange={props.setters.setCompanyName} required />
+        <TextField label="Industry" value={props.values.industry} onChange={props.setters.setIndustry} />
+        <TextField label="Website" value={props.values.website} onChange={props.setters.setWebsite} />
+        <TextField label="LinkedIn" value={props.values.linkedin} onChange={props.setters.setLinkedin} />
+        <TextField label="Company Email" value={props.values.companyEmail} onChange={props.setters.setCompanyEmail} type="email" />
+        <TextField label="Contact Person" value={props.values.contactPerson} onChange={props.setters.setContactPerson} />
+        <TextField label="Phone" value={props.values.phone} onChange={props.setters.setPhone} />
+        <div className={`rec-upload ${props.dragActive ? 'is-active' : ''}`} onDragEnter={props.handleDrag} onDragOver={props.handleDrag} onDragLeave={props.handleDrag} onDrop={props.handleDrop}>
+          <input id="company-doc-upload" type="file" className="hidden" onChange={props.handleFileChange} />
+          <label htmlFor="company-doc-upload">
+            <Upload className="h-5 w-5" />
+            <strong>{props.values.documentsName}</strong>
+            <span>{props.isUploading ? `Uploading ${props.uploadProgress}%` : 'Drop verification document or browse'}</span>
+          </label>
+          <input value={props.values.documentsName} readOnly />
+        </div>
+        {props.documentError && <p className="text-xs text-rose-600">{props.documentError}</p>}
+        {props.company?.documents?.length ? (
+          <div className="rec-profile-status">
+            <Eye className="h-5 w-5" />
+            <span>
+              Latest file: {props.company.documents[props.company.documents.length - 1]?.name}
+              {props.company.documents[props.company.documents.length - 1]?.url && (
+                <>
+                  {' '}<button type="button" onClick={() => window.open(props.company?.documents[props.company.documents.length - 1]?.url, '_blank', 'noopener,noreferrer')}>Preview</button>
+                </>
+              )}
+            </span>
+          </div>
+        ) : null}
+        <div className="rec-profile-status">
+          <ShieldCheck className="h-5 w-5" />
+          <span>Status: {props.company?.verificationStatus || 'pending'}</span>
+        </div>
+        <button type="submit" disabled={props.savingProfile}>{props.savingProfile ? 'Saving...' : 'Save company profile'}</button>
+      </form>
+    </section>
+  );
+}
+
+function RecruiterAnalytics({ jobs, applications }: { jobs: Job[]; applications: Application[] }) {
+  const hired = applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length;
+  const interviews = applications.filter((app) => app.status === 'interviewing').length;
+  const review = applications.filter((app) => app.status === 'under_review' || app.status === 'shortlisted' || app.status === 'forwarded').length;
+  return (
+    <section className="rec-analytics-grid">
+      <AnalyticsCard title="Application Trends" icon={LineChart} value={applications.length} bars={[30, 44, 38, 58, 72, 64, 84]} />
+      <AnalyticsCard title="Hiring Funnel" icon={Filter} value={`${hired} hires`} bars={[applications.length, review, interviews, hired].map((value) => Math.max(8, value * 18))} />
+      <AnalyticsCard title="Time-to-Hire" icon={Clock} value="18 days" bars={[55, 48, 42, 36, 31]} />
+      <AnalyticsCard title="Source Performance" icon={Target} value={`${jobs.length} roles`} bars={[72, 58, 42, 28]} />
+    </section>
+  );
+}
+
+function AnalyticsCard({ title, icon: Icon, value, bars }: { title: string; icon: React.ElementType; value: React.ReactNode; bars: number[] }) {
+  const max = Math.max(...bars, 1);
+  return (
+    <article className="rec-analytics-card">
+      <div>
+        <Icon className="h-5 w-5" />
+        <span>{title}</span>
+      </div>
+      <strong>{value}</strong>
+      <div className="rec-bars">
+        {bars.map((bar, index) => <span key={`${bar}-${index}`} style={{ height: `${Math.max(12, (bar / max) * 100)}%` }} />)}
+      </div>
+    </article>
+  );
+}
+
+function CandidateReviewModal(props: {
+  app: Application;
+  interviewDate: string;
+  setInterviewDate: (value: string) => void;
+  declineReason: string;
+  setDeclineReason: (value: string) => void;
+  schedulingStatus: boolean;
+  onClose: () => void;
+  onUpdate: (appId: string, payload: { status: string; interviewDate?: string; rejectionReason?: string; finalResult?: string }) => void;
+}) {
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocused = useRef<Element | null>(null);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement;
+    const focusableSelector = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
+    const focusFirst = window.setTimeout(() => {
+      const first = modalRef.current?.querySelector<HTMLElement>(focusableSelector);
+      first?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        props.onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !modalRef.current) return;
+      const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => !element.hasAttribute('disabled'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.clearTimeout(focusFirst);
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused.current instanceof HTMLElement) previouslyFocused.current.focus();
+    };
+  }, []);
+
+  return (
+    <div className="rec-modal-backdrop" onClick={props.onClose}>
+      <div ref={modalRef} className="rec-review-modal" role="dialog" aria-modal="true" aria-labelledby="candidate-review-title" tabIndex={-1} onClick={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <span>Candidate Review</span>
+            <h3 id="candidate-review-title">{props.app.candidateName}</h3>
+            <p>{props.app.jobTitle} - {props.app.companyName}</p>
+          </div>
+          <button type="button" onClick={props.onClose} aria-label="Close candidate review"><XCircle className="h-5 w-5" /></button>
+        </header>
+        <section className="rec-review-body">
+          <div className="rec-review-profile">
+            <span className="rec-score large">{props.app.score}%</span>
+            <StatusBadge status={props.app.status} />
+            <PreviewStat icon={FileText} label="Resume" value={props.app.candidateEmail} />
+            <PreviewStat icon={GraduationCap} label="Education" value="Available in candidate profile" />
+            <PreviewStat icon={BriefcaseBusiness} label="Experience" value="Parsed from resume and profile" />
+          </div>
+          <div className="rec-skill-review">
+            <SkillBlock title="Matched Skills" skills={props.app.matchedSkills} />
+            <SkillBlock title="Missing Skills" skills={props.app.missingSkills} />
+          </div>
+          <div className="rec-review-actions">
+            <button type="button" onClick={() => props.onUpdate(props.app.id, { status: 'shortlisted' })}>Shortlist</button>
+            <button type="button" onClick={() => props.onUpdate(props.app.id, { status: 'forwarded' })}>Move stage</button>
+            <div>
+              <input type="datetime-local" value={props.interviewDate} onChange={(e) => props.setInterviewDate(e.target.value)} />
+              <button type="button" disabled={props.schedulingStatus} onClick={() => props.onUpdate(props.app.id, { status: 'interviewing', interviewDate: props.interviewDate })}>Schedule Interview</button>
+            </div>
+            <button type="button" onClick={() => props.onUpdate(props.app.id, { status: 'selected', finalResult: 'hired' })}>Move to Offer</button>
+            <div>
+              <input value={props.declineReason} onChange={(e) => props.setDeclineReason(e.target.value)} placeholder="Rejection reason" />
+              <button type="button" disabled={!props.declineReason || props.schedulingStatus} onClick={() => props.onUpdate(props.app.id, { status: 'rejected', rejectionReason: props.declineReason })}>Reject</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange, placeholder, type = 'text', required }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string; required?: boolean }) {
+  return (
+    <label className="rec-field">
+      <span>{label}</span>
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} required={required} />
+    </label>
+  );
+}
+
+function TextArea({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean }) {
+  return (
+    <label className="rec-field wide">
+      <span>{label}</span>
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={5} required={required} />
+    </label>
+  );
+}
+
+function AlertBox({ tone, message }: { tone: 'success' | 'danger'; message: string }) {
+  return <div className={`rec-alert ${tone}`}>{message}</div>;
+}
+
+function PreviewStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
+  return (
+    <div className="rec-preview-stat">
+      <Icon className="h-4 w-4" />
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function JobPreview({ title, companyName, location, salary, description, requirementsStr }: { title: string; companyName: string; location: string; salary: string; description: string; requirementsStr: string }) {
+  const skills = requirementsStr.split(',').map((skill) => skill.trim()).filter(Boolean);
+  return (
+    <article className="rec-job-preview">
+      <span>Preview</span>
+      <h3>{title || 'Untitled role'}</h3>
+      <p>{companyName} - {location || 'Location TBD'}</p>
+      <strong>{salary || 'Compensation TBD'}</strong>
+      <div>{skills.map((skill) => <em key={skill}>{skill}</em>)}</div>
+      <small>{description || 'Role description preview will appear here.'}</small>
+    </article>
+  );
+}
+
+function SkillBlock({ title, skills }: { title: string; skills: string[] }) {
+  return (
+    <div className="rec-skill-block">
+      <strong>{title}</strong>
+      <div>{skills.length ? skills.map((skill) => <span key={skill}>{skill}</span>) : <small>None listed</small>}</div>
+    </div>
+  );
+}
+
+function MiniFunnel({ applications }: { applications: Application[] }) {
+  const counts = pipelineColumns.map((column) => applications.filter((app) => getPipelineColumn(app) === column.key).length);
+  const max = Math.max(...counts, 1);
+  return (
+    <div className="rec-mini-funnel">
+      {pipelineColumns.map((column, index) => (
+        <div key={column.key}>
+          <span>{column.label}</span>
+          <strong>{counts[index]}</strong>
+          <em style={{ width: `${Math.max(8, (counts[index] / max) * 100)}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, body }: { icon: React.ElementType; title: string; body: string }) {
+  const hint = title.includes('jobs')
+    ? 'Clear filters or publish a new role when ready.'
+    : 'Review forwarded profiles as soon as they arrive to keep momentum.';
+  return (
+    <section className="rec-empty">
+      <Icon className="h-8 w-8" />
+      <strong>{title}</strong>
+      <span>{body}</span>
+      <small>{hint}</small>
+    </section>
+  );
+}
+
+function StatusBadge({ status }: { status: Job['status'] | Application['status'] }) {
+  const tone = status === 'rejected' ? 'danger' : status === 'selected' || status === 'approved' ? 'success' : status === 'interviewing' || status === 'forwarded' || status === 'submitted' ? 'active' : 'neutral';
+  return <span className={`rec-status ${tone}`}>{status.replace('_', ' ')}</span>;
+}
+
+function getJobApplicationCount(jobId: string, applications: Application[]) {
+  return applications.filter((app) => app.jobId === jobId).length;
+}
+
+function getPipelineColumn(app: Application) {
+  if (app.status === 'selected' || app.finalResult === 'hired') return 'hired';
+  if (app.status === 'interviewing') return 'interview';
+  if (app.status === 'forwarded') return 'offer';
+  if (app.status === 'under_review' || app.status === 'shortlisted') return 'reviewing';
+  return 'applied';
 }

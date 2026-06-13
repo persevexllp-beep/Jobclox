@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef } from 'react';
-import { motion, useAnimation } from 'motion/react';
-import { tokens } from '../../tokens';
+import React, { useEffect } from 'react';
+import { motion, useMotionTemplate, useMotionValue, useSpring } from 'motion/react';
 
 interface CareerFlowBackgroundProps {
   className?: string;
@@ -14,139 +13,109 @@ interface CareerFlowBackgroundProps {
 
 export default function CareerFlowBackground({
   className = '',
-  particleCount = 50,
+  particleCount = 34,
 }: CareerFlowBackgroundProps) {
-  const controls = useAnimation();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cursorX = useMotionValue(50);
+  const cursorY = useMotionValue(35);
+  const springX = useSpring(cursorX, { stiffness: 35, damping: 28, mass: 1.4 });
+  const springY = useSpring(cursorY, { stiffness: 35, damping: 28, mass: 1.4 });
+  const cursorGlow = useMotionTemplate`radial-gradient(circle at ${springX}% ${springY}%, rgba(34, 211, 238, 0.22), transparent 34%)`;
 
   useEffect(() => {
-    controls.start('animate');
-  }, [controls]);
+    const handlePointerMove = (event: PointerEvent) => {
+      cursorX.set((event.clientX / window.innerWidth) * 100);
+      cursorY.set((event.clientY / window.innerHeight) * 100);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+  }, [cursorX, cursorY]);
 
   return (
-    <div className={`fixed inset-0 pointer-events-none overflow-hidden ${className}`}>
-      {/* Ambient gradient background */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `
-            ${tokens.colors.gradients.ambient1},
-            ${tokens.colors.gradients.ambient2},
-            ${tokens.colors.gradients.ambient3}
-          `,
-          backgroundAttachment: 'fixed',
-        }}
-      />
-
-      {/* Morphing gradient orbs */}
+    <div className={`persevex-aurora fixed inset-0 pointer-events-none overflow-hidden ${className}`}>
       <motion.div
-        className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-30"
-        style={{ background: tokens.colors.gradients.orb1 }}
-        animate={{
-          scale: [1, 1.2, 1],
-          x: [0, 50, -50, 0],
-          y: [0, -30, 30, 0],
-        }}
-        transition={{
-          duration: 8000,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
+        className="absolute inset-[-16%]"
+        style={{ background: cursorGlow }}
       />
 
       <motion.div
-        className="absolute top-3/4 right-1/4 w-80 h-80 rounded-full blur-3xl opacity-25"
-        style={{ background: tokens.colors.gradients.orb2 }}
+        className="aurora-field aurora-field-one"
         animate={{
-          scale: [1, 1.3, 1],
-          x: [0, -40, 40, 0],
-          y: [0, 40, -40, 0],
+          backgroundPosition: ['0% 40%', '80% 20%', '20% 90%', '0% 40%'],
+          filter: ['hue-rotate(0deg)', 'hue-rotate(18deg)', 'hue-rotate(-8deg)', 'hue-rotate(0deg)'],
         }}
-        transition={{
-          duration: 10000,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 1,
-        }}
+        transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
       />
-
       <motion.div
-        className="absolute bottom-1/4 left-1/2 w-72 h-72 rounded-full blur-3xl opacity-20"
-        style={{ background: tokens.colors.gradients.orb3 }}
+        className="aurora-field aurora-field-two"
         animate={{
-          scale: [1, 1.25, 1],
-          x: [0, 30, -30, 0],
-          y: [0, -50, 50, 0],
+          backgroundPosition: ['100% 0%', '30% 70%', '90% 100%', '100% 0%'],
+          opacity: [0.52, 0.72, 0.58, 0.52],
         }}
-        transition={{
-          duration: 9000,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 2,
+        transition={{ duration: 34, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        className="aurora-grid"
+        animate={{
+          x: [0, -24, 0],
+          y: [0, 18, 0],
+          opacity: [0.34, 0.48, 0.34],
         }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      {/* Particle system */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 opacity-70">
         {Array.from({ length: particleCount }).map((_, i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full"
+            className="absolute h-px w-16"
             style={{
-              width: Math.random() * 4 + 2,
-              height: Math.random() * 4 + 2,
-              background: i % 3 === 0 
-                ? tokens.colors.primary.emerald[500]
-                : i % 3 === 1
-                ? tokens.colors.primary.blue[500]
-                : tokens.colors.primary.violet[500],
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              background: 'linear-gradient(90deg, transparent, rgba(125, 249, 255, 0.5), transparent)',
+              left: `${(i * 37) % 100}%`,
+              top: `${(i * 19) % 100}%`,
+              rotate: `${-18 + (i % 9) * 5}deg`,
             }}
             animate={{
-              opacity: [0.3, 0.7, 0.3],
-              scale: [1, 1.2, 1],
-              y: [0, -100, -200],
-              x: [0, Math.random() * 50 - 25, Math.random() * 100 - 50],
+              opacity: [0, 0.78, 0],
+              x: ['-16vw', '18vw'],
+              y: ['8vh', '-10vh'],
             }}
             transition={{
-              duration: Math.random() * 5000 + 5000,
+              duration: 9 + (i % 7),
               repeat: Infinity,
-              ease: 'easeInOut',
-              delay: Math.random() * 2000,
+              ease: 'linear',
+              delay: (i % 11) * 0.8,
             }}
           />
         ))}
       </div>
 
-      {/* SVG Career Flow Paths */}
-      <svg className="absolute inset-0 w-full h-full opacity-10" xmlns="http://www.w3.org/2000/svg">
+      <svg className="absolute inset-0 h-full w-full opacity-70" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="persevexBackgroundFlow" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#6366f1" stopOpacity="0" />
+            <stop offset="35%" stopColor="#8b5cf6" stopOpacity="0.48" />
+            <stop offset="68%" stopColor="#22d3ee" stopOpacity="0.56" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </linearGradient>
+        </defs>
         <motion.path
-          d="M0,500 Q400,300 800,500 T1600,500"
-          stroke={tokens.colors.primary.emerald[500]}
-          strokeWidth="2"
+          d="M-80 590 C 220 360, 460 760, 760 470 S 1160 300, 1520 520"
+          stroke="url(#persevexBackgroundFlow)"
+          strokeWidth="1.2"
           fill="none"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2000, ease: 'easeInOut' }}
+          strokeDasharray="10 22"
+          animate={{ strokeDashoffset: [0, -128], opacity: [0.28, 0.72, 0.28] }}
+          transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
         />
         <motion.path
-          d="M0,600 Q400,400 800,600 T1600,600"
-          stroke={tokens.colors.primary.blue[500]}
-          strokeWidth="2"
+          d="M-120 710 C 240 500, 530 780, 850 610 S 1130 420, 1540 660"
+          stroke="url(#persevexBackgroundFlow)"
+          strokeWidth="1"
           fill="none"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2000, ease: 'easeInOut', delay: 0.5 }}
-        />
-        <motion.path
-          d="M0,700 Q400,500 800,700 T1600,700"
-          stroke={tokens.colors.primary.violet[500]}
-          strokeWidth="2"
-          fill="none"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2000, ease: 'easeInOut', delay: 1 }}
+          strokeDasharray="4 18"
+          animate={{ strokeDashoffset: [0, -96], opacity: [0.18, 0.52, 0.18] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
         />
       </svg>
     </div>

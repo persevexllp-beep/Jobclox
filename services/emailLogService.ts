@@ -1,12 +1,6 @@
 import { EmailAlert } from '../src/types';
 import { supabaseAdmin } from '../lib/supabase';
 
-export const USE_SUPABASE_EMAIL_LOGS = true;
-
-type JsonEmailLogDB = {
-  emailAlerts: EmailAlert[];
-};
-
 type SupabaseEmailLogRow = {
   id: string;
   user_id: string | null;
@@ -33,27 +27,14 @@ export type CreateEmailLogInput = {
   createdAt?: string;
 };
 
-let jsonDB: JsonEmailLogDB | null = null;
-
-export function setJsonDB(db: JsonEmailLogDB): void {
-  jsonDB = db;
-}
+const EMAIL_LOG_SELECT =
+  'id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event';
 
 function requireSupabaseAdmin() {
   if (!supabaseAdmin) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required when USE_SUPABASE_EMAIL_LOGS is true');
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for email log persistence');
   }
   return supabaseAdmin;
-}
-
-function getJsonDB(): JsonEmailLogDB {
-  if (!jsonDB) {
-    throw new Error('JSON DB not initialized');
-  }
-  if (!jsonDB.emailAlerts) {
-    jsonDB.emailAlerts = [];
-  }
-  return jsonDB;
 }
 
 function mapSupabaseEmailLog(row: SupabaseEmailLogRow): EmailAlert {
@@ -70,62 +51,57 @@ function mapSupabaseEmailLog(row: SupabaseEmailLogRow): EmailAlert {
 }
 
 export async function getEmailLogs(): Promise<EmailAlert[]> {
-  if (USE_SUPABASE_EMAIL_LOGS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('email_logs')
-      .select('id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event')
-      .order('created_at', { ascending: false });
+  const { data, error } = await requireSupabaseAdmin()
+    .from('email_logs')
+    .select(EMAIL_LOG_SELECT)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(row => mapSupabaseEmailLog(row as SupabaseEmailLogRow));
+  if (error) {
+    throw error;
   }
 
-  return [...getJsonDB().emailAlerts];
+  return (data || []).map(row => mapSupabaseEmailLog(row as SupabaseEmailLogRow));
+}
+
+export async function getEmailLogById(id: string): Promise<EmailAlert | null> {
+  const { data, error } = await requireSupabaseAdmin()
+    .from('email_logs')
+    .select(EMAIL_LOG_SELECT)
+    .eq('id', id)
+    .maybeSingle<SupabaseEmailLogRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? mapSupabaseEmailLog(data) : null;
 }
 
 export async function createEmailLog(input: CreateEmailLogInput): Promise<EmailAlert> {
-  if (USE_SUPABASE_EMAIL_LOGS) {
-    const id = input.id || `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const createdAt = input.createdAt || new Date().toISOString();
-    const { data, error } = await requireSupabaseAdmin()
-      .from('email_logs')
-      .insert({
-        id,
-        user_id: input.userId || null,
-        recipient: input.recipientEmail,
-        subject: input.subject,
-        template: input.body,
-        status: input.status || 'delivered',
-        error_message: input.errorMessage || null,
-        created_at: createdAt,
-        recipient_name: input.recipientName,
-        triggered_by_event: input.triggeredByEvent,
-      })
-      .select('id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event')
-      .single<SupabaseEmailLogRow>();
+  const id = input.id || `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const createdAt = input.createdAt || new Date().toISOString();
+  const { data, error } = await requireSupabaseAdmin()
+    .from('email_logs')
+    .insert({
+      id,
+      user_id: input.userId || null,
+      recipient: input.recipientEmail,
+      subject: input.subject,
+      template: input.body,
+      status: input.status || 'delivered',
+      error_message: input.errorMessage || null,
+      created_at: createdAt,
+      recipient_name: input.recipientName,
+      triggered_by_event: input.triggeredByEvent,
+    })
+    .select(EMAIL_LOG_SELECT)
+    .single<SupabaseEmailLogRow>();
 
-    if (error) {
-      throw error;
-    }
-
-    return mapSupabaseEmailLog(data);
+  if (error) {
+    throw error;
   }
 
-  const emailLog: EmailAlert = {
-    id: input.id || `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    recipientEmail: input.recipientEmail,
-    recipientName: input.recipientName,
-    subject: input.subject,
-    body: input.body,
-    status: input.status || 'delivered',
-    triggeredByEvent: input.triggeredByEvent,
-    createdAt: input.createdAt || new Date().toISOString(),
-  };
-  getJsonDB().emailAlerts.push(emailLog);
-  return emailLog;
+  return mapSupabaseEmailLog(data);
 }
 
 export async function updateEmailLogStatus(
@@ -133,43 +109,30 @@ export async function updateEmailLogStatus(
   status: EmailAlert['status'],
   errorMessage?: string
 ): Promise<EmailAlert | null> {
-  if (USE_SUPABASE_EMAIL_LOGS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('email_logs')
-      .update({ status, error_message: errorMessage || null })
-      .eq('id', id)
-      .select('id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event')
-      .maybeSingle<SupabaseEmailLogRow>();
+  const { data, error } = await requireSupabaseAdmin()
+    .from('email_logs')
+    .update({ status, error_message: errorMessage || null })
+    .eq('id', id)
+    .select(EMAIL_LOG_SELECT)
+    .maybeSingle<SupabaseEmailLogRow>();
 
-    if (error) {
-      throw error;
-    }
-
-    return data ? mapSupabaseEmailLog(data) : null;
+  if (error) {
+    throw error;
   }
 
-  const emailLog = getJsonDB().emailAlerts.find(item => item.id === id);
-  if (!emailLog) {
-    return null;
-  }
-  emailLog.status = status;
-  return emailLog;
+  return data ? mapSupabaseEmailLog(data) : null;
 }
 
 export async function getEmailLogsByUser(userId: string): Promise<EmailAlert[]> {
-  if (USE_SUPABASE_EMAIL_LOGS) {
-    const { data, error } = await requireSupabaseAdmin()
-      .from('email_logs')
-      .select('id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+  const { data, error } = await requireSupabaseAdmin()
+    .from('email_logs')
+    .select(EMAIL_LOG_SELECT)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
-
-    return (data || []).map(row => mapSupabaseEmailLog(row as SupabaseEmailLogRow));
+  if (error) {
+    throw error;
   }
 
-  return [...getJsonDB().emailAlerts];
+  return (data || []).map(row => mapSupabaseEmailLog(row as SupabaseEmailLogRow));
 }

@@ -64,11 +64,11 @@ export default function JobCard({ job, onApply, className = '' }: JobCardProps) 
         ${className}
       `}
       style={{
-        background: 'rgba(15, 23, 42, 0.75)',
-        borderColor: isHovered ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+        background: 'var(--flow-glass-bg, rgba(255, 255, 255, 0.75))',
+        borderColor: isHovered ? 'rgba(99, 102, 241, 0.45)' : 'var(--flow-glass-border, rgba(99, 102, 241, 0.12))',
         boxShadow: isHovered 
-          ? '0 0 30px rgba(16, 185, 129, 0.3), 0 10px 15px rgba(0, 0, 0, 0.1)' 
-          : '0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04)',
+          ? '0 0 30px rgba(99, 102, 241, 0.2), 0 10px 15px rgba(0, 0, 0, 0.08)' 
+          : '0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03)',
       }}
       initial={{ opacity: 0, y: 20, rotate: 5 }}
       animate={{ 
@@ -98,7 +98,7 @@ export default function JobCard({ job, onApply, className = '' }: JobCardProps) 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           style={{
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(34, 211, 238, 0.06) 50%, rgba(16, 185, 129, 0.08) 100%)',
           }}
           transition={{ duration: 0.3 }}
         />
@@ -217,7 +217,8 @@ export default function JobCard({ job, onApply, className = '' }: JobCardProps) 
         </div>
 
         <motion.button
-          className="px-4 py-2 bg-slate-900 text-white hover:bg-emerald-600 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+          className="px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors text-white"
+          style={{ background: 'linear-gradient(135deg, #6366f1 0%, #5b21b6 50%, #10b981 100%)' }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={(e) => {

@@ -15,7 +15,29 @@
 // ============================================================================
 
 export const colors = {
-  // Career Flow Primary Palette
+  // Career Flow OS — Primary Palette
+  careerFlow: {
+    indigo: {
+      400: '#818cf8',
+      500: '#6366f1', // Electric Indigo
+      600: '#4f46e5',
+      700: '#4338ca',
+    },
+    violet: {
+      500: '#7c3aed',
+      700: '#5b21b6', // Deep Violet
+      900: '#4c1d95',
+    },
+    cyan: {
+      400: '#22d3ee', // Aurora Cyan
+      500: '#06b6d4',
+    },
+    green: '#10b981',   // Career Green
+    blue: '#3b82f6',    // Future Blue
+    gold: '#fbbf24',    // Achievement Gold
+  },
+
+  // Career Flow Primary Palette (legacy compat)
   primary: {
     emerald: {
       50: '#ecfdf5',
@@ -110,8 +132,12 @@ export const colors = {
 
   // Gradients
   gradients: {
-    // Career Flow Gradient
-    primary: 'linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #8b5cf6 100%)',
+    // Career Flow OS Signature Gradient
+    careerFlow: 'linear-gradient(135deg, #6366f1 0%, #5b21b6 35%, #22d3ee 70%, #10b981 100%)',
+    careerFlowSoft: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(91, 33, 182, 0.12) 35%, rgba(34, 211, 238, 0.1) 70%, rgba(16, 185, 129, 0.12) 100%)',
+
+    // Career Flow Gradient (legacy)
+    primary: 'linear-gradient(135deg, #6366f1 0%, #3b82f6 40%, #22d3ee 70%, #10b981 100%)',
     
     // Semantic Gradients
     success: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
@@ -123,15 +149,17 @@ export const colors = {
     glassDark: 'linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.25) 100%)',
     glassLight: 'linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)',
     
-    // Ambient Gradients
-    ambient1: 'radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.07) 0px, transparent 40%)',
-    ambient2: 'radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.05) 0px, transparent 45%)',
-    ambient3: 'radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.06) 0px, transparent 50%)',
-    
+    // Ambient Gradients — Career Flow OS mesh
+    ambient1: 'radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 45%)',
+    ambient2: 'radial-gradient(at 100% 0%, rgba(34, 211, 238, 0.08) 0px, transparent 50%)',
+    ambient3: 'radial-gradient(at 50% 100%, rgba(91, 33, 182, 0.1) 0px, transparent 55%)',
+    ambient4: 'radial-gradient(at 80% 80%, rgba(16, 185, 129, 0.06) 0px, transparent 40%)',
+
     // Orb Gradients
-    orb1: 'radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%)',
-    orb2: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
-    orb3: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)',
+    orb1: 'radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, transparent 70%)',
+    orb2: 'radial-gradient(circle, rgba(34, 211, 238, 0.3) 0%, transparent 70%)',
+    orb3: 'radial-gradient(circle, rgba(91, 33, 182, 0.35) 0%, transparent 70%)',
+    orb4: 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%)',
   },
 } as const;
 
@@ -143,8 +171,9 @@ export const typography = {
   // Font Families
   families: {
     sans: 'Inter, ui-sans-serif, system-ui, sans-serif',
-    display: 'Space Grotesk, sans-serif',
-    mono: 'JetBrains Mono, ui-monospace, SFMono-Regular, monospace',
+    display: 'Sora, ui-sans-serif, system-ui, sans-serif',
+    metric: 'Space Grotesk, ui-sans-serif, system-ui, sans-serif',
+    mono: 'Space Grotesk, ui-sans-serif, system-ui, sans-serif',
   },
 
   // Font Sizes - Display Scale
@@ -415,15 +444,20 @@ export const glassmorphism = {
 // ============================================================================
 
 export const careerFlow = {
-  // Animation States
+  // Journey stages — Career Flow OS
+  journeyStages: ['training', 'internship', 'applications', 'interviews', 'placement'] as const,
+
+  // Animation States (legacy)
   stages: ['training', 'internship', 'placement', 'growth'] as const,
 
-  // Progress Colors
+  // Progress Colors — Career Flow OS
   progress: {
-    training: '#3b82f6',
-    internship: '#8b5cf6',
+    training: '#6366f1',
+    internship: '#7c3aed',
+    applications: '#22d3ee',
+    interviews: '#3b82f6',
     placement: '#10b981',
-    growth: '#f59e0b',
+    growth: '#fbbf24',
   },
 
   // Particle Configuration

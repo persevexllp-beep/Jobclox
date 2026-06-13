@@ -87,7 +87,7 @@ export default function AnimatedButton({
   // Variant styles
   const variantStyles = {
     primary: {
-      background: tokens.colors.gradients.primary,
+      background: tokens.colors.gradients.careerFlow,
       color: 'white',
       border: 'none',
     },

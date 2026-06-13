@@ -3,16 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { User, AppNotification } from './types';
 import Navbar from './components/Navbar';
-import AuthScreen from './components/AuthScreen';
-import CandidateDashboard from './components/CandidateDashboard';
-import CompanyDashboard from './components/CompanyDashboard';
-import AdminDashboard from './components/AdminDashboard';
+import BrandLogo from './components/BrandLogo';
+
+const AuthScreen = lazy(() => import('./components/AuthScreen'));
+const CandidateDashboard = lazy(() => import('./components/CandidateDashboard'));
+const CompanyDashboard = lazy(() => import('./components/CompanyDashboard'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -27,7 +30,6 @@ export default function App() {
     return 'light';
   });
 
-  // Track and persist theme to document class list & local storage
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -38,13 +40,34 @@ export default function App() {
     localStorage.setItem('persevex_theme', theme);
   }, [theme]);
 
-  // Load user session from local storage on bootstrap
   useEffect(() => {
     const saved = localStorage.getItem('persevex_session_user');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setCurrentUser(parsed);
+        if (parsed?.user && parsed?.token) {
+          fetch('/api/auth/me', {
+            headers: {
+              Authorization: `Bearer ${parsed.token}`,
+            },
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error('Session expired');
+              }
+              return response.json();
+            })
+            .then((data) => {
+              setCurrentUser(data.user);
+              setAuthToken(parsed.token);
+            })
+            .catch((err) => {
+              console.error('Session validation error', err);
+              localStorage.removeItem('persevex_session_user');
+            })
+            .finally(() => setInitialized(true));
+          return;
+        }
       } catch (err) {
         console.error('Session parsing error', err);
       }
@@ -52,7 +75,6 @@ export default function App() {
     setInitialized(true);
   }, []);
 
-  // Poll for notifications periodically if a user is logged in
   useEffect(() => {
     if (!currentUser) {
       setNotifications([]);
@@ -68,15 +90,13 @@ export default function App() {
     return () => clearInterval(interval);
   }, [currentUser]);
 
-  // General server API request proxy wrapper
-  // Automatically appends our authorized header "x-user-id" to make sandbox state robust and clean!
   const apiFetch = async (url: string, options: RequestInit = {}, silent: boolean = false) => {
     const headers = {
       ...(options.headers || {}),
     } as Record<string, string>;
 
-    if (currentUser) {
-      headers['x-user-id'] = currentUser.id;
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
     }
 
     try {
@@ -91,7 +111,7 @@ export default function App() {
         try {
           errorJson = JSON.parse(errorText);
         } catch {
-          // not json
+          // Response is not JSON.
         }
         throw new Error(errorJson?.error || errorJson?.message || `Server responded with status ${response.status}`);
       }
@@ -110,25 +130,26 @@ export default function App() {
     try {
       const data = await apiFetch('/api/notifications', {}, true);
       if (data && data.notifications) {
-        // Sort notifications descending by date
         const sorted = [...data.notifications].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         setNotifications(sorted);
       }
     } catch (err) {
-      // Slidely silence network polls errors to prevent blocking screen
+      // Keep polling errors silent so transient network issues do not block the workspace.
     }
   };
 
-  const handleLoginSuccess = (user: User) => {
+  const handleLoginSuccess = (user: User, token: string) => {
     setCurrentUser(user);
-    localStorage.setItem('persevex_session_user', JSON.stringify(user));
+    setAuthToken(token);
+    localStorage.setItem('persevex_session_user', JSON.stringify({ user, token }));
     setApiError(null);
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setAuthToken(null);
     localStorage.removeItem('persevex_session_user');
     setNotifications([]);
     setApiError(null);
@@ -139,7 +160,7 @@ export default function App() {
       await fetch(`/api/notifications/${id}/read`, {
         method: 'POST',
         headers: {
-          'x-user-id': currentUser?.id || '',
+          Authorization: authToken ? `Bearer ${authToken}` : '',
         },
       });
       fetchNotifications();
@@ -153,7 +174,7 @@ export default function App() {
       await fetch('/api/notifications/read-all', {
         method: 'POST',
         headers: {
-          'x-user-id': currentUser?.id || '',
+          Authorization: authToken ? `Bearer ${authToken}` : '',
         },
       });
       fetchNotifications();
@@ -164,33 +185,26 @@ export default function App() {
 
   if (!initialized) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="text-xs text-slate-500 mt-2 font-mono uppercase tracking-wider">
-            Loading Persevex Workspace...
-          </p>
+      <div className="pvx-boot-screen">
+        <div className="pvx-boot-card" role="status" aria-live="polite">
+          <BrandLogo subline="Hiring & Placement Engine" />
+          <p>Loading verified jobs and placement routes</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Alert Banner for network glitches */}
+    <div className="pvx-app-shell">
       {apiError && (
-        <div className="bg-red-650 bg-red-600 text-white text-xs px-4 py-2 text-center relative flex items-center justify-center font-semibold">
-          <span>Communication Exception: {apiError}</span>
-          <button
-            onClick={() => setApiError(null)}
-            className="absolute right-4 font-bold text-sm cursor-pointer hover:opacity-80"
-          >
-            ✕
+        <div className="pvx-error-banner" role="alert">
+          <span>{apiError}</span>
+          <button type="button" onClick={() => setApiError(null)} aria-label="Dismiss error">
+            Close
           </button>
         </div>
       )}
 
-      {/* Main Navigation Header */}
       <Navbar
         currentUser={currentUser}
         notifications={notifications}
@@ -201,33 +215,42 @@ export default function App() {
         onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
       />
 
-      <main className="flex-grow">
-        {!currentUser ? (
-          <AuthScreen onLoginSuccess={handleLoginSuccess} apiFetch={apiFetch} />
-        ) : (
-          <div className="fade-in duration-300">
-            {currentUser.role === 'admin' && (
-              <AdminDashboard currentUser={currentUser} apiFetch={apiFetch} theme={theme} />
-            )}
-            {currentUser.role === 'company' && (
-              <CompanyDashboard currentUser={currentUser} apiFetch={apiFetch} />
-            )}
-            {currentUser.role === 'candidate' && (
-              <CandidateDashboard currentUser={currentUser} apiFetch={apiFetch} />
-            )}
-          </div>
-        )}
+      <main className="pvx-main">
+        <Suspense fallback={<WorkspaceLoading />}>
+          {!currentUser ? (
+            <AuthScreen onLoginSuccess={handleLoginSuccess} apiFetch={apiFetch} />
+          ) : (
+            <div className="platform-shell fade-in duration-300">
+              {currentUser.role === 'admin' && (
+                <AdminDashboard currentUser={currentUser} apiFetch={apiFetch} theme={theme} />
+              )}
+              {currentUser.role === 'company' && (
+                <CompanyDashboard currentUser={currentUser} apiFetch={apiFetch} />
+              )}
+              {currentUser.role === 'candidate' && (
+                <CandidateDashboard currentUser={currentUser} apiFetch={apiFetch} />
+              )}
+            </div>
+          )}
+        </Suspense>
       </main>
 
-      {/* Humble Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-slate-500 text-xs mt-auto">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <span>&copy; {new Date().getFullYear()} Persevex Ltd. All rights reserved.</span>
-          <span className="font-mono text-[10px] text-slate-600">
-            Production Build Gateway: 18-Day MVP Solution Sandbox
-          </span>
+      <footer className="pvx-footer">
+        <div>
+          <BrandLogo subline="Jobs • Internships • Placement" />
+          <span>&copy; {new Date().getFullYear()} Persevex</span>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function WorkspaceLoading() {
+  return (
+    <div className="pvx-workspace-loading" role="status" aria-live="polite">
+      <BrandLogo subline="Hiring & Placement Engine" />
+      <strong>Loading jobs</strong>
+      <p>Preparing opportunities and application tracking</p>
     </div>
   );
 }

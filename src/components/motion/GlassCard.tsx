@@ -10,6 +10,7 @@ import { tokens } from '../../tokens';
 interface GlassCardProps {
   children: React.ReactNode;
   className?: string;
+  variant?: 'dark' | 'light' | 'adaptive';
   hover?: boolean;
   tilt?: boolean;
   glow?: boolean;
@@ -17,9 +18,25 @@ interface GlassCardProps {
   onClick?: () => void;
 }
 
+const VARIANT_STYLES = {
+  dark: {
+    background: 'rgba(15, 23, 42, 0.75)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  light: {
+    background: 'rgba(255, 255, 255, 0.72)',
+    borderColor: 'rgba(99, 102, 241, 0.12)',
+  },
+  adaptive: {
+    background: 'var(--flow-glass-bg, rgba(255, 255, 255, 0.72))',
+    borderColor: 'var(--flow-glass-border, rgba(99, 102, 241, 0.12))',
+  },
+};
+
 export default function GlassCard({
   children,
   className = '',
+  variant = 'adaptive',
   hover = true,
   tilt = true,
   glow = true,
@@ -58,6 +75,8 @@ export default function GlassCard({
     setIsHovered(false);
   };
 
+  const surface = VARIANT_STYLES[variant];
+
   return (
     <motion.div
       ref={ref}
@@ -70,11 +89,11 @@ export default function GlassCard({
         ${className}
       `}
       style={{
-        background: 'rgba(15, 23, 42, 0.75)',
-        borderColor: isHovered && glow ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+        background: surface.background,
+        borderColor: isHovered && glow ? 'rgba(99, 102, 241, 0.35)' : surface.borderColor,
         boxShadow: isHovered && glow 
-          ? '0 0 30px rgba(16, 185, 129, 0.3), 0 10px 15px rgba(0, 0, 0, 0.1)' 
-          : '0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04)',
+          ? '0 0 30px rgba(99, 102, 241, 0.2), 0 10px 15px rgba(0, 0, 0, 0.08)' 
+          : '0 4px 6px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02)',
       }}
       initial={{ opacity: 0, y: 20, rotate: 5 }}
       animate={{ 
@@ -104,7 +123,7 @@ export default function GlassCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           style={{
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(34, 211, 238, 0.06) 50%, rgba(16, 185, 129, 0.08) 100%)',
           }}
           transition={{ duration: 0.3 }}
         />

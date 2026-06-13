@@ -207,7 +207,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="platform-page admin-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       
       {/* Quick stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
@@ -461,8 +461,27 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                       <span className="text-slate-400 font-medium">Uploaded Document File:</span>
                       <div className="inline-flex items-center px-2 py-1 bg-slate-100 hover:bg-slate-205 border border-slate-200 rounded font-mono text-[10px] text-slate-700">
                         <FileText className="h-3 w-3 mr-1 text-slate-400" />
-                        <span>{c.documents[0]?.name || 'certificate_incorporate.pdf'}</span>
+                        <span>{c.documents[c.documents.length - 1]?.name || 'certificate_incorporate.pdf'}</span>
                       </div>
+                      {c.documents[c.documents.length - 1]?.url && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => window.open(c.documents[c.documents.length - 1]?.url, '_blank', 'noopener,noreferrer')}
+                            className="inline-flex items-center px-2 py-1 bg-white border border-slate-200 rounded text-[10px] font-semibold text-slate-700"
+                          >
+                            <Eye className="h-3 w-3 mr-1" /> View
+                          </button>
+                          <a
+                            href={c.documents[c.documents.length - 1]?.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center px-2 py-1 bg-white border border-slate-200 rounded text-[10px] font-semibold text-slate-700"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" /> Download
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
 

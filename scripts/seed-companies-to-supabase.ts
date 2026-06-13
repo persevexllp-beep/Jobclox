@@ -2,7 +2,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { Company } from '../src/types';
-import { createCompany, getCompanyByUserId, setJsonDB } from '../services/companyService';
+import { createCompany, getCompanyByUserId } from '../services/companyService';
 
 const DB_FILE = path.join(process.cwd(), 'server_db.json');
 
@@ -13,8 +13,6 @@ function isUuid(value: string): boolean {
 async function main() {
   const raw = fs.readFileSync(DB_FILE, 'utf-8');
   const parsed = JSON.parse(raw) as { companies: Company[] };
-  setJsonDB({ companies: parsed.companies || [] });
-
   for (const company of parsed.companies || []) {
     if (!isUuid(company.userId)) {
       console.log(`skip legacy userId ${company.userId} for ${company.companyName}`);

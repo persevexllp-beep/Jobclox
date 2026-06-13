@@ -25,7 +25,7 @@ export interface Company {
   contactPerson: string;
   phone: string;
   verificationStatus: 'pending' | 'approved' | 'rejected';
-  documents: { name: string; url?: string }[];
+  documents: { name: string; url?: string; path?: string; mimeType?: string; uploadedAt?: string }[];
   createdAt: string;
 }
 
@@ -88,7 +88,80 @@ export interface CandidateProfile {
   experience: string; // years or summary
   resumeText: string;
   resumeFileName: string;
+  resumeUrl?: string;
+  profilePhotoUrl?: string;
   createdAt: string;
+}
+
+export interface ResumeEducationItem {
+  institution: string;
+  degree: string;
+  field: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ResumeExperienceItem {
+  company: string;
+  role: string;
+  startDate: string;
+  endDate: string;
+  summary: string;
+}
+
+export interface ResumeProjectItem {
+  name: string;
+  description: string;
+  technologies: string[];
+}
+
+export interface ParsedResumeData {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  skills: string[];
+  education: ResumeEducationItem[];
+  experience: ResumeExperienceItem[];
+  certifications: string[];
+  projects: ResumeProjectItem[];
+  links: {
+    linkedin: string;
+    github: string;
+    portfolio: string;
+  };
+}
+
+export interface ResumeConfidence {
+  overallConfidence: number;
+  fieldConfidence: Record<string, number>;
+}
+
+export interface ResumeCareerInsights {
+  missingSkills: string[];
+  recommendedRoles: string[];
+  careerScoreInputs: Record<string, number>;
+  internshipReadiness: number;
+  placementReadiness: number;
+}
+
+export interface ResumeAutofillResult {
+  applied: Partial<Pick<CandidateProfile, 'education' | 'experience' | 'skills' | 'resumeText' | 'resumeFileName' | 'resumeUrl'>>;
+  suggestions: Partial<Pick<CandidateProfile, 'education' | 'experience' | 'skills'>>;
+}
+
+export interface ResumeParserResponse {
+  text: string;
+  parsed: ParsedResumeData;
+  confidence: ResumeConfidence;
+  careerInsights: ResumeCareerInsights;
+  autofill?: ResumeAutofillResult;
+  parser: {
+    primaryLayer: 'gemini' | 'pdf-parse' | 'regex';
+    layersAttempted: string[];
+    warnings: string[];
+    errors: string[];
+  };
 }
 
 export interface AppNotification {

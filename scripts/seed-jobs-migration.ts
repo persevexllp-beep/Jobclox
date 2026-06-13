@@ -9,7 +9,6 @@ import {
   createJob,
   getAllJobs,
   getJobById,
-  setJsonDB,
 } from '../services/jobService';
 
 const DB_FILE = path.join(process.cwd(), 'server_db.json');
@@ -76,8 +75,6 @@ function resolveCompanyId(legacyCompanyId: string, persevexInternalId: string): 
 async function main() {
   const raw = fs.readFileSync(DB_FILE, 'utf-8');
   const parsed = JSON.parse(raw) as { jobs: Job[] };
-  setJsonDB({ jobs: parsed.jobs || [] });
-
   const mappingReport = JSON.parse(fs.readFileSync(MAPPING_FILE, 'utf-8')) as {
     companies: Array<{ oldId: string; newId: string }>;
   };
