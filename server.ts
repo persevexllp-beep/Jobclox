@@ -77,9 +77,14 @@ import { runResumeIntelligencePipeline } from "./services/resumeIntelligenceServ
 import { validateStartupEnvironment } from "./services/configService";
 import { logger } from "./services/logger";
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
 const STARTED_AT = Date.now();
+const defaultAllowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://job-portal-jade-six-58.vercel.app",
+];
 
 type RateLimitBucket = {
   count: number;
@@ -87,6 +92,20 @@ type RateLimitBucket = {
 };
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
+
+function getAllowedOrigins(): string[] {
+  const configuredOrigins = [
+    process.env.CORS_ORIGIN,
+    process.env.CORS_ALLOWED_ORIGINS,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const origins = configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins;
+  return [...new Set(origins)];
+}
 
 function getClientIp(req: express.Request): string {
   const forwardedFor = req.header("x-forwarded-for")?.split(",")[0]?.trim();
@@ -533,11 +552,16 @@ async function startServer() {
 
   // CORS headers
   app.use((req, res, next) => {
-    const configuredOrigin = process.env.CORS_ORIGIN?.trim();
-    const origin = configuredOrigin || (process.env.NODE_ENV === "production" ? "https://persevex.com" : "*");
-    res.header("Access-Control-Allow-Origin", origin);
+    const requestOrigin = req.header("origin")?.trim();
+    const allowedOrigins = getAllowedOrigins();
+    const matchedOrigin = requestOrigin && allowedOrigins.includes(requestOrigin) ? requestOrigin : null;
+    if (matchedOrigin) {
+      res.header("Access-Control-Allow-Origin", matchedOrigin);
+      res.header("Access-Control-Allow-Credentials", "true");
+    }
+    res.header("Vary", "Origin");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.header("Cross-Origin-Resource-Policy", "same-site");
     res.header("Referrer-Policy", "no-referrer");
     res.header("X-Content-Type-Options", "nosniff");
@@ -546,6 +570,9 @@ async function startServer() {
     const devConnect = process.env.NODE_ENV === "production" ? "" : " http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*";
     res.header("Content-Security-Policy", `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co${devConnect};`);
     if (req.method === "OPTIONS") {
+      if (requestOrigin && !matchedOrigin) {
+        return res.status(403).json({ error: "Origin not allowed" });
+      }
       return res.sendStatus(200);
     }
     next();

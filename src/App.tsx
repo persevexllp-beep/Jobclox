@@ -8,6 +8,7 @@ import { User, AppNotification } from './types';
 import Navbar from './components/Navbar';
 import BrandLogo from './components/BrandLogo';
 import ToastViewport, { ToastItem, ToastTone } from './components/ToastViewport';
+import { resolveApiUrl } from './lib/api';
 
 const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const CandidateDashboard = lazy(() => import('./components/CandidateDashboard'));
@@ -77,7 +78,7 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         if (parsed?.user && parsed?.token) {
-          fetch('/api/auth/me', {
+          fetch(resolveApiUrl('/api/auth/me'), {
             headers: {
               Authorization: `Bearer ${parsed.token}`,
             },
@@ -134,13 +135,14 @@ export default function App() {
     const headers = {
       ...(options.headers || {}),
     } as Record<string, string>;
+    const requestUrl = resolveApiUrl(url);
 
     if (authToken) {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(requestUrl, {
         ...options,
         headers,
       });
@@ -163,7 +165,7 @@ export default function App() {
 
       return await response.json();
     } catch (err: any) {
-      console.error(`API Fetch Error [${url}]`, err);
+      console.error(`API Fetch Error [${requestUrl}]`, err);
       if (!silent) {
         setApiError(err.message || 'Network communication error');
         showToast('error', 'Request failed', err.message || 'Network communication error');
@@ -196,7 +198,7 @@ export default function App() {
 
   const handleMarkNotificationRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, {
+      await fetch(resolveApiUrl(`/api/notifications/${id}/read`), {
         method: 'POST',
         headers: {
           Authorization: authToken ? `Bearer ${authToken}` : '',
@@ -210,7 +212,7 @@ export default function App() {
 
   const handleMarkAllNotificationsRead = async () => {
     try {
-      await fetch('/api/notifications/read-all', {
+      await fetch(resolveApiUrl('/api/notifications/read-all'), {
         method: 'POST',
         headers: {
           Authorization: authToken ? `Bearer ${authToken}` : '',

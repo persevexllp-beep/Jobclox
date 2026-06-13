@@ -196,6 +196,7 @@ Create a local `.env` file.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
+| `VITE_API_URL` | Recommended for split deployments | Absolute backend origin used by the Vite frontend, for example `https://job-portal-bf9p.onrender.com`. |
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL used by both browser and server helpers. |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Frontend-safe Supabase anon key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side Supabase admin access for persistence and storage. |
@@ -207,7 +208,8 @@ Create a local `.env` file.
 | `RESUME_STORAGE_BUCKET` | Optional | Overrides default `resumes` bucket name. |
 | `PROFILE_PHOTO_STORAGE_BUCKET` | Optional | Overrides default `avatars` bucket name. |
 | `COMPANY_DOCUMENT_STORAGE_BUCKET` | Optional | Overrides default `company-documents` bucket name. |
-| `CORS_ORIGIN` | Optional | Explicit production CORS origin. |
+| `CORS_ORIGIN` | Optional | Single allowed browser origin for API access. |
+| `CORS_ALLOWED_ORIGINS` | Recommended for split deployments | Comma-separated allowed origins for the API, such as local dev and Vercel frontend domains. |
 | `AUTH_BOOTSTRAP_EMAIL` | Optional | One-time bootstrap login email for legacy users without password hashes. |
 | `AUTH_BOOTSTRAP_PASSWORD` | Optional | Matching bootstrap password. |
 | `LOG_LEVEL` | Optional | Set to `debug` for verbose server logging. |
@@ -217,6 +219,7 @@ Create a local `.env` file.
 ### Example `.env`
 
 ```env
+VITE_API_URL=http://localhost:3000
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -228,6 +231,7 @@ EMAIL_WEBHOOK_URL=
 RESUME_STORAGE_BUCKET=resumes
 PROFILE_PHOTO_STORAGE_BUCKET=avatars
 COMPANY_DOCUMENT_STORAGE_BUCKET=company-documents
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,https://job-portal-jade-six-58.vercel.app
 ```
 
 ### Run Development Server
