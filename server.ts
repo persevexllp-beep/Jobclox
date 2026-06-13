@@ -10,7 +10,7 @@ import { createServer as createViteServer } from "vite";
 import { User, Company, Job, Application, CandidateProfile, AppNotification, ApplicationStatus } from "./src/types";
 import { GoogleGenAI } from "@google/genai";
 import { supabaseAdmin } from "./lib/supabase";
-import { createUser, getUserByEmail } from "./services/userService";
+import { createUser, getAllUsers, getUserByEmail } from "./services/userService";
 import {
   createCompany,
   getAllCompanies,
@@ -27,12 +27,14 @@ import {
 } from "./services/candidateProfileService";
 import {
   createJob,
+  deleteJob,
   getAllJobs,
   getJobById,
   getJobsByCompanyId,
   getJobsByStatus,
   getPersevexInternalCompanyId,
   incrementViewCount,
+  updateJob,
   updateJobStatus,
 } from "./services/jobService";
 import {
@@ -314,20 +316,33 @@ async function uploadResumeToStorage(userId: string, profileId: string, fileName
   return uploadBufferToStorage(bucket, storagePath, buffer, "application/pdf");
 }
 
-async function getProfilePhotoUrl(userId: string, profileId: string): Promise<string> {
-  const bucket = getProfilePhotoBucket();
-  const prefix = `${userId}/${profileId}`;
+async function getProfilePhotoUrlByPrefix(bucket: string, prefix: string): Promise<string> {
   const files = await listStorageObjects(bucket, prefix, 10);
   const latest = files[0];
   if (!latest?.name) return "";
-  const reference = buildStorageReference(bucket, `${prefix}/${latest.name}`);
+  const objectPath = `${prefix}/${latest.name}`;
   if (bucket === "avatars" && supabaseAdmin) {
-    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(`${prefix}/${latest.name}`);
+    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(objectPath);
     if (data.publicUrl) {
       return data.publicUrl;
     }
   }
-  return resolveStorageUrl(reference);
+  return resolveStorageUrl(buildStorageReference(bucket, objectPath));
+}
+
+async function getProfilePhotoUrl(userId: string, profileId: string): Promise<string> {
+  const bucket = getProfilePhotoBucket();
+  return getProfilePhotoUrlByPrefix(bucket, `${userId}/${profileId}`);
+}
+
+async function getUserProfilePhotoUrl(userId: string, legacyProfileId?: string): Promise<string> {
+  const bucket = getProfilePhotoBucket();
+  const currentUrl = await getProfilePhotoUrlByPrefix(bucket, `${userId}/profile`);
+  if (currentUrl) return currentUrl;
+  if (legacyProfileId) {
+    return getProfilePhotoUrl(userId, legacyProfileId);
+  }
+  return "";
 }
 
 async function removeProfilePhotos(userId: string, profileId: string): Promise<void> {
@@ -338,6 +353,19 @@ async function removeProfilePhotos(userId: string, profileId: string): Promise<v
   const paths = files.map((item) => `${prefix}/${item.name}`);
   if (paths.length) {
     await supabaseAdmin.storage.from(bucket).remove(paths);
+  }
+}
+
+async function removeUserProfilePhotos(userId: string, legacyProfileId?: string): Promise<void> {
+  if (!supabaseAdmin) return;
+  const bucket = getProfilePhotoBucket();
+  const prefixes = [`${userId}/profile`, ...(legacyProfileId ? [`${userId}/${legacyProfileId}`] : [])];
+  for (const prefix of prefixes) {
+    const files = await listStorageObjects(bucket, prefix);
+    const paths = files.map((item) => `${prefix}/${item.name}`);
+    if (paths.length) {
+      await supabaseAdmin.storage.from(bucket).remove(paths);
+    }
   }
 }
 
@@ -354,6 +382,47 @@ async function uploadProfilePhotoToStorage(userId: string, profileId: string, fi
   const storagePath = `${userId}/${profileId}/${Date.now()}-${sanitizeImageName(fileName)}`;
   await uploadBufferToStorage(bucket, storagePath, buffer, mimeType);
   return getProfilePhotoUrl(userId, profileId);
+}
+
+async function uploadUserProfilePhotoToStorage(userId: string, fileName: string, mimeType: string, buffer: Buffer, legacyProfileId?: string): Promise<string> {
+  if (!/^image\/(png|jpe?g|webp|avif)$/i.test(mimeType)) {
+    throw Object.assign(new Error("Profile photo must be PNG, JPG, WebP, or AVIF."), { statusCode: 400 });
+  }
+  if (buffer.length > 3 * 1024 * 1024) {
+    throw Object.assign(new Error("Profile photo must be 3MB or smaller."), { statusCode: 400 });
+  }
+
+  const bucket = getProfilePhotoBucket();
+  await removeUserProfilePhotos(userId, legacyProfileId);
+  const storagePath = `${userId}/profile/${Date.now()}-${sanitizeImageName(fileName)}`;
+  await uploadBufferToStorage(bucket, storagePath, buffer, mimeType);
+  return getUserProfilePhotoUrl(userId, legacyProfileId);
+}
+
+async function hydrateUserProfilePhoto(user: User): Promise<User> {
+  const legacyProfileId = user.role === "candidate" ? (await getProfileByUserId(user.id))?.id : undefined;
+  return {
+    ...user,
+    profilePhotoUrl: await getUserProfilePhotoUrl(user.id, legacyProfileId),
+  };
+}
+
+async function hydrateUsersProfilePhotos(users: User[]): Promise<User[]> {
+  return Promise.all(users.map((user) => hydrateUserProfilePhoto(user)));
+}
+
+async function hydrateApplicationsWithProfilePhotos(applications: Application[]): Promise<Application[]> {
+  const cache = new Map<string, string>();
+  return Promise.all(applications.map(async (application) => {
+    if (!application.candidateId) return application;
+    if (!cache.has(application.candidateId)) {
+      const profile = await getProfileById(application.candidateId).catch(() => null);
+      const photoUrl = profile ? await getUserProfilePhotoUrl(profile.userId, profile.id) : "";
+      cache.set(application.candidateId, photoUrl);
+    }
+    const photoUrl = cache.get(application.candidateId) || "";
+    return photoUrl ? { ...application, candidateProfilePhotoUrl: photoUrl } : application;
+  }));
 }
 
 async function uploadCompanyDocumentToStorage(userId: string, companyId: string, fileName: string, mimeType: string, buffer: Buffer): Promise<Company["documents"][number]> {
@@ -626,15 +695,15 @@ async function startServer() {
         if (!existingCompany) {
           await createCompany({
             userId: user.id,
-            companyName: `${user.name}'s Corp`,
-            website: "https://example.com",
+            companyName: user.name,
+            website: "",
             linkedin: "",
-            industry: "Technology",
+            industry: "",
             companyEmail: user.email.toLowerCase(),
             contactPerson: user.name,
-            phone: "+1 555-010-0000",
-            verificationStatus: "approved",
-            documents: [{ name: "auto_verification_certs.pdf" }],
+            phone: "",
+            verificationStatus: "pending",
+            documents: [],
           });
           return true;
         }
@@ -699,8 +768,9 @@ async function startServer() {
 
     await ensureLoginProfile(user);
 
+    const hydratedUser = await hydrateUserProfilePhoto(user);
     logger.info("auth", "login succeeded", { requestId: String(res.locals.requestId || ''), userId: user.id, role: user.role });
-    res.json({ user, token: createSessionToken(user) });
+    res.json({ user: hydratedUser, token: createSessionToken(hydratedUser) });
   });
 
   app.post("/api/auth/register", rateLimit({ keyPrefix: "register", windowMs: 60 * 60 * 1000, max: 10 }), async (req, res) => {
@@ -812,8 +882,9 @@ async function startServer() {
       metadata: { role: newUser.role },
     });
 
+    const hydratedUser = await hydrateUserProfilePhoto(newUser);
     logger.info("auth", "registration succeeded", { requestId: String(res.locals.requestId || ''), userId: newUser.id, role: newUser.role });
-    res.json({ user: newUser, token: createSessionToken(newUser) });
+    res.json({ user: hydratedUser, token: createSessionToken(hydratedUser) });
   });
 
   app.get("/api/auth/me", async (req, res) => {
@@ -821,7 +892,7 @@ async function startServer() {
     if (!user) {
       return res.status(401).json({ error: "Unauthenticated" });
     }
-    res.json({ user });
+    res.json({ user: await hydrateUserProfilePhoto(user) });
   });
 
   app.post("/api/auth/forgot-password", rateLimit({ keyPrefix: "forgot-password", windowMs: 60 * 60 * 1000, max: 8 }), async (req, res) => {
@@ -1033,6 +1104,129 @@ async function startServer() {
 
   // --- JOB MANAGEMENT ENDPOINTS ---
 
+  const parseStringList = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (typeof value === "string") {
+      return value.split(",").map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const getPublicJobsRanked = (jobs: Job[]): Job[] => {
+    return [...jobs]
+      .filter((job) => job.visibility !== "private")
+      .sort((a, b) => {
+        const score = (job: Job) =>
+          (job.sponsored ? 300 : 0)
+          + (job.featured ? 180 : 0)
+          + (job.priority ? 120 : 0)
+          + (new Date(job.createdAt).getTime() / 100000000000);
+        return score(b) - score(a);
+      });
+  };
+
+  const getAdminCompanyForJobRequest = async (req: express.Request, user: User): Promise<{ companyId: string; companyName: string } | null> => {
+    const { companyMode, companyId, companyName, newCompanyName, newCompanyEmail, newCompanyIndustry } = req.body as {
+      companyMode?: "existing" | "new" | "platform";
+      companyId?: string;
+      companyName?: string;
+      newCompanyName?: string;
+      newCompanyEmail?: string;
+      newCompanyIndustry?: string;
+    };
+
+    if (companyMode === "existing" && companyId) {
+      const existing = await getCompanyById(companyId);
+      if (!existing) {
+        throw Object.assign(new Error("Selected company was not found"), { statusCode: 404 });
+      }
+      return { companyId: existing.id, companyName: existing.companyName };
+    }
+
+    if (companyMode === "new" && newCompanyName) {
+      const created = await createCompany({
+        userId: user.id,
+        companyName: newCompanyName,
+        companyEmail: newCompanyEmail || user.email,
+        contactPerson: user.name,
+        industry: newCompanyIndustry || "",
+        verificationStatus: "approved",
+        documents: [],
+      });
+      return { companyId: created.id, companyName: created.companyName };
+    }
+
+    if (companyId) {
+      const existing = await getCompanyById(companyId);
+      if (existing) return { companyId: existing.id, companyName: existing.companyName };
+    }
+
+    const internalId = await getPersevexInternalCompanyId();
+    if (!internalId) {
+      throw Object.assign(new Error("Persevex Internal company is not configured in Supabase"), { statusCode: 500 });
+    }
+    return { companyId: internalId, companyName: companyName || "Persevex Internal" };
+  };
+
+  const emitJobActionNotification = async (job: Job, action: string, actor: User) => {
+    const titleByAction: Record<string, string> = {
+      created: "Job Created",
+      published: "Job Published",
+      paused: "Job Paused",
+      resumed: "Job Resumed",
+      closed: "Job Closed",
+      archived: "Job Archived",
+      deleted: "Job Deleted",
+      featured: "Job Featured",
+      sponsored: "Job Sponsored",
+      flagged: "Job Flagged",
+      suspended: "Job Suspended",
+      rejected: "Job Rejected",
+    };
+    const eventByAction: Record<string, Parameters<typeof emitCommunicationEvent>[0]["eventType"]> = {
+      created: "JOB_CREATED",
+      published: "JOB_PUBLISHED",
+      paused: "JOB_PAUSED",
+      resumed: "JOB_PUBLISHED",
+      closed: "JOB_CLOSED",
+      archived: "JOB_ARCHIVED",
+      deleted: "JOB_DELETED",
+      featured: "OPPORTUNITY_UPDATED",
+      sponsored: "OPPORTUNITY_UPDATED",
+      flagged: "JOB_REJECTED",
+      suspended: "JOB_REJECTED",
+      rejected: "JOB_REJECTED",
+    };
+
+    let company: Company | null = null;
+    try {
+      company = await getCompanyById(job.companyId);
+    } catch (err) {
+      logger.error("jobs", "failed to load company for job action notification", err, { jobId: job.id });
+    }
+
+    await emitCommunicationEvent({
+      eventType: eventByAction[action] || "OPPORTUNITY_UPDATED",
+      notifications: [
+        {
+          recipientId: "all_admin",
+          title: titleByAction[action] || "Job Updated",
+          message: `${actor.name} ${action} "${job.title}" for ${job.companyName}.`,
+          type: action === "rejected" || action === "suspended" ? "warning" : "info",
+        },
+        ...(company?.userId ? [{
+          recipientId: company.userId,
+          title: titleByAction[action] || "Job Updated",
+          message: `Your job "${job.title}" was ${action} by Persevex Admin.`,
+          type: action === "rejected" || action === "suspended" ? "warning" as const : "info" as const,
+        }] : []),
+      ],
+      metadata: { jobId: job.id, action, actorId: actor.id },
+    });
+  };
+
   // Get active/approved public jobs for candidates
   app.get("/api/jobs", async (req, res) => {
     const user = await getActiveUser(req);
@@ -1057,7 +1251,7 @@ async function startServer() {
         return res.json({ jobs });
       }
 
-      const jobs = await getJobsByStatus("approved");
+      const jobs = getPublicJobsRanked(await getJobsByStatus("approved"));
       return res.json({ jobs });
     } catch (err) {
       return handleJobServiceError(res, err);
@@ -1076,6 +1270,35 @@ async function startServer() {
     }
   });
 
+  app.post("/api/jobs/:id/report", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Authentication required to report a job" });
+    }
+
+    const { id } = req.params;
+    const { reason } = req.body as { reason?: string };
+    try {
+      const job = await getJobById(id);
+      if (!job) {
+        return res.status(404).json({ error: "Job opening not found" });
+      }
+      await emitCommunicationEvent({
+        eventType: "OPPORTUNITY_UPDATED",
+        notifications: [{
+          recipientId: "all_admin",
+          title: "Opportunity Reported",
+          message: `${user.name} reported "${job.title}" at ${job.companyName}.${reason ? ` Reason: ${reason}` : ""}`,
+          type: "warning",
+        }],
+        metadata: { jobId: job.id, reporterId: user.id, reason: reason || "unspecified" },
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+  });
+
   // Create Job
   app.post("/api/jobs/create", async (req, res) => {
     const user = await getActiveUser(req);
@@ -1083,15 +1306,40 @@ async function startServer() {
       return res.status(403).json({ error: "Candidates cannot publish jobs" });
     }
 
-    const { title, department, location, jobType, experience, salary, description, requirements, preferredSkills, deadline } = req.body;
+    const {
+      title,
+      department,
+      location,
+      jobType,
+      workMode,
+      experience,
+      education,
+      salary,
+      benefits,
+      equity,
+      description,
+      requirements,
+      preferredSkills,
+      deadline,
+      openings,
+      hiringManager,
+      visibility,
+      featured,
+      sponsored,
+      priority,
+      status: requestedStatus,
+    } = req.body;
 
-    if (!title || !description || !requirements || requirements.length === 0) {
+    const requiredSkills = parseStringList(requirements);
+    const preferredSkillList = parseStringList(preferredSkills);
+
+    if (!title || !description || requiredSkills.length === 0) {
       return res.status(400).json({ error: "Missing required job specification fields" });
     }
 
     let companyId: string | null = null;
     let companyName = "Persevex Internal";
-    let status: "approved" | "submitted" = "approved";
+    let status: Job["status"] = "approved";
 
     if (user.role === "company") {
       let company: Company | null = null;
@@ -1111,13 +1359,18 @@ async function startServer() {
       status = "submitted";
     } else {
       try {
-        companyId = await getPersevexInternalCompanyId();
+        const adminCompany = await getAdminCompanyForJobRequest(req, user);
+        companyId = adminCompany?.companyId || null;
+        companyName = adminCompany?.companyName || "Persevex Internal";
       } catch (err) {
-        return handleJobServiceError(res, err);
+        const errorLike = err as { statusCode?: unknown; message?: string };
+        const code = typeof errorLike.statusCode === "number" ? errorLike.statusCode : 500;
+        return res.status(code).json({ error: errorLike.message || "Unable to assign company to job" });
       }
       if (!companyId) {
         return res.status(500).json({ error: "Persevex Internal company is not configured in Supabase" });
       }
+      status = ["draft", "submitted", "approved", "paused", "closed"].includes(requestedStatus) ? requestedStatus : "approved";
     }
 
     let newJob: Job;
@@ -1129,12 +1382,22 @@ async function startServer() {
         department: department || "Operations",
         location: location || "Remote",
         jobType: jobType || "Full-time",
+        workMode: ["remote", "hybrid", "onsite"].includes(workMode) ? workMode : undefined,
         experience: experience || "Not Specified",
+        education: education || "",
         salary: salary || "Discussable",
+        benefits: benefits || "",
+        equity: equity || "",
         description,
-        requirements: Array.isArray(requirements) ? requirements.filter(Boolean) : [requirements],
-        preferredSkills: Array.isArray(preferredSkills) ? preferredSkills.filter(Boolean) : [],
+        requirements: requiredSkills,
+        preferredSkills: preferredSkillList,
         status,
+        openings: Number(openings) > 0 ? Number(openings) : 1,
+        hiringManager: hiringManager || "",
+        visibility: visibility === "private" ? "private" : "public",
+        featured: Boolean(featured),
+        sponsored: Boolean(sponsored),
+        priority: Boolean(priority),
         viewCount: 0,
         deadline: deadline || "",
       });
@@ -1153,6 +1416,8 @@ async function startServer() {
         }],
         metadata: { jobId: newJob.id, status: "submitted" },
       });
+    } else {
+      await emitJobActionNotification(newJob, "created", user);
     }
 
     res.json({ job: newJob });
@@ -1216,6 +1481,169 @@ async function startServer() {
     res.json({ job: currentJob });
   });
 
+  app.patch("/api/jobs/:id", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role === "candidate") {
+      return res.status(403).json({ error: "Candidates cannot manage jobs" });
+    }
+
+    const { id } = req.params;
+    let existing: Job | null = null;
+    try {
+      existing = await getJobById(id);
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+    if (!existing) {
+      return res.status(404).json({ error: "Job opening not found" });
+    }
+
+    if (user.role === "company") {
+      const company = await getCompanyByUserId(user.id);
+      if (!company || company.id !== existing.companyId) {
+        return res.status(403).json({ error: "Recruiters can only manage jobs owned by their company" });
+      }
+    }
+
+    let companyPatch: { companyId?: string; companyName?: string } = {};
+    if (user.role === "admin" && (req.body.companyMode || req.body.companyId || req.body.newCompanyName)) {
+      try {
+        const assignedCompany = await getAdminCompanyForJobRequest(req, user);
+        if (assignedCompany) companyPatch = assignedCompany;
+      } catch (err) {
+        const errorLike = err as { statusCode?: unknown; message?: string };
+        const code = typeof errorLike.statusCode === "number" ? errorLike.statusCode : 500;
+        return res.status(code).json({ error: errorLike.message || "Unable to assign company to job" });
+      }
+    }
+
+    const requirements = req.body.requirements !== undefined ? parseStringList(req.body.requirements) : undefined;
+    const preferredSkills = req.body.preferredSkills !== undefined ? parseStringList(req.body.preferredSkills) : undefined;
+
+    try {
+      const updated = await updateJob(id, {
+        ...companyPatch,
+        title: req.body.title,
+        department: req.body.department,
+        location: req.body.location,
+        jobType: req.body.jobType,
+        workMode: req.body.workMode,
+        experience: req.body.experience,
+        education: req.body.education,
+        salary: req.body.salary,
+        benefits: req.body.benefits,
+        equity: req.body.equity,
+        description: req.body.description,
+        requirements,
+        preferredSkills,
+        deadline: req.body.deadline,
+        openings: req.body.openings !== undefined ? Number(req.body.openings) : undefined,
+        hiringManager: req.body.hiringManager,
+        visibility: req.body.visibility,
+        featured: req.body.featured,
+        sponsored: req.body.sponsored,
+        priority: req.body.priority,
+        moderationReason: req.body.moderationReason,
+      });
+      if (!updated) {
+        return res.status(404).json({ error: "Job opening not found" });
+      }
+      await emitJobActionNotification(updated, "updated", user);
+      res.json({ job: updated });
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+  });
+
+  app.post("/api/jobs/:id/action", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role === "candidate") {
+      return res.status(403).json({ error: "Candidates cannot manage jobs" });
+    }
+
+    const { id } = req.params;
+    const { action, reason } = req.body as { action?: string; reason?: string };
+    const actionStatus: Record<string, Job["status"]> = {
+      publish: "approved",
+      pause: "paused",
+      resume: "approved",
+      close: "closed",
+      archive: "archived",
+      flag: "flagged",
+      suspend: "suspended",
+      reject: "rejected",
+    };
+    const flagPatch: Record<string, Partial<Job>> = {
+      feature: { featured: true },
+      unfeature: { featured: false },
+      sponsor: { sponsored: true, priority: true },
+      unsponsor: { sponsored: false },
+      boost: { priority: true },
+      unboost: { priority: false },
+    };
+
+    if (!action || (!actionStatus[action] && !flagPatch[action])) {
+      return res.status(400).json({ error: "Unsupported job action" });
+    }
+
+    let existing: Job | null = null;
+    try {
+      existing = await getJobById(id);
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+    if (!existing) {
+      return res.status(404).json({ error: "Job opening not found" });
+    }
+
+    if (user.role === "company") {
+      const company = await getCompanyByUserId(user.id);
+      if (!company || company.id !== existing.companyId) {
+        return res.status(403).json({ error: "Recruiters can only manage jobs owned by their company" });
+      }
+      if (!["pause", "resume", "close"].includes(action)) {
+        return res.status(403).json({ error: "Recruiters can pause, resume, or close owned jobs only" });
+      }
+    }
+
+    try {
+      const updated = await updateJob(id, {
+        ...(actionStatus[action] ? { status: actionStatus[action] } : {}),
+        ...(flagPatch[action] || {}),
+        moderationReason: reason || existing.moderationReason || "",
+      });
+      if (!updated) {
+        return res.status(404).json({ error: "Job opening not found" });
+      }
+      const notificationAction = action === "publish" ? "published" : action === "pause" ? "paused" : action === "resume" ? "resumed" : action;
+      await emitJobActionNotification(updated, notificationAction, user);
+      res.json({ job: updated });
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+  });
+
+  app.delete("/api/jobs/:id", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admins can delete jobs" });
+    }
+
+    const { id } = req.params;
+    let existing: Job | null = null;
+    try {
+      existing = await getJobById(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Job opening not found" });
+      }
+      await deleteJob(id);
+      await emitJobActionNotification(existing, "deleted", user);
+      res.json({ ok: true });
+    } catch (err) {
+      return handleJobServiceError(res, err);
+    }
+  });
+
   // --- CANDIDATE PROFILE ENDPOINTS ---
 
   app.get("/api/candidates/:userId", async (req, res) => {
@@ -1231,7 +1659,7 @@ async function startServer() {
       if (!profile) {
         return res.status(404).json({ error: "Candidate profile dataset not found" });
       }
-      profile.profilePhotoUrl = await getProfilePhotoUrl(user.id, profile.id);
+      profile.profilePhotoUrl = await getUserProfilePhotoUrl(user.id, profile.id);
       if (profile.resumeUrl) {
         profile.resumeUrl = await resolveStorageUrl(profile.resumeUrl) || profile.resumeUrl;
       }
@@ -1256,12 +1684,12 @@ async function startServer() {
         return res.status(400).json({ error: "Profile photo payload is missing." });
       }
       const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
-      const photoUrl = await uploadProfilePhotoToStorage(
+      const photoUrl = await uploadUserProfilePhotoToStorage(
         user.id,
-        profile.id,
         fileName || "profile-photo.jpg",
         mimeType || "image/jpeg",
-        Buffer.from(base64Data, "base64")
+        Buffer.from(base64Data, "base64"),
+        profile.id
       );
       profile.profilePhotoUrl = photoUrl;
       res.json({ profilePhotoUrl: photoUrl, profile });
@@ -1284,11 +1712,57 @@ async function startServer() {
       if (!profile) {
         return res.status(404).json({ error: "Profile node absent" });
       }
-      await removeProfilePhotos(user.id, profile.id);
+      await removeUserProfilePhotos(user.id, profile.id);
       res.json({ profilePhotoUrl: "" });
     } catch (err) {
       logger.error("candidate-profiles", "profile photo removal failed", err, { requestId: String(res.locals.requestId || '') });
       return handleCandidateProfileServiceError(res, err);
+    }
+  });
+
+  app.post("/api/users/profile/photo", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user) {
+      return res.status(403).json({ error: "Authenticated user required" });
+    }
+
+    try {
+      const legacyProfileId = user.role === "candidate" ? (await getProfileByUserId(user.id))?.id : undefined;
+      const { base64, fileName, mimeType } = req.body as { base64?: string; fileName?: string; mimeType?: string };
+      if (!base64) {
+        return res.status(400).json({ error: "Profile photo payload is missing." });
+      }
+      const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+      const profilePhotoUrl = await uploadUserProfilePhotoToStorage(
+        user.id,
+        fileName || "profile-photo.jpg",
+        mimeType || "image/jpeg",
+        Buffer.from(base64Data, "base64"),
+        legacyProfileId
+      );
+
+      res.json({ profilePhotoUrl, user: await hydrateUserProfilePhoto(user) });
+    } catch (err: unknown) {
+      const errorLike = err as { message?: string; statusCode?: unknown };
+      const status = typeof errorLike.statusCode === "number" ? errorLike.statusCode : 500;
+      logger.error("users", "profile photo upload failed", err, { requestId: String(res.locals.requestId || '') });
+      res.status(status).json({ error: errorLike.message || "Profile photo upload failed" });
+    }
+  });
+
+  app.delete("/api/users/profile/photo", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user) {
+      return res.status(403).json({ error: "Authenticated user required" });
+    }
+
+    try {
+      const legacyProfileId = user.role === "candidate" ? (await getProfileByUserId(user.id))?.id : undefined;
+      await removeUserProfilePhotos(user.id, legacyProfileId);
+      res.json({ profilePhotoUrl: "", user: await hydrateUserProfilePhoto(user) });
+    } catch (err) {
+      logger.error("users", "profile photo removal failed", err, { requestId: String(res.locals.requestId || '') });
+      return handleUserServiceError(res, err);
     }
   });
 
@@ -1460,7 +1934,7 @@ Return no markdown, comments, or prose.`
     if (user.role === "admin") {
       // Admin sees everything
       try {
-        const applications = await getAllApplications();
+        const applications = await hydrateApplicationsWithProfilePhotos(await getAllApplications());
         return res.json({ applications });
       } catch (err) {
         return handleApplicationServiceError(res, err);
@@ -1477,7 +1951,7 @@ Return no markdown, comments, or prose.`
         return res.json({ applications: [] });
       }
       try {
-        const applications = await getApplicationsByCandidate(candProfile.id);
+        const applications = await hydrateApplicationsWithProfilePhotos(await getApplicationsByCandidate(candProfile.id));
         return res.json({ applications });
       } catch (err) {
         return handleApplicationServiceError(res, err);
@@ -1495,7 +1969,7 @@ Return no markdown, comments, or prose.`
       }
       // CRITICAL PRD rule: "Company HR sees only forwarded candidates"
       try {
-        const applications = await getApplicationsByCompany(company.id);
+        const applications = await hydrateApplicationsWithProfilePhotos(await getApplicationsByCompany(company.id));
         return res.json({ applications });
       } catch (err) {
         return handleApplicationServiceError(res, err);
@@ -1575,9 +2049,9 @@ Return no markdown, comments, or prose.`
     let matchScore = 0;
     if (targetJob.requirements.length > 0) {
       matchScore = Math.round((matchedSkills.length / targetJob.requirements.length) * 100);
-      if (matchScore > 100) matchScore = 100;
+      if (matchScore > 92) matchScore = 92;
     } else {
-      matchScore = 100;
+      matchScore = 0;
     }
 
     // Update candidate profile auto-skills with matched skills if empty
@@ -1635,8 +2109,8 @@ Return no markdown, comments, or prose.`
       logger.error("communication", "failed to load company for application notification", err);
     }
 
-    await emitCommunicationEvent({
-      eventType: "APPLICATION_SUBMITTED",
+    const communication = await emitCommunicationEvent({
+      eventType: "OPPORTUNITY_APPLIED",
       notifications: [
         {
           recipientId: "all_admin",
@@ -1676,7 +2150,25 @@ Return no markdown, comments, or prose.`
       metadata: { applicationId: newApp.id, jobId: targetJob.id, score: matchScore },
     });
 
-    res.json({ application: newApp, score: matchScore });
+    res.json({
+      application: {
+        ...newApp,
+        candidateProfilePhotoUrl: await getUserProfilePhotoUrl(user.id, candProfile.id),
+      },
+      score: matchScore,
+      matchedSkills,
+      missingSkills,
+      communication: {
+        notificationCount: communication.notifications.length,
+        emailCount: communication.emails.length,
+        failures: communication.failures,
+      },
+      activityHistory: [
+        { label: "Application created", timestamp: newApp.appliedAt, detail: `Application ID ${newApp.id}` },
+        { label: "Notification queued", timestamp: new Date().toISOString(), detail: `${communication.notifications.length} notification(s) recorded` },
+        { label: "Email event logged", timestamp: new Date().toISOString(), detail: `${communication.emails.length} email log(s) recorded` },
+      ],
+    });
   });
 
   // Update application status (Admin screen candidate OR Company schedule Interview/Result)
@@ -2093,6 +2585,21 @@ Return no markdown, comments, or prose.`
     }
   });
 
+  app.get("/api/users", async (req, res) => {
+    const user = await getActiveUser(req);
+    if (!user) return res.status(401).json({ error: "Access token missing" });
+    if (user.role !== "admin") {
+      return res.status(403).json({ error: "Requires administrator access" });
+    }
+
+    try {
+      const users = await hydrateUsersProfilePhotos(await getAllUsers());
+      return res.json({ users });
+    } catch (err) {
+      return handleUserServiceError(res, err);
+    }
+  });
+
   // --- PLATFORM ANALYTICS DASHBBOARD DATA ---
 
   app.get("/api/analytics/summary", async (req, res) => {
@@ -2102,7 +2609,6 @@ Return no markdown, comments, or prose.`
       return res.status(403).json({ error: "Requires administrator access" });
     }
 
-    // Calculate generic high-fidelity metrics
     let companies: Company[] = [];
     try {
       companies = await getAllCompanies();
@@ -2137,27 +2643,40 @@ Return no markdown, comments, or prose.`
     const interviewingApps = allApplications.filter(a => a.status === "interviewing").length;
     const selectedApps = allApplications.filter(a => a.status === "selected" || a.finalResult === "hired").length;
 
-    // Trends data points
-    const appsTrend = [
-      { month: "Jan", applications: 12, forwarded: 4 },
-      { month: "Feb", applications: 19, forwarded: 6 },
-      { month: "Mar", applications: 25, forwarded: 11 },
-      { month: "Apr", applications: 32, forwarded: 15 },
-      { month: "May", applications: 45, forwarded: 21 },
-      { month: "Jun", applications: totalApplications + 40, forwarded: forwardedApplications + 14 }
-    ];
+    const now = new Date();
+    const monthBuckets = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        month: date.toLocaleString("en-US", { month: "short" }),
+        applications: 0,
+        forwarded: 0,
+      };
+    });
+    const monthIndex = new Map(monthBuckets.map((bucket, index) => [bucket.key, index]));
+    for (const application of allApplications) {
+      const date = new Date(application.appliedAt);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const index = monthIndex.get(key);
+      if (index === undefined) continue;
+      monthBuckets[index].applications += 1;
+      if (application.status === "forwarded") {
+        monthBuckets[index].forwarded += 1;
+      }
+    }
 
-    const jobsTrend = [
-      { name: "IT", value: allJobs.filter(j => ["React", "node", "amplify", "developer"].some(term => j.title.toLowerCase().includes(term))).length + 5 },
-      { name: "Operations", value: 3 },
-      { name: "Product Design", value: 2 },
-      { name: "Sales & Marketing", value: 1 }
-    ];
+    const jobsByType = allJobs.reduce<Record<string, number>>((groups, job) => {
+      groups[job.jobType] = (groups[job.jobType] || 0) + 1;
+      return groups;
+    }, {});
+    const jobsTrend = Object.entries(jobsByType)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
 
     const topCompanies = companies.map(c => {
       const jobCount = allJobs.filter(j => j.companyId === c.id).length;
       return { name: c.companyName, jobs: jobCount, verified: c.verificationStatus === "approved" };
-    });
+    }).sort((a, b) => b.jobs - a.jobs);
 
     res.json({
       metrics: {
@@ -2172,7 +2691,7 @@ Return no markdown, comments, or prose.`
         interviewingApps,
         selectedApps
       },
-      appsTrend,
+      appsTrend: monthBuckets,
       jobsTrend,
       topCompanies
     });

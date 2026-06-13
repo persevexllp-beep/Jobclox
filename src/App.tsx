@@ -7,6 +7,7 @@ import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { User, AppNotification } from './types';
 import Navbar from './components/Navbar';
 import BrandLogo from './components/BrandLogo';
+import ToastViewport, { ToastItem, ToastTone } from './components/ToastViewport';
 
 const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const CandidateDashboard = lazy(() => import('./components/CandidateDashboard'));
@@ -18,6 +19,7 @@ export default function App() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('persevex_theme');
@@ -29,6 +31,35 @@ export default function App() {
     }
     return 'light';
   });
+
+  const dismissToast = (id: string) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  };
+
+  const showToast = (tone: ToastTone, title: string, message?: string) => {
+    setToasts((current) => [
+      ...current.filter((toast) => !(toast.title === title && toast.message === message && toast.tone === tone)),
+      { id: `${Date.now()}-${Math.random()}`, tone, title, message },
+    ]);
+  };
+
+  const patchCurrentUser = (updates: Partial<User>) => {
+    setCurrentUser((current) => {
+      if (!current) return current;
+      const nextUser = { ...current, ...updates };
+      const hasChanges = Object.keys(updates).some((key) => {
+        const typedKey = key as keyof User;
+        return current[typedKey] !== nextUser[typedKey];
+      });
+      if (!hasChanges) {
+        return current;
+      }
+      if (authToken) {
+        localStorage.setItem('persevex_session_user', JSON.stringify({ user: nextUser, token: authToken }));
+      }
+      return nextUser;
+    });
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -64,6 +95,7 @@ export default function App() {
             .catch((err) => {
               console.error('Session validation error', err);
               localStorage.removeItem('persevex_session_user');
+              showToast('warning', 'Session expired', 'Please sign in again to continue.');
             })
             .finally(() => setInitialized(true));
           return;
@@ -88,7 +120,15 @@ export default function App() {
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [authToken, currentUser?.id]);
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setAuthToken(null);
+    localStorage.removeItem('persevex_session_user');
+    setNotifications([]);
+    setApiError(null);
+  };
 
   const apiFetch = async (url: string, options: RequestInit = {}, silent: boolean = false) => {
     const headers = {
@@ -113,7 +153,12 @@ export default function App() {
         } catch {
           // Response is not JSON.
         }
-        throw new Error(errorJson?.error || errorJson?.message || `Server responded with status ${response.status}`);
+        const message = errorJson?.error || errorJson?.message || `Server responded with status ${response.status}`;
+        if (response.status === 401 && authToken) {
+          handleLogout();
+          showToast('error', 'Session expired', 'Your session ended. Please sign in again.');
+        }
+        throw new Error(message);
       }
 
       return await response.json();
@@ -121,6 +166,7 @@ export default function App() {
       console.error(`API Fetch Error [${url}]`, err);
       if (!silent) {
         setApiError(err.message || 'Network communication error');
+        showToast('error', 'Request failed', err.message || 'Network communication error');
       }
       throw err;
     }
@@ -141,18 +187,11 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: User, token: string) => {
-    setCurrentUser(user);
     setAuthToken(token);
+    setCurrentUser(user);
     localStorage.setItem('persevex_session_user', JSON.stringify({ user, token }));
     setApiError(null);
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setAuthToken(null);
-    localStorage.removeItem('persevex_session_user');
-    setNotifications([]);
-    setApiError(null);
+    showToast('success', user.role === 'candidate' ? 'Welcome back' : 'Signed in', 'Your workspace is ready.');
   };
 
   const handleMarkNotificationRead = async (id: string) => {
@@ -196,6 +235,8 @@ export default function App() {
 
   return (
     <div className="pvx-app-shell">
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+
       {apiError && (
         <div className="pvx-error-banner" role="alert">
           <span>{apiError}</span>
@@ -213,22 +254,23 @@ export default function App() {
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         theme={theme}
         onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+        showToast={showToast}
       />
 
       <main className="pvx-main">
         <Suspense fallback={<WorkspaceLoading />}>
           {!currentUser ? (
-            <AuthScreen onLoginSuccess={handleLoginSuccess} apiFetch={apiFetch} />
+            <AuthScreen onLoginSuccess={handleLoginSuccess} apiFetch={apiFetch} showToast={showToast} />
           ) : (
             <div className="platform-shell fade-in duration-300">
               {currentUser.role === 'admin' && (
-                <AdminDashboard currentUser={currentUser} apiFetch={apiFetch} theme={theme} />
+                <AdminDashboard currentUser={currentUser} apiFetch={apiFetch} theme={theme} showToast={showToast} onCurrentUserUpdate={patchCurrentUser} />
               )}
               {currentUser.role === 'company' && (
-                <CompanyDashboard currentUser={currentUser} apiFetch={apiFetch} />
+                <CompanyDashboard currentUser={currentUser} apiFetch={apiFetch} showToast={showToast} onCurrentUserUpdate={patchCurrentUser} />
               )}
               {currentUser.role === 'candidate' && (
-                <CandidateDashboard currentUser={currentUser} apiFetch={apiFetch} />
+                <CandidateDashboard currentUser={currentUser} apiFetch={apiFetch} showToast={showToast} onCurrentUserUpdate={patchCurrentUser} />
               )}
             </div>
           )}

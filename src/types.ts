@@ -11,6 +11,7 @@ export interface User {
   email: string;
   role: UserRole;
   status: 'active' | 'inactive';
+  profilePhotoUrl?: string;
   createdAt: string;
 }
 
@@ -30,7 +31,7 @@ export interface Company {
 }
 
 export type JobType = 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
-export type JobStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'closed';
+export type JobStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'paused' | 'closed' | 'archived' | 'flagged' | 'suspended';
 
 export interface Job {
   id: string;
@@ -40,15 +41,27 @@ export interface Job {
   department: string;
   location: string;
   jobType: JobType;
+  workMode?: 'remote' | 'hybrid' | 'onsite';
   experience: string;
+  education?: string;
   salary: string;
+  benefits?: string;
+  equity?: string;
   description: string;
   requirements: string[]; // Master skills/keywords matching array (e.g. ["React", "Node"])
   preferredSkills: string[];
   status: JobStatus;
   deadline?: string;
+  openings?: number;
+  hiringManager?: string;
+  visibility?: 'public' | 'private';
+  featured?: boolean;
+  sponsored?: boolean;
+  priority?: boolean;
+  moderationReason?: string;
   viewCount: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type ApplicationStatus = 
@@ -65,6 +78,7 @@ export interface Application {
   candidateId: string;
   candidateName: string;
   candidateEmail: string;
+  candidateProfilePhotoUrl?: string;
   jobId: string;
   jobTitle: string;
   companyId: string;
@@ -169,6 +183,7 @@ export interface AppNotification {
   recipientId: string; // "all_admin" or specific user ID
   title: string;
   message: string;
+  type?: 'info' | 'success' | 'warning' | 'error';
   isRead: boolean;
   createdAt: string;
 }

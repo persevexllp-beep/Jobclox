@@ -20,10 +20,12 @@ import {
 import { User, UserRole } from '../types';
 import { CareerFlowBackground } from './motion';
 import BrandLogo from './BrandLogo';
+import type { ToastTone } from './ToastViewport';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: User, token: string) => void;
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
+  showToast: (tone: ToastTone, title: string, message?: string) => void;
 }
 
 type AuthMode = 'login' | 'register' | 'forgot';
@@ -35,7 +37,7 @@ const journey = [
   { label: 'Career Growth', icon: Award },
 ];
 
-export default function AuthScreen({ onLoginSuccess, apiFetch }: AuthScreenProps) {
+export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [role, setRole] = useState<UserRole>('candidate');
   const [name, setName] = useState('');
@@ -71,7 +73,9 @@ export default function AuthScreen({ onLoginSuccess, apiFetch }: AuthScreenProps
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email }),
         });
-        setSuccess('If this email exists, a recovery workflow will be sent by the Persevex team.');
+        const message = 'If this email exists, a recovery workflow will be sent by the Persevex team.';
+        setSuccess(message);
+        showToast('info', 'Recovery requested', message);
       } catch (err: any) {
         setError(err.message || 'Recovery workflow could not be started.');
       } finally {
@@ -96,6 +100,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch }: AuthScreenProps
       if (response.user) {
         if (mode === 'register') {
           setSuccess('Account created. Opening your workspace...');
+          showToast('success', 'Account created', 'Opening your workspace now.');
           setTimeout(() => onLoginSuccess(response.user, response.token), 700);
         } else {
           onLoginSuccess(response.user, response.token);
@@ -165,10 +170,10 @@ export default function AuthScreen({ onLoginSuccess, apiFetch }: AuthScreenProps
 
           <form onSubmit={handleSubmit} className="auth-form">
             {mode === 'register' && (
-              <AuthField icon={UserIcon} label="Full name" value={name} onChange={setName} placeholder="Alex Mercer" />
+              <AuthField icon={UserIcon} label="Full name" value={name} onChange={setName} placeholder="Your name" />
             )}
 
-            <AuthField icon={Mail} label="Email" type="email" value={email} onChange={setEmail} placeholder="you@company.com" />
+            <AuthField icon={Mail} label="Email" type="email" value={email} onChange={setEmail} placeholder="Email address" />
 
             {mode !== 'forgot' && (
               <AuthField icon={Lock} label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" />

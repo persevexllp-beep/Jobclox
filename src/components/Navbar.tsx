@@ -7,6 +7,9 @@ import React, { useState } from 'react';
 import { AppNotification, User } from '../types';
 import { Bell, Check, CheckCircle2, LogOut, Moon, ShieldAlert, Sun, UserCheck } from 'lucide-react';
 import BrandLogo from './BrandLogo';
+import { formatNotificationPreview } from '../utils/messageFormatting';
+import type { ToastTone } from './ToastViewport';
+import UserAvatar from './UserAvatar';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -16,6 +19,7 @@ interface NavbarProps {
   onMarkAllNotificationsRead: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  showToast: (tone: ToastTone, title: string, message?: string) => void;
 }
 
 const roleLabels = {
@@ -32,11 +36,17 @@ export default function Navbar({
   onMarkAllNotificationsRead,
   theme,
   onToggleTheme,
+  showToast,
 }: NavbarProps) {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const unreadNotifs = notifications.filter((n) => !n.isRead);
   const role = currentUser ? roleLabels[currentUser.role] : null;
   const RoleIcon = role?.icon;
+
+  const handleLogoutClick = () => {
+    onLogout();
+    showToast('info', 'Signed out', 'Your session has been cleared safely.');
+  };
 
   return (
     <header className="pvx-header">
@@ -63,6 +73,12 @@ export default function Navbar({
               </div>
 
               <div className="pvx-user-lockup">
+                <UserAvatar
+                  name={currentUser.name}
+                  src={currentUser.profilePhotoUrl}
+                  className="pvx-navbar-avatar"
+                  fallbackClassName="pvx-navbar-avatar-fallback"
+                />
                 <span>{currentUser.name}</span>
                 <small>{currentUser.email}</small>
               </div>
@@ -99,27 +115,30 @@ export default function Navbar({
                       {notifications.length === 0 ? (
                         <div className="pvx-notification-empty">No notifications yet.</div>
                       ) : (
-                        notifications.map((n) => (
-                          <article key={n.id} className={!n.isRead ? 'is-unread' : ''}>
-                            <div>
-                              <strong>{n.title}</strong>
-                              <p>{n.message}</p>
-                              <small>{new Date(n.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</small>
-                            </div>
-                            {!n.isRead && (
-                              <button type="button" onClick={() => onMarkNotificationRead(n.id)} aria-label="Mark notification as read">
-                                <Check className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </article>
-                        ))
+                        notifications.map((n) => {
+                          const preview = formatNotificationPreview(n);
+                          return (
+                            <article key={n.id} className={!n.isRead ? 'is-unread' : ''}>
+                              <div>
+                                <strong>{n.title}</strong>
+                                <p>{preview.summary}</p>
+                                <small>{new Date(n.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</small>
+                              </div>
+                              {!n.isRead && (
+                                <button type="button" onClick={() => onMarkNotificationRead(n.id)} aria-label="Mark notification as read">
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </article>
+                          );
+                        })
                       )}
                     </div>
                   </div>
                 )}
               </div>
 
-              <button id="sign-out-btn" type="button" onClick={onLogout} className="pvx-logout">
+              <button id="sign-out-btn" type="button" onClick={handleLogoutClick} className="pvx-logout">
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </button>

@@ -11,15 +11,27 @@ type SupabaseJobRow = {
   department: string | null;
   location: string | null;
   job_type: string | null;
+  work_mode?: Job['workMode'] | null;
   experience: string | null;
+  education?: string | null;
   salary: string | null;
+  benefits?: string | null;
+  equity?: string | null;
   description: string | null;
   requirements: string[] | null;
   preferred_skills: string[] | null;
   status: JobStatus | null;
   deadline: string | null;
+  openings?: number | null;
+  hiring_manager?: string | null;
+  visibility?: Job['visibility'] | null;
+  featured?: boolean | null;
+  sponsored?: boolean | null;
+  priority?: boolean | null;
+  moderation_reason?: string | null;
   view_count: number | null;
   created_at: string | null;
+  updated_at?: string | null;
 };
 
 export type CreateJobInput = {
@@ -30,15 +42,27 @@ export type CreateJobInput = {
   department?: string;
   location?: string;
   jobType?: JobType;
+  workMode?: Job['workMode'];
   experience?: string;
+  education?: string;
   salary?: string;
+  benefits?: string;
+  equity?: string;
   description: string;
   requirements: string[];
   preferredSkills?: string[];
   status?: JobStatus;
   deadline?: string;
+  openings?: number;
+  hiringManager?: string;
+  visibility?: Job['visibility'];
+  featured?: boolean;
+  sponsored?: boolean;
+  priority?: boolean;
+  moderationReason?: string;
   viewCount?: number;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 export type UpdateJobInput = Partial<{
@@ -48,18 +72,29 @@ export type UpdateJobInput = Partial<{
   department: string;
   location: string;
   jobType: JobType;
+  workMode: Job['workMode'];
   experience: string;
+  education: string;
   salary: string;
+  benefits: string;
+  equity: string;
   description: string;
   requirements: string[];
   preferredSkills: string[];
   status: JobStatus;
   deadline: string;
+  openings: number;
+  hiringManager: string;
+  visibility: Job['visibility'];
+  featured: boolean;
+  sponsored: boolean;
+  priority: boolean;
+  moderationReason: string;
   viewCount: number;
+  updatedAt: string;
 }>;
 
-const JOB_SELECT =
-  'id,company_id,company_name,title,department,location,job_type,experience,salary,description,requirements,preferred_skills,status,deadline,view_count,created_at';
+const JOB_SELECT = '*';
 
 let persevexInternalCompanyId: string | null = null;
 
@@ -83,15 +118,27 @@ function mapSupabaseJob(row: SupabaseJobRow): Job {
     department: row.department || '',
     location: row.location || '',
     jobType: (row.job_type as JobType) || 'Full-time',
+    workMode: row.work_mode || undefined,
     experience: row.experience || '',
+    education: row.education || '',
     salary: row.salary || '',
+    benefits: row.benefits || '',
+    equity: row.equity || '',
     description: row.description || '',
     requirements: row.requirements || [],
     preferredSkills: row.preferred_skills || [],
     status: row.status || 'submitted',
     deadline: row.deadline || '',
+    openings: row.openings ?? undefined,
+    hiringManager: row.hiring_manager || '',
+    visibility: row.visibility || 'public',
+    featured: Boolean(row.featured),
+    sponsored: Boolean(row.sponsored),
+    priority: Boolean(row.priority),
+    moderationReason: row.moderation_reason || '',
     viewCount: row.view_count ?? 0,
     createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || undefined,
   };
 }
 
@@ -103,15 +150,27 @@ function buildSupabaseInsert(job: CreateJobInput): Record<string, unknown> {
     department: job.department || 'Operations',
     location: job.location || 'Remote',
     job_type: job.jobType || 'Full-time',
+    work_mode: job.workMode || 'remote',
     experience: job.experience || 'Not Specified',
+    education: job.education || '',
     salary: job.salary || 'Discussable',
+    benefits: job.benefits || '',
+    equity: job.equity || '',
     description: job.description,
     requirements: job.requirements,
     preferred_skills: job.preferredSkills || [],
     status: job.status || 'submitted',
     deadline: job.deadline || '',
+    openings: job.openings || 1,
+    hiring_manager: job.hiringManager || '',
+    visibility: job.visibility || 'public',
+    featured: Boolean(job.featured),
+    sponsored: Boolean(job.sponsored),
+    priority: Boolean(job.priority),
+    moderation_reason: job.moderationReason || '',
     view_count: job.viewCount ?? 0,
     created_at: job.createdAt || new Date().toISOString(),
+    updated_at: job.updatedAt || new Date().toISOString(),
   };
 
   if (job.id && isUuid(job.id)) {
@@ -130,14 +189,26 @@ function buildSupabaseUpdate(updates: UpdateJobInput): Record<string, unknown> {
   if (updates.department !== undefined) payload.department = updates.department;
   if (updates.location !== undefined) payload.location = updates.location;
   if (updates.jobType !== undefined) payload.job_type = updates.jobType;
+  if (updates.workMode !== undefined) payload.work_mode = updates.workMode;
   if (updates.experience !== undefined) payload.experience = updates.experience;
+  if (updates.education !== undefined) payload.education = updates.education;
   if (updates.salary !== undefined) payload.salary = updates.salary;
+  if (updates.benefits !== undefined) payload.benefits = updates.benefits;
+  if (updates.equity !== undefined) payload.equity = updates.equity;
   if (updates.description !== undefined) payload.description = updates.description;
   if (updates.requirements !== undefined) payload.requirements = updates.requirements;
   if (updates.preferredSkills !== undefined) payload.preferred_skills = updates.preferredSkills;
   if (updates.status !== undefined) payload.status = updates.status;
   if (updates.deadline !== undefined) payload.deadline = updates.deadline;
+  if (updates.openings !== undefined) payload.openings = updates.openings;
+  if (updates.hiringManager !== undefined) payload.hiring_manager = updates.hiringManager;
+  if (updates.visibility !== undefined) payload.visibility = updates.visibility;
+  if (updates.featured !== undefined) payload.featured = updates.featured;
+  if (updates.sponsored !== undefined) payload.sponsored = updates.sponsored;
+  if (updates.priority !== undefined) payload.priority = updates.priority;
+  if (updates.moderationReason !== undefined) payload.moderation_reason = updates.moderationReason;
   if (updates.viewCount !== undefined) payload.view_count = updates.viewCount;
+  payload.updated_at = updates.updatedAt || new Date().toISOString();
 
   return payload;
 }

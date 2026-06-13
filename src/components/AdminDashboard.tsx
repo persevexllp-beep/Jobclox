@@ -3,19 +3,442 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { User, Company, Job, Application, UserRole, EmailAlert } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { User, Company, Job, EmailAlert, Application } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell } from 'recharts';
 import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye } from 'lucide-react';
 import SkeletonLoader from './SkeletonLoader';
+import { formatEmailAlertPreview, sanitizeEmailHtml } from '../utils/messageFormatting';
+import type { ToastTone } from './ToastViewport';
+import UserAvatar from './UserAvatar';
 
 interface AdminDashboardProps {
   currentUser: User;
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
   theme?: 'light' | 'dark';
+  showToast: (tone: ToastTone, title: string, message?: string) => void;
+  onCurrentUserUpdate: (updates: Partial<User>) => void;
 }
 
-export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDashboardProps) {
+function AdminJobManagementPanel(props: {
+  jobs: Job[];
+  allJobs: Job[];
+  companies: Company[];
+  applications: Application[];
+  metrics: {
+    totalJobs: number;
+    activeJobs: number;
+    closedJobs: number;
+    featuredJobs: number;
+    sponsoredJobs: number;
+    applications: number;
+    conversionRate: number;
+  };
+  form: AdminJobFormState;
+  setField: <K extends keyof AdminJobFormState>(key: K, value: AdminJobFormState[K]) => void;
+  savingJob: boolean;
+  onSubmit: (event: React.FormEvent) => void;
+  onReset: () => void;
+  onCreate: () => void;
+  onEdit: (job: Job) => void;
+  onAction: (jobId: string, action: string, reason?: string) => void;
+  onDelete: (jobId: string) => void;
+  selectedJobIds: string[];
+  setSelectedJobIds: React.Dispatch<React.SetStateAction<string[]>>;
+  jobReason: string;
+  setJobReason: (value: string) => void;
+  updatingAction: boolean;
+  onBulkAction: (action: string) => void;
+  filters: {
+    search: string;
+    status: string;
+    company: string;
+    type: string;
+    promotion: string;
+  };
+  setters: {
+    setSearch: (value: string) => void;
+    setStatus: (value: string) => void;
+    setCompany: (value: string) => void;
+    setType: (value: string) => void;
+    setPromotion: (value: string) => void;
+  };
+}) {
+  const allVisibleSelected = props.jobs.length > 0 && props.jobs.every((job) => props.selectedJobIds.includes(job.id));
+  const toggleJobSelection = (jobId: string) => {
+    props.setSelectedJobIds((current) => current.includes(jobId) ? current.filter((id) => id !== jobId) : [...current, jobId]);
+  };
+  const toggleAllVisible = () => {
+    props.setSelectedJobIds(allVisibleSelected ? [] : props.jobs.map((job) => job.id));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-940 text-slate-900 border-none">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="font-display font-bold text-lg">Platform Job Management</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Create, assign, moderate, promote, and retire jobs using real platform records.
+            </p>
+          </div>
+          <button
+            id="admin-create-job-button"
+            type="button"
+            onClick={props.onCreate}
+            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white"
+          >
+            Create Job
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-7 gap-3">
+        <AdminJobMetric label="Total jobs" value={props.metrics.totalJobs} />
+        <AdminJobMetric label="Active" value={props.metrics.activeJobs} />
+        <AdminJobMetric label="Closed" value={props.metrics.closedJobs} />
+        <AdminJobMetric label="Featured" value={props.metrics.featuredJobs} />
+        <AdminJobMetric label="Sponsored" value={props.metrics.sponsoredJobs} />
+        <AdminJobMetric label="Applications" value={props.metrics.applications} />
+        <AdminJobMetric label="Conversion" value={`${props.metrics.conversionRate}%`} />
+      </div>
+
+      <form onSubmit={props.onSubmit} className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700">
+              {props.form.id ? 'Edit job' : 'Create job'}
+            </span>
+            <h4 className="font-display font-bold text-base text-slate-950">
+              {props.form.id ? props.form.title || 'Editing job' : 'Admin job creation'}
+            </h4>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={props.onReset} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700">
+              Clear
+            </button>
+            <button type="submit" disabled={props.savingJob} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">
+              {props.savingJob ? 'Saving...' : props.form.id ? 'Save Changes' : 'Create Job'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <AdminField label="Title" value={props.form.title} onChange={(value) => props.setField('title', value)} required />
+          <label className="admin-job-field">
+            <span>Company Assignment</span>
+            <select value={props.form.companyMode} onChange={(event) => props.setField('companyMode', event.target.value as AdminJobFormState['companyMode'])}>
+              <option value="platform">Platform job</option>
+              <option value="existing">Existing company</option>
+              <option value="new">New company</option>
+            </select>
+          </label>
+          {props.form.companyMode === 'existing' ? (
+            <label className="admin-job-field">
+              <span>Company</span>
+              <select value={props.form.companyId} onChange={(event) => props.setField('companyId', event.target.value)}>
+                <option value="">Select company</option>
+                {props.companies.map((company) => <option key={company.id} value={company.id}>{company.companyName}</option>)}
+              </select>
+            </label>
+          ) : props.form.companyMode === 'new' ? (
+            <AdminField label="New Company" value={props.form.newCompanyName} onChange={(value) => props.setField('newCompanyName', value)} required />
+          ) : (
+            <div className="admin-job-field">
+              <span>Assignment</span>
+              <strong>Persevex Internal</strong>
+            </div>
+          )}
+          {props.form.companyMode === 'new' && (
+            <>
+              <AdminField label="Company Email" value={props.form.newCompanyEmail} onChange={(value) => props.setField('newCompanyEmail', value)} type="email" />
+              <AdminField label="Industry" value={props.form.newCompanyIndustry} onChange={(value) => props.setField('newCompanyIndustry', value)} />
+            </>
+          )}
+          <AdminField label="Location" value={props.form.location} onChange={(value) => props.setField('location', value)} />
+          <AdminField label="Department" value={props.form.department} onChange={(value) => props.setField('department', value)} />
+          <label className="admin-job-field">
+            <span>Employment Type</span>
+            <select value={props.form.jobType} onChange={(event) => props.setField('jobType', event.target.value as Job['jobType'])}>
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Contract">Contract</option>
+              <option value="Internship">Internship</option>
+            </select>
+          </label>
+          <label className="admin-job-field">
+            <span>Work Mode</span>
+            <select value={props.form.workMode} onChange={(event) => props.setField('workMode', event.target.value as AdminJobFormState['workMode'])}>
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">Onsite</option>
+            </select>
+          </label>
+          <AdminField label="Experience" value={props.form.experience} onChange={(value) => props.setField('experience', value)} />
+          <AdminField label="Education" value={props.form.education} onChange={(value) => props.setField('education', value)} />
+          <AdminField label="Salary Range" value={props.form.salary} onChange={(value) => props.setField('salary', value)} />
+          <AdminField label="Benefits" value={props.form.benefits} onChange={(value) => props.setField('benefits', value)} />
+          <AdminField label="Equity" value={props.form.equity} onChange={(value) => props.setField('equity', value)} />
+          <AdminField label="Openings" value={props.form.openings} onChange={(value) => props.setField('openings', value)} type="number" />
+          <AdminField label="Deadline" value={props.form.deadline} onChange={(value) => props.setField('deadline', value)} type="date" />
+          <AdminField label="Hiring Manager" value={props.form.hiringManager} onChange={(value) => props.setField('hiringManager', value)} />
+          <label className="admin-job-field">
+            <span>Status</span>
+            <select value={props.form.status} onChange={(event) => props.setField('status', event.target.value as Job['status'])}>
+              {['draft', 'submitted', 'approved', 'paused', 'closed', 'archived'].map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </label>
+          <label className="admin-job-field">
+            <span>Visibility</span>
+            <select value={props.form.visibility} onChange={(event) => props.setField('visibility', event.target.value as AdminJobFormState['visibility'])}>
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+            </select>
+          </label>
+          <label className="admin-job-field md:col-span-3">
+            <span>Description</span>
+            <textarea value={props.form.description} onChange={(event) => props.setField('description', event.target.value)} rows={4} />
+          </label>
+          <AdminField label="Required Skills" value={props.form.requirements} onChange={(value) => props.setField('requirements', value)} required />
+          <AdminField label="Preferred Skills" value={props.form.preferredSkills} onChange={(value) => props.setField('preferredSkills', value)} />
+          <div className="admin-job-flags">
+            <label><input type="checkbox" checked={props.form.featured} onChange={(event) => props.setField('featured', event.target.checked)} /> Featured</label>
+            <label><input type="checkbox" checked={props.form.sponsored} onChange={(event) => props.setField('sponsored', event.target.checked)} /> Sponsored</label>
+            <label><input type="checkbox" checked={props.form.priority} onChange={(event) => props.setField('priority', event.target.checked)} /> Priority</label>
+          </div>
+        </div>
+      </form>
+
+      <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <AdminField label="Search" value={props.filters.search} onChange={props.setters.setSearch} placeholder="Title, company, skill" />
+          <label className="admin-job-field">
+            <span>Status</span>
+            <select value={props.filters.status} onChange={(event) => props.setters.setStatus(event.target.value)}>
+              <option value="all">All statuses</option>
+              {['draft', 'submitted', 'approved', 'paused', 'closed', 'archived', 'flagged', 'suspended', 'rejected'].map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </label>
+          <label className="admin-job-field">
+            <span>Company</span>
+            <select value={props.filters.company} onChange={(event) => props.setters.setCompany(event.target.value)}>
+              <option value="all">All companies</option>
+              {props.companies.map((company) => <option key={company.id} value={company.id}>{company.companyName}</option>)}
+            </select>
+          </label>
+          <label className="admin-job-field">
+            <span>Type</span>
+            <select value={props.filters.type} onChange={(event) => props.setters.setType(event.target.value)}>
+              <option value="all">All types</option>
+              {['Full-time', 'Part-time', 'Contract', 'Internship'].map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+          <label className="admin-job-field">
+            <span>Promotion</span>
+            <select value={props.filters.promotion} onChange={(event) => props.setters.setPromotion(event.target.value)}>
+              <option value="all">Any visibility</option>
+              <option value="featured">Featured</option>
+              <option value="sponsored">Sponsored</option>
+              <option value="priority">Priority</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} />
+            Select visible ({props.jobs.length})
+          </label>
+          <input
+            value={props.jobReason}
+            onChange={(event) => props.setJobReason(event.target.value)}
+            placeholder="Moderation reason"
+            className="min-w-[220px] rounded-xl border border-slate-200 px-3 py-2 text-xs"
+          />
+          {['publish', 'pause', 'resume', 'close', 'archive', 'feature', 'sponsor', 'delete'].map((action) => (
+            <button key={action} type="button" disabled={props.updatingAction || props.selectedJobIds.length === 0} onClick={() => props.onBulkAction(action)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700">
+              Bulk {action}
+            </button>
+          ))}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-slate-50 text-slate-400 font-mono text-[10px] uppercase tracking-wider">
+                <th className="p-3">Select</th>
+                <th className="p-3">Job Title</th>
+                <th className="p-3">Company</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Applications</th>
+                <th className="p-3">Views</th>
+                <th className="p-3">Match Quality</th>
+                <th className="p-3">Created</th>
+                <th className="p-3">Updated</th>
+                <th className="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-800">
+              {props.jobs.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="p-8 text-center text-slate-400">No jobs match the current filters.</td>
+                </tr>
+              ) : props.jobs.map((job) => {
+                const appCount = props.applications.filter((app) => app.jobId === job.id).length;
+                const selected = props.selectedJobIds.includes(job.id);
+                return (
+                  <tr key={job.id} className="hover:bg-slate-50/50">
+                    <td className="p-3">
+                      <input type="checkbox" checked={selected} onChange={() => toggleJobSelection(job.id)} />
+                    </td>
+                    <td className="p-3 min-w-[240px]">
+                      <strong className="block text-slate-950">{job.title}</strong>
+                      <span className="text-slate-500">{job.jobType} - {job.workMode || 'mode unset'}</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {job.featured && <span className="admin-job-chip">Featured</span>}
+                        {job.sponsored && <span className="admin-job-chip">Sponsored</span>}
+                        {job.priority && <span className="admin-job-chip">Priority</span>}
+                      </div>
+                    </td>
+                    <td className="p-3">{job.companyName}</td>
+                    <td className="p-3"><AdminStatusBadge status={job.status} /></td>
+                    <td className="p-3 font-mono">{appCount}</td>
+                    <td className="p-3 font-mono">{job.viewCount}</td>
+                    <td className="p-3">{getAdminMatchQuality(job, props.applications)}</td>
+                    <td className="p-3 text-slate-500">{new Date(job.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3 text-slate-500">{job.updatedAt ? new Date(job.updatedAt).toLocaleDateString() : 'Not tracked'}</td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        <button type="button" onClick={() => props.onEdit(job)} className="admin-job-action">Edit</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'publish')}>Publish</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'pause')}>Pause</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'resume')}>Resume</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'close')}>Close</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'archive')}>Archive</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'flag', props.jobReason || 'Flagged by admin')}>Flag</button>
+                        <button type="button" onClick={() => props.onAction(job.id, 'suspend', props.jobReason || 'Suspended by admin')}>Suspend</button>
+                        <button type="button" onClick={() => props.onAction(job.id, job.featured ? 'unfeature' : 'feature')}>{job.featured ? 'Unfeature' : 'Feature'}</button>
+                        <button type="button" onClick={() => props.onAction(job.id, job.sponsored ? 'unsponsor' : 'sponsor')}>{job.sponsored ? 'Unsponsor' : 'Sponsor'}</button>
+                        <button type="button" onClick={() => props.onDelete(job.id)} className="text-red-700">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminJobMetric({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <article className="bg-white border border-slate-150 rounded-2xl p-3 shadow-xs">
+      <span className="block text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">{label}</span>
+      <strong className="mt-1 block text-lg font-display text-slate-950">{value}</strong>
+    </article>
+  );
+}
+
+function AdminStatusBadge({ status }: { status: Job['status'] | Application['status'] }) {
+  const tone = status === 'approved' || status === 'selected' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+    : status === 'submitted' || status === 'under_review' || status === 'shortlisted' ? 'bg-amber-50 text-amber-800 border-amber-200'
+    : status === 'paused' || status === 'closed' || status === 'archived' ? 'bg-slate-100 text-slate-700 border-slate-200'
+    : 'bg-red-50 text-red-700 border-red-150';
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${tone}`}>
+      {status.replace('_', ' ')}
+    </span>
+  );
+}
+
+function AdminField({ label, value, onChange, placeholder, type = 'text', required }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="admin-job-field">
+      <span>{label}</span>
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} />
+    </label>
+  );
+}
+
+function getAdminMatchQuality(job: Job, applications: Application[]) {
+  const jobApps = applications.filter((app) => app.jobId === job.id);
+  if (jobApps.length === 0) return 'No applications';
+  const average = Math.round(jobApps.reduce((total, app) => total + app.score, 0) / jobApps.length);
+  if (average >= 80) return `${average}% strong`;
+  if (average >= 60) return `${average}% moderate`;
+  return `${average}% weak`;
+}
+
+type AdminJobFormState = {
+  id?: string;
+  title: string;
+  companyMode: 'platform' | 'existing' | 'new';
+  companyId: string;
+  newCompanyName: string;
+  newCompanyEmail: string;
+  newCompanyIndustry: string;
+  location: string;
+  department: string;
+  description: string;
+  jobType: Job['jobType'];
+  workMode: NonNullable<Job['workMode']>;
+  experience: string;
+  education: string;
+  requirements: string;
+  preferredSkills: string;
+  salary: string;
+  benefits: string;
+  equity: string;
+  openings: string;
+  deadline: string;
+  hiringManager: string;
+  visibility: NonNullable<Job['visibility']>;
+  status: Job['status'];
+  featured: boolean;
+  sponsored: boolean;
+  priority: boolean;
+};
+
+const emptyAdminJobForm: AdminJobFormState = {
+  title: '',
+  companyMode: 'platform',
+  companyId: '',
+  newCompanyName: '',
+  newCompanyEmail: '',
+  newCompanyIndustry: '',
+  location: '',
+  department: '',
+  description: '',
+  jobType: 'Full-time',
+  workMode: 'remote',
+  experience: '',
+  education: '',
+  requirements: '',
+  preferredSkills: '',
+  salary: '',
+  benefits: '',
+  equity: '',
+  openings: '1',
+  deadline: '',
+  hiringManager: '',
+  visibility: 'public',
+  status: 'approved',
+  featured: false,
+  sponsored: false,
+  priority: false,
+};
+
+export default function AdminDashboard({ currentUser, apiFetch, theme, showToast, onCurrentUserUpdate }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<'analytics' | 'companies' | 'jobs' | 'screening' | 'users' | 'emails'>('analytics');
   const [loading, setLoading] = useState(true);
   
@@ -37,15 +460,26 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
   const [moderationSearch, setModerationSearch] = useState('');
   const [screenSearch, setScreenSearch] = useState('');
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobStatusFilter, setJobStatusFilter] = useState('all');
+  const [jobCompanyFilter, setJobCompanyFilter] = useState('all');
+  const [jobTypeFilter, setJobTypeFilter] = useState('all');
+  const [jobPromotionFilter, setJobPromotionFilter] = useState('all');
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [jobForm, setJobForm] = useState<AdminJobFormState>(emptyAdminJobForm);
+  const [savingJob, setSavingJob] = useState(false);
+  const [jobReason, setJobReason] = useState('');
 
   // Schedulers interaction states
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [tempNotesText, setTempNotesText] = useState('');
   const [updatingAction, setUpdatingAction] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
 
   useEffect(() => {
     fetchAdminData();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -55,13 +489,14 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
         { jobs: jList },
         { applications: aList },
         { analytics: sData },
+        userData,
         emailData
       ] = await Promise.all([
         apiFetch('/api/companies'),
         apiFetch('/api/jobs'),
         apiFetch('/api/applications'),
-        // Dynamic summary
         apiFetch('/api/analytics/summary'),
+        apiFetch('/api/users').catch(() => ({ users: [] })),
         apiFetch('/api/email-alerts').catch(() => ({ emailAlerts: [] }))
       ]);
 
@@ -69,15 +504,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
       setJobs(jList || []);
       setApplications(aList || []);
       setEmailAlerts(emailData?.emailAlerts || []);
-
-      // Simulating a list of users for directory
-      // Since express doesn't have an endpoint for ALL user list, let's derive it or fetch a custom mock
-      setUsers([
-        { id: 'u-admin', name: 'Olivia Vance', email: 'admin@persevex.com', role: 'admin', status: 'active', createdAt: '2026-05-01' },
-        { id: 'u-comp1', name: 'Sarah Jenkins', email: 'hr@amazon.com', role: 'company', status: 'active', createdAt: '2026-05-10' },
-        { id: 'u-cand1', name: 'Alex Mercer', email: 'candidate@persevex.com', role: 'candidate', status: 'active', createdAt: '2026-05-15' },
-        { id: 'u-cand2', name: 'Monica Geller', email: 'monica@persevex.com', role: 'candidate', status: 'active', createdAt: '2026-05-20' }
-      ]);
+      setUsers(userData?.users || []);
 
       if (sData) {
         setMetrics(sData.metrics);
@@ -101,12 +528,12 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
         body: JSON.stringify({ status })
       });
       if (res.company) {
-        alert(`Company KYC verification status changed to: ${status.toUpperCase()}`);
+        showToast('success', 'Company updated', `Verification status changed to ${status.toUpperCase()}.`);
         fetchAdminData();
       }
     } catch (err) {
       console.error(err);
-      alert('Fail to update company verify status');
+      showToast('error', 'Update failed', 'Company verification status could not be updated.');
     }
   };
 
@@ -119,12 +546,12 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
         body: JSON.stringify({ status })
       });
       if (res.job) {
-        alert(`Job moderation status updated: ${status.toUpperCase()}`);
+        showToast('success', 'Job updated', `Moderation status changed to ${status.toUpperCase()}.`);
         fetchAdminData();
       }
     } catch (err) {
       console.error(err);
-      alert('Fail to moderate job specification');
+      showToast('error', 'Update failed', 'Job moderation could not be updated.');
     }
   };
 
@@ -139,11 +566,12 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
       });
       if (res.application) {
         setEditingNotesId(null);
+        showToast('success', 'Notes saved', 'Candidate review notes were updated.');
         fetchAdminData();
       }
     } catch (err) {
       console.error(err);
-      alert('Fail to save notes');
+      showToast('error', 'Save failed', 'Review notes could not be saved.');
     } finally {
       setUpdatingAction(false);
     }
@@ -159,12 +587,12 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
         body: JSON.stringify({ status: targetStatus })
       });
       if (res.application) {
-        alert(`Candidate pipeline advanced to: ${targetStatus.toUpperCase()}`);
+        showToast('success', 'Pipeline updated', `Candidate moved to ${targetStatus.toUpperCase()}.`);
         fetchAdminData();
       }
     } catch (err) {
       console.error(err);
-      alert('Fail to advance pipeline stage');
+      showToast('error', 'Update failed', 'Pipeline stage could not be advanced.');
     } finally {
       setUpdatingAction(false);
     }
@@ -187,12 +615,244 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
         });
       });
       await Promise.all(promises);
-      alert(`Successfully processed ${selectedAppIds.length} candidate files in bulk!`);
+      showToast('success', 'Bulk action complete', `Processed ${selectedAppIds.length} candidate file${selectedAppIds.length > 1 ? 's' : ''}.`);
       setSelectedAppIds([]);
       fetchAdminData();
     } catch (err) {
       console.error(err);
-      alert('Failed to update one or more applications during bulk operations');
+      showToast('error', 'Bulk action failed', 'One or more applications could not be updated.');
+    } finally {
+      setUpdatingAction(false);
+    }
+  };
+
+  const handleProfilePhotoUpload = async (file: File) => {
+    if (!file) return;
+    setPhotoUploading(true);
+    setPhotoError('');
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Failed to read file.'));
+        reader.readAsDataURL(file);
+      });
+      const response = await apiFetch('/api/users/profile/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, fileName: file.name, mimeType: file.type || 'image/jpeg' }),
+      });
+      onCurrentUserUpdate({ profilePhotoUrl: response.profilePhotoUrl || response.user?.profilePhotoUrl || '' });
+      showToast('success', 'Profile photo updated', 'Your admin avatar is live across the workspace.');
+    } catch (err: any) {
+      setPhotoError(err.message || 'Failed to upload admin profile photo.');
+      showToast('error', 'Upload failed', err.message || 'Failed to upload admin profile photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleProfilePhotoRemove = async () => {
+    setPhotoUploading(true);
+    setPhotoError('');
+    try {
+      await apiFetch('/api/users/profile/photo', { method: 'DELETE' });
+      onCurrentUserUpdate({ profilePhotoUrl: '' });
+      showToast('info', 'Profile photo removed', 'Initials will be shown until you upload a new photo.');
+    } catch (err: any) {
+      setPhotoError(err.message || 'Failed to remove admin profile photo.');
+      showToast('error', 'Removal failed', err.message || 'Failed to remove admin profile photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const jobDashboardMetrics = useMemo(() => {
+    const totalApplications = applications.length;
+    const activeJobs = jobs.filter((job) => job.status === 'approved').length;
+    return {
+      totalJobs: jobs.length,
+      activeJobs,
+      closedJobs: jobs.filter((job) => job.status === 'closed').length,
+      featuredJobs: jobs.filter((job) => job.featured).length,
+      sponsoredJobs: jobs.filter((job) => job.sponsored).length,
+      applications: totalApplications,
+      conversionRate: totalApplications ? Math.round((applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length / totalApplications) * 100) : 0,
+    };
+  }, [applications, jobs]);
+
+  const filteredAdminJobs = useMemo(() => {
+    const query = jobSearch.trim().toLowerCase();
+    return jobs.filter((job) => {
+      const matchesQuery = !query || [
+        job.title,
+        job.companyName,
+        job.location,
+        job.department,
+        ...job.requirements,
+        ...(job.preferredSkills || []),
+      ].some((value) => value.toLowerCase().includes(query));
+      const matchesStatus = jobStatusFilter === 'all' || job.status === jobStatusFilter;
+      const matchesCompany = jobCompanyFilter === 'all' || job.companyId === jobCompanyFilter;
+      const matchesType = jobTypeFilter === 'all' || job.jobType === jobTypeFilter;
+      const matchesPromotion = jobPromotionFilter === 'all'
+        || (jobPromotionFilter === 'featured' && job.featured)
+        || (jobPromotionFilter === 'sponsored' && job.sponsored)
+        || (jobPromotionFilter === 'priority' && job.priority);
+      return matchesQuery && matchesStatus && matchesCompany && matchesType && matchesPromotion;
+    });
+  }, [jobCompanyFilter, jobPromotionFilter, jobSearch, jobStatusFilter, jobTypeFilter, jobs]);
+
+  const setJobFormField = <K extends keyof AdminJobFormState>(key: K, value: AdminJobFormState[K]) => {
+    setJobForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetJobForm = () => {
+    setJobForm(emptyAdminJobForm);
+  };
+
+  const editJob = (job: Job) => {
+    setJobForm({
+      id: job.id,
+      title: job.title,
+      companyMode: companies.some((company) => company.id === job.companyId) ? 'existing' : 'platform',
+      companyId: job.companyId,
+      newCompanyName: '',
+      newCompanyEmail: '',
+      newCompanyIndustry: '',
+      location: job.location,
+      department: job.department,
+      description: job.description,
+      jobType: job.jobType,
+      workMode: job.workMode || 'remote',
+      experience: job.experience,
+      education: job.education || '',
+      requirements: job.requirements.join(', '),
+      preferredSkills: (job.preferredSkills || []).join(', '),
+      salary: job.salary,
+      benefits: job.benefits || '',
+      equity: job.equity || '',
+      openings: String(job.openings || 1),
+      deadline: job.deadline || '',
+      hiringManager: job.hiringManager || '',
+      visibility: job.visibility || 'public',
+      status: job.status,
+      featured: Boolean(job.featured),
+      sponsored: Boolean(job.sponsored),
+      priority: Boolean(job.priority),
+    });
+    showToast('info', 'Editing job', job.title);
+  };
+
+  const buildJobPayload = () => ({
+    title: jobForm.title,
+    companyMode: jobForm.companyMode,
+    companyId: jobForm.companyMode === 'existing' ? jobForm.companyId : undefined,
+    newCompanyName: jobForm.companyMode === 'new' ? jobForm.newCompanyName : undefined,
+    newCompanyEmail: jobForm.companyMode === 'new' ? jobForm.newCompanyEmail : undefined,
+    newCompanyIndustry: jobForm.companyMode === 'new' ? jobForm.newCompanyIndustry : undefined,
+    location: jobForm.location,
+    department: jobForm.department,
+    description: jobForm.description,
+    jobType: jobForm.jobType,
+    workMode: jobForm.workMode,
+    experience: jobForm.experience,
+    education: jobForm.education,
+    requirements: jobForm.requirements,
+    preferredSkills: jobForm.preferredSkills,
+    salary: jobForm.salary,
+    benefits: jobForm.benefits,
+    equity: jobForm.equity,
+    openings: Number(jobForm.openings) || 1,
+    deadline: jobForm.deadline,
+    hiringManager: jobForm.hiringManager,
+    visibility: jobForm.visibility,
+    status: jobForm.status,
+    featured: jobForm.featured,
+    sponsored: jobForm.sponsored,
+    priority: jobForm.priority,
+  });
+
+  const handleAdminJobSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!jobForm.title.trim() || !jobForm.description.trim() || !jobForm.requirements.trim()) {
+      showToast('warning', 'Missing job details', 'Title, description, and required skills are required.');
+      return;
+    }
+    if (jobForm.companyMode === 'existing' && !jobForm.companyId) {
+      showToast('warning', 'Company required', 'Select an existing company or choose platform job.');
+      return;
+    }
+    if (jobForm.companyMode === 'new' && !jobForm.newCompanyName.trim()) {
+      showToast('warning', 'Company required', 'Add the new company name.');
+      return;
+    }
+
+    setSavingJob(true);
+    try {
+      const response = await apiFetch(jobForm.id ? `/api/jobs/${jobForm.id}` : '/api/jobs/create', {
+        method: jobForm.id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildJobPayload()),
+      });
+      if (response.job) {
+        showToast('success', jobForm.id ? 'Job updated' : 'Job created', `${response.job.title} is saved.`);
+        resetJobForm();
+        fetchAdminData();
+      }
+    } catch (err: any) {
+      showToast('error', 'Job save failed', err.message || 'Unable to save job.');
+    } finally {
+      setSavingJob(false);
+    }
+  };
+
+  const handleJobAction = async (jobId: string, action: string, reason?: string) => {
+    try {
+      const response = await apiFetch(`/api/jobs/${jobId}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reason }),
+      });
+      if (response.job) {
+        showToast('success', 'Job updated', `${response.job.title} was ${action}.`);
+        fetchAdminData();
+      }
+    } catch (err: any) {
+      showToast('error', 'Job action failed', err.message || 'Unable to update job.');
+    }
+  };
+
+  const handleJobDelete = async (jobId: string) => {
+    try {
+      await apiFetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      showToast('success', 'Job deleted', 'The job was removed from the platform.');
+      setSelectedJobIds((current) => current.filter((id) => id !== jobId));
+      fetchAdminData();
+    } catch (err: any) {
+      showToast('error', 'Delete failed', err.message || 'Unable to delete job.');
+    }
+  };
+
+  const handleBulkJobAction = async (action: string) => {
+    if (selectedJobIds.length === 0) return;
+    setUpdatingAction(true);
+    try {
+      if (action === 'delete') {
+        await Promise.all(selectedJobIds.map((jobId) => apiFetch(`/api/jobs/${jobId}`, { method: 'DELETE' })));
+      } else {
+        await Promise.all(selectedJobIds.map((jobId) => apiFetch(`/api/jobs/${jobId}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, reason: jobReason }),
+        })));
+      }
+      showToast('success', 'Bulk job action complete', `${selectedJobIds.length} job${selectedJobIds.length > 1 ? 's' : ''} updated.`);
+      setSelectedJobIds([]);
+      setJobReason('');
+      fetchAdminData();
+    } catch (err: any) {
+      showToast('error', 'Bulk job action failed', err.message || 'One or more jobs could not be updated.');
     } finally {
       setUpdatingAction(false);
     }
@@ -214,31 +874,31 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
         <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
           <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">Total Partners</span>
           <span className="font-display font-extrabold text-2xl text-slate-800 block mt-1">
-            {metrics?.totalCompanies || companies.length} Firms
+            {metrics?.totalCompanies ?? companies.length} Firms
           </span>
         </div>
         <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
           <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">KYC Verification Queue</span>
           <span className="font-display font-extrabold text-2xl text-yellow-750 text-amber-600 block mt-1">
-            {metrics?.pendingVerifications || companies.filter(c => c.verificationStatus === 'pending').length} Files
+            {metrics?.pendingVerifications ?? companies.filter(c => c.verificationStatus === 'pending').length} Files
           </span>
         </div>
         <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
           <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">Job Approvals Wait</span>
           <span className="font-display font-extrabold text-2xl text-blue-600 block mt-1">
-            {metrics?.pendingJobs || jobs.filter(j => j.status === 'submitted').length} Postings
+            {metrics?.pendingJobs ?? jobs.filter(j => j.status === 'submitted').length} Postings
           </span>
         </div>
         <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
           <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">Total Applicants</span>
           <span className="font-display font-extrabold text-2xl text-slate-800 block mt-1">
-            {metrics?.totalApplications || applications.length} Candidates
+            {metrics?.totalApplications ?? applications.length} Candidates
           </span>
         </div>
         <div className="bg-white border border-emerald-500/20 bg-emerald-50/15 rounded-2xl p-4 shadow-xs text-center">
           <span className="text-[10px] text-emerald-800 font-mono tracking-widest uppercase block">Approved Handshakes</span>
           <span className="font-display font-extrabold text-2xl text-emerald-700 block mt-1">
-            {metrics?.forwardedApplications || applications.filter(a => a.status === 'forwarded').length} Handed
+            {metrics?.forwardedApplications ?? applications.filter(a => a.status === 'forwarded').length} Handed
           </span>
         </div>
       </div>
@@ -269,7 +929,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
             activeTab === 'jobs' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
           }`}
         >
-          Moderations Queue ({jobs.filter(j => j.status === 'submitted').length})
+          Jobs & Moderation ({jobs.filter(j => j.status === 'submitted').length})
         </button>
         <button
           id="tab-screening"
@@ -509,88 +1169,42 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
       {/* MOBERATIONS QUEUE TAB */}
 
       {activeTab === 'jobs' && (
-        <div className="space-y-6">
-          <div className="bg-slate-940 text-slate-900 border-none">
-            <h3 className="font-display font-bold text-lg">
-              Role Specification Moderation Queue
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Audit submitted technical job posts to ensure clear requirement tags, correct wage specifications, and genuine descriptions.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6">
-            {jobs.filter(j => j.status === 'submitted').length === 0 ? (
-              <div className="bg-white border border-slate-150 rounded-2xl p-12 text-center text-slate-400 text-sm">
-                All role postings are moderated. No entries waiting for approvals.
-              </div>
-            ) : (
-              jobs.filter(j => j.status === 'submitted').map(j => (
-                <div key={j.id} className="bg-white border border-slate-150 rounded-2xl p-6 text-left shadow-xs">
-                  <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-mono block tracking-wider uppercase font-bold">
-                        {j.department}
-                      </span>
-                      <h4 className="font-display font-bold text-lg mt-0.5 text-slate-950">
-                        {j.title}
-                      </h4>
-                      <span className="text-xs text-slate-500 font-semibold mt-0.5 block">
-                        posted by {j.companyName}
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 bg-yellow-50 border border-yellow-150 text-[10px] text-amber-800 font-bold rounded">
-                      Needs Moderation
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-600 leading-normal mb-4">
-                    {j.description}
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-xs">
-                    <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                      <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase block mb-1">
-                        Must-Have Skill Criteria
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {j.requirements.map((sk, index) => (
-                          <span key={index} className="px-2 py-0.5 bg-slate-100 text-slate-750 font-mono text-[10px] rounded">
-                            {sk}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl md:col-span-1">
-                      <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase block mb-1">
-                        Agreement / experience specifications
-                      </span>
-                      <p className="font-medium text-slate-700">
-                        Type: {j.jobType} | Exp limit: {j.experience} | Wage: {j.salary}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 pt-4 flex justify-end space-x-2">
-                    <button
-                      onClick={() => handleJobModeration(j.id, 'rejected')}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl cursor-pointer"
-                    >
-                      Decline Opening
-                    </button>
-                    <button
-                      onClick={() => handleJobModeration(j.id, 'approved')}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl cursor-pointer transition-colors"
-                    >
-                      Approve & Publish Live
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <AdminJobManagementPanel
+          jobs={filteredAdminJobs}
+          allJobs={jobs}
+          companies={companies}
+          applications={applications}
+          metrics={jobDashboardMetrics}
+          form={jobForm}
+          setField={setJobFormField}
+          savingJob={savingJob}
+          onSubmit={handleAdminJobSave}
+          onReset={resetJobForm}
+          onCreate={resetJobForm}
+          onEdit={editJob}
+          onAction={handleJobAction}
+          onDelete={handleJobDelete}
+          selectedJobIds={selectedJobIds}
+          setSelectedJobIds={setSelectedJobIds}
+          jobReason={jobReason}
+          setJobReason={setJobReason}
+          updatingAction={updatingAction}
+          onBulkAction={handleBulkJobAction}
+          filters={{
+            search: jobSearch,
+            status: jobStatusFilter,
+            company: jobCompanyFilter,
+            type: jobTypeFilter,
+            promotion: jobPromotionFilter,
+          }}
+          setters={{
+            setSearch: setJobSearch,
+            setStatus: setJobStatusFilter,
+            setCompany: setJobCompanyFilter,
+            setType: setJobTypeFilter,
+            setPromotion: setJobPromotionFilter,
+          }}
+        />
       )}
 
       {/* SCREENING DESK TAB */}
@@ -769,16 +1383,19 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                       </div>
                       
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 mb-4 gap-4">
-                        <div>
-                          <div className="flex items-center space-x-1.5">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar name={app.candidateName} src={app.candidateProfilePhotoUrl} className="h-12 w-12 rounded-2xl border border-slate-200" />
+                          <div>
+                            <div className="flex items-center space-x-1.5">
                             <h4 className="font-display font-bold text-base text-slate-950">
                               {app.candidateName}
                             </h4>
                             <span className="text-xs text-slate-400">({app.candidateEmail})</span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              Applying for standard specification: <strong className="text-slate-800">{app.jobTitle}</strong>
+                            </p>
                           </div>
-                          <p className="text-xs text-slate-500 font-medium mt-0.5">
-                            Applying for standard specification: <strong className="text-slate-800">{app.jobTitle}</strong>
-                          </p>
                         </div>
 
                         {/* Smart match score rating scale */}
@@ -815,7 +1432,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                           <div className="flex flex-wrap gap-1">
                             {app.missingSkills.length === 0 ? (
                               <span className="text-emerald-800 font-semibold font-mono text-[10px]">
-                                ✓ 105% Keyword Spec Matches Perfectly!
+                                No required skill gaps recorded.
                               </span>
                             ) : (
                               app.missingSkills.map((sk, index) => (
@@ -932,6 +1549,25 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
           </div>
 
           <div className="bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+            <div className="border-b border-slate-100 bg-slate-50/70 p-5">
+              <div className="flex flex-wrap items-center gap-4">
+                <UserAvatar name={currentUser.name} src={currentUser.profilePhotoUrl} className="h-16 w-16 rounded-2xl border border-white shadow-sm" />
+                <div className="min-w-[220px] flex-1">
+                  <strong className="block text-sm text-slate-900">Admin account photo</strong>
+                  <p className="text-xs text-slate-500">Used in the navbar and audit workspace fallback surfaces.</p>
+                  {photoError && <p className="mt-2 text-xs text-rose-600">{photoError}</p>}
+                </div>
+                <label className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/avif" className="hidden" onChange={(event) => event.target.files?.[0] && handleProfilePhotoUpload(event.target.files[0])} />
+                  {photoUploading ? 'Uploading...' : 'Upload photo'}
+                </label>
+                {currentUser.profilePhotoUrl && (
+                  <button type="button" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={handleProfilePhotoRemove} disabled={photoUploading}>
+                    Remove photo
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
@@ -946,7 +1582,12 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                 <tbody className="divide-y divide-slate-100 text-slate-800">
                   {users.map(u => (
                     <tr key={u.id} className="hover:bg-slate-50/40">
-                      <td className="p-3.5 pl-6 font-semibold">{u.name}</td>
+                      <td className="p-3.5 pl-6 font-semibold">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar name={u.name} src={u.profilePhotoUrl} className="h-10 w-10 rounded-xl border border-slate-200" />
+                          <span>{u.name}</span>
+                        </div>
+                      </td>
                       <td className="p-3.5 font-mono">{u.email}</td>
                       <td className="p-3.5">
                         <span className={`px-2 py-0.5 text-[9px] font-bold font-mono rounded uppercase ${
@@ -1007,6 +1648,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                 <div className="lg:col-span-12 xl:col-span-5 space-y-3 max-h-[500px] overflow-y-auto pr-1">
                   {emailAlerts.map((email, idx) => {
                     const isSelected = activeEmailId ? activeEmailId === email.id : idx === 0;
+                    const preview = formatEmailAlertPreview(email);
                     return (
                       <button
                         key={email.id}
@@ -1032,6 +1674,9 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                         <div className="flex items-center justify-between gap-2 mt-1 w-full text-[11px] text-slate-550 text-slate-600">
                           <span className="truncate">To: {email.recipientName} ({email.recipientEmail})</span>
                         </div>
+                        <p className="mt-2 line-clamp-3 text-[11px] leading-5 text-slate-600">
+                          {preview.summary}
+                        </p>
                         <span className="mt-2 text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md self-start font-mono">
                           Event: {email.triggeredByEvent}
                         </span>
@@ -1045,6 +1690,8 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                   {(() => {
                     const email = emailAlerts.find(e => e.id === activeEmailId) || emailAlerts[0];
                     if (!email) return null;
+                    const sanitizedBody = sanitizeEmailHtml(email.body);
+                    const preview = formatEmailAlertPreview(email);
                     return (
                       <>
                         <div className="bg-slate-900 text-slate-100 p-4 border-b border-slate-800 flex items-center justify-between">
@@ -1078,10 +1725,16 @@ export default function AdminDashboard({ currentUser, apiFetch, theme }: AdminDa
                           </div>
                         </div>
                         <div className="p-4 sm:p-6 bg-slate-100 flex-grow overflow-auto flex items-center justify-center">
-                          <div 
-                            className="w-full max-w-lg shadow-sm rounded-xl overflow-hidden bg-white border border-slate-200"
-                            dangerouslySetInnerHTML={{ __html: email.body }}
-                          />
+                          {sanitizedBody ? (
+                            <div
+                              className="pvx-sanitized-email w-full max-w-lg shadow-sm rounded-xl overflow-hidden bg-white border border-slate-200 p-6"
+                              dangerouslySetInnerHTML={{ __html: sanitizedBody }}
+                            />
+                          ) : (
+                            <div className="w-full max-w-lg shadow-sm rounded-xl overflow-hidden bg-white border border-slate-200 p-6 text-sm leading-6 text-slate-700">
+                              {preview.preview}
+                            </div>
+                          )}
                         </div>
                       </>
                     );

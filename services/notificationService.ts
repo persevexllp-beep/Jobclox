@@ -45,6 +45,7 @@ function mapSupabaseNotification(row: SupabaseNotificationRow): AppNotification 
     recipientId: row.recipient_id,
     title: row.title,
     message: row.message,
+    type: row.type || 'info',
     isRead: Boolean(row.is_read),
     createdAt: row.created_at || new Date().toISOString(),
   };

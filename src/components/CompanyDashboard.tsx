@@ -38,10 +38,14 @@ import {
 } from 'lucide-react';
 import { Application, Company, Job, User } from '../types';
 import SkeletonLoader from './SkeletonLoader';
+import type { ToastTone } from './ToastViewport';
+import UserAvatar from './UserAvatar';
 
 interface CompanyDashboardProps {
   currentUser: User;
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
+  showToast: (tone: ToastTone, title: string, message?: string) => void;
+  onCurrentUserUpdate: (updates: Partial<User>) => void;
 }
 
 type RecruiterTab = 'command' | 'post_job' | 'jobs' | 'pipeline' | 'profile' | 'analytics';
@@ -75,7 +79,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashboardProps) {
+export default function CompanyDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CompanyDashboardProps) {
   const [activeTab, setActiveTab] = useState<RecruiterTab>('command');
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
@@ -83,15 +87,15 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
   const [applications, setApplications] = useState<Application[]>([]);
 
   const [title, setTitle] = useState('');
-  const [department, setDepartment] = useState('Engineering');
-  const [location, setLocation] = useState('Remote (US)');
+  const [department, setDepartment] = useState('');
+  const [location, setLocation] = useState('');
   const [jobType, setJobType] = useState<'Full-time' | 'Part-time' | 'Contract' | 'Internship'>('Full-time');
-  const [experience, setExperience] = useState('3+ Years');
-  const [salary, setSalary] = useState('$110,000 - $130,000 / yr');
+  const [experience, setExperience] = useState('');
+  const [salary, setSalary] = useState('');
   const [description, setDescription] = useState('');
-  const [requirementsStr, setRequirementsStr] = useState('React, Node.js, MongoDB');
-  const [preferredStr, setPreferredStr] = useState('TypeScript, Tailwind CSS');
-  const [deadline, setDeadline] = useState('2026-08-30');
+  const [requirementsStr, setRequirementsStr] = useState('');
+  const [preferredStr, setPreferredStr] = useState('');
+  const [deadline, setDeadline] = useState('');
 
   const [wizardStep, setWizardStep] = useState<WizardStep>(0);
   const [previewJob, setPreviewJob] = useState(false);
@@ -100,7 +104,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
   const [postSuccess, setPostSuccess] = useState('');
 
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [interviewDate, setInterviewDate] = useState('2026-06-15T14:00');
+  const [interviewDate, setInterviewDate] = useState('');
   const [schedulingStatus, setSchedulingStatus] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [candidateNotes, setCandidateNotes] = useState<Record<string, string>>({});
@@ -116,16 +120,18 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
   const [companyEmail, setCompanyEmail] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
-  const [documentsName, setDocumentsName] = useState('cert_incorporation_registered.pdf');
+  const [documentsName, setDocumentsName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [documentError, setDocumentError] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
 
   useEffect(() => {
     fetchCompanyData();
-  }, [currentUser]);
+  }, [currentUser.id]);
 
   const fetchCompanyData = async () => {
     setLoading(true);
@@ -145,7 +151,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
         setCompanyEmail(remoteComp.companyEmail || '');
         setContactPerson(remoteComp.contactPerson || '');
         setPhone(remoteComp.phone || '');
-        setDocumentsName(remoteComp.documents?.[remoteComp.documents.length - 1]?.name || 'cert_incorporation_registered.pdf');
+        setDocumentsName(remoteComp.documents?.[remoteComp.documents.length - 1]?.name || '');
       }
       setJobs(remoteJobs || []);
       setApplications(remoteApps || []);
@@ -191,11 +197,13 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
       if (response.company) {
         setCompany(response.company);
         setDocumentsName(file.name);
+        showToast('success', 'Document uploaded', `${file.name} is attached to your verification profile.`);
       } else if (response.error) {
         setDocumentError(response.error);
       }
     } catch (err: any) {
       setDocumentError(err.message || 'Failed to upload verification document.');
+      showToast('error', 'Upload failed', err.message || 'Failed to upload verification document.');
     } finally {
       window.setTimeout(() => {
         setIsUploading(false);
@@ -240,6 +248,7 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
         setPostError(response.error);
       } else {
         setPostSuccess('Job opportunity submitted successfully! Admin will moderate and approve shortly.');
+        showToast('success', 'Job posted', 'Your role has been sent for moderation.');
         setTitle('');
         setDescription('');
         setWizardStep(0);
@@ -270,14 +279,51 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
         }),
       });
       if (response.company) {
-        alert('Corporate credentials updated successfully! Changes saved.');
+        showToast('success', 'Profile updated', 'Recruiter settings were saved successfully.');
         fetchCompanyData();
       }
     } catch (err) {
       console.error(err);
-      alert('Fail to update company settings');
+      showToast('error', 'Failed to save changes', 'Company settings could not be updated.');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleProfilePhotoUpload = async (file: File) => {
+    if (!file) return;
+    setPhotoUploading(true);
+    setPhotoError('');
+    try {
+      const base64 = await readFileAsDataUrl(file);
+      const response = await apiFetch('/api/users/profile/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, fileName: file.name, mimeType: file.type || 'image/jpeg' }),
+      });
+      const nextPhoto = response.profilePhotoUrl || response.user?.profilePhotoUrl || '';
+      onCurrentUserUpdate({ profilePhotoUrl: nextPhoto });
+      showToast('success', 'Profile photo updated', 'Your recruiter avatar is live across the workspace.');
+    } catch (err: any) {
+      setPhotoError(err.message || 'Failed to upload recruiter profile photo.');
+      showToast('error', 'Upload failed', err.message || 'Failed to upload recruiter profile photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleProfilePhotoRemove = async () => {
+    setPhotoUploading(true);
+    setPhotoError('');
+    try {
+      await apiFetch('/api/users/profile/photo', { method: 'DELETE' });
+      onCurrentUserUpdate({ profilePhotoUrl: '' });
+      showToast('info', 'Profile photo removed', 'Initials will be shown until you upload a new photo.');
+    } catch (err: any) {
+      setPhotoError(err.message || 'Failed to remove recruiter profile photo.');
+      showToast('error', 'Removal failed', err.message || 'Failed to remove recruiter profile photo.');
+    } finally {
+      setPhotoUploading(false);
     }
   };
 
@@ -292,11 +338,12 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
       if (response.application) {
         setSelectedApp(null);
         setDeclineReason('');
+        showToast('success', 'Application updated', `Candidate status moved to ${payload.status.replace('_', ' ')}.`);
         fetchCompanyData();
       }
     } catch (err) {
       console.error(err);
-      alert('Failed updating application metrics status context');
+      showToast('error', 'Update failed', 'Application workflow could not be updated.');
     } finally {
       setSchedulingStatus(false);
     }
@@ -340,10 +387,10 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
       <RecruiterHeader company={company} currentUser={currentUser} />
 
       <section className="rec-metrics">
-        <RecruiterMetricCard title="Active Jobs" value={metrics.activeJobs} trend="+12% this month" icon={BriefcaseBusiness} />
+        <RecruiterMetricCard title="Active Jobs" value={metrics.activeJobs} trend={`${jobs.filter((job) => job.status === 'submitted').length} pending approval`} icon={BriefcaseBusiness} />
         <RecruiterMetricCard title="Applications" value={metrics.applications} trend={`${applications.filter((app) => app.status === 'under_review').length} in review`} icon={FileText} />
-        <RecruiterMetricCard title="Interviews" value={metrics.interviews} trend="Schedule ready" icon={Calendar} />
-        <RecruiterMetricCard title="Hires" value={metrics.hires} trend="Offer pipeline" icon={UserCheck} />
+        <RecruiterMetricCard title="Interviews" value={metrics.interviews} trend={`${applications.filter((app) => Boolean(app.interviewDate)).length} scheduled`} icon={Calendar} />
+        <RecruiterMetricCard title="Hires" value={metrics.hires} trend={`${applications.filter((app) => app.status === 'selected').length} selected`} icon={UserCheck} />
       </section>
 
       <nav className="rec-tabs" aria-label="Recruiter workspace">
@@ -433,9 +480,14 @@ export default function CompanyDashboard({ currentUser, apiFetch }: CompanyDashb
               isUploading={isUploading}
               uploadProgress={uploadProgress}
               documentError={documentError}
+              currentUser={currentUser}
+              photoUploading={photoUploading}
+              photoError={photoError}
               handleDrag={handleDrag}
               handleDrop={handleDrop}
               handleFileChange={handleFileChange}
+              handlePhotoUpload={handleProfilePhotoUpload}
+              handlePhotoRemove={handleProfilePhotoRemove}
               onSubmit={handleProfileSave}
             />
           )}
@@ -478,6 +530,9 @@ function VerificationBanner({ status, onUpdate }: { status: string; onUpdate: ()
 function RecruiterHeader({ company, currentUser }: { company: Company | null; currentUser: User }) {
   return (
     <header className="rec-header">
+      <div className="flex items-center gap-4">
+        <UserAvatar name={currentUser.name} src={currentUser.profilePhotoUrl} className="h-14 w-14 rounded-2xl border border-white/60 shadow-sm" />
+      </div>
       <div>
         <span>Hiring Operating System</span>
         <h1>{company?.companyName || currentUser.name} recruiting command center</h1>
@@ -605,9 +660,9 @@ function PostJobWizard(props: {
           <div className="rec-wizard-card">
             {props.wizardStep === 0 && (
               <div className="rec-form-grid">
-                <TextField label="Job Title" value={props.title} onChange={props.setTitle} placeholder="Senior Frontend Engineer" required />
-                <TextField label="Department" value={props.department} onChange={props.setDepartment} placeholder="Engineering" />
-                <TextField label="Location" value={props.location} onChange={props.setLocation} placeholder="Remote, Bengaluru, Hybrid" />
+                <TextField label="Job Title" value={props.title} onChange={props.setTitle} placeholder="Role title" required />
+                <TextField label="Department" value={props.department} onChange={props.setDepartment} placeholder="Department" />
+                <TextField label="Location" value={props.location} onChange={props.setLocation} placeholder="Location or work mode" />
                 <label className="rec-field">
                   <span>Employment Type</span>
                   <select value={props.jobType} onChange={(e) => props.setJobType(e.target.value as Job['jobType'])}>
@@ -621,15 +676,15 @@ function PostJobWizard(props: {
             )}
             {props.wizardStep === 1 && (
               <div className="rec-form-grid">
-                <TextField label="Experience" value={props.experience} onChange={props.setExperience} placeholder="3+ Years" />
-                <TextField label="Required Skills" value={props.requirementsStr} onChange={props.setRequirementsStr} placeholder="React, Node.js, MongoDB" required />
-                <TextField label="Preferred Skills" value={props.preferredStr} onChange={props.setPreferredStr} placeholder="TypeScript, Tailwind CSS" />
+                <TextField label="Experience" value={props.experience} onChange={props.setExperience} placeholder="Experience requirement" />
+                <TextField label="Required Skills" value={props.requirementsStr} onChange={props.setRequirementsStr} placeholder="Required skills separated by commas" required />
+                <TextField label="Preferred Skills" value={props.preferredStr} onChange={props.setPreferredStr} placeholder="Preferred skills separated by commas" />
                 <TextArea label="Role Description" value={props.description} onChange={props.setDescription} placeholder="Detail responsibilities, outcomes, and hiring criteria." required />
               </div>
             )}
             {props.wizardStep === 2 && (
               <div className="rec-form-grid">
-                <TextField label="Salary" value={props.salary} onChange={props.setSalary} placeholder="$110,000 - $130,000 / yr" />
+                <TextField label="Salary" value={props.salary} onChange={props.setSalary} placeholder="Compensation range" />
                 <TextField label="Application Deadline" value={props.deadline} onChange={props.setDeadline} type="date" />
                 <PreviewStat icon={DollarSign} label="Compensation visible" value={props.salary || 'Not set'} />
                 <PreviewStat icon={Clock} label="Deadline" value={props.deadline || 'Not set'} />
@@ -796,9 +851,12 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
     <article className="rec-applicant-card" draggable>
       <div className="rec-applicant-top">
         <span className="rec-score">{app.score}%</span>
-        <div>
-          <strong>{app.candidateName}</strong>
-          <small>{app.jobTitle}</small>
+        <div className="flex items-center gap-3">
+          <UserAvatar name={app.candidateName} src={app.candidateProfilePhotoUrl} className="h-11 w-11 rounded-2xl border border-slate-200" />
+          <div>
+            <strong>{app.candidateName}</strong>
+            <small>{app.jobTitle}</small>
+          </div>
         </div>
         <StatusBadge status={app.status} />
       </div>
@@ -817,6 +875,7 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
 
 function CompanyProfilePanel(props: {
   company: Company | null;
+  currentUser: User;
   values: Record<'companyName' | 'website' | 'linkedin' | 'industry' | 'companyEmail' | 'contactPerson' | 'phone' | 'documentsName', string>;
   setters: {
     setCompanyName: (value: string) => void;
@@ -833,15 +892,40 @@ function CompanyProfilePanel(props: {
   isUploading: boolean;
   uploadProgress: number;
   documentError: string;
+  photoUploading: boolean;
+  photoError: string;
   handleDrag: (event: React.DragEvent) => void;
   handleDrop: (event: React.DragEvent) => void;
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  handlePhotoUpload: (file: File) => void | Promise<void>;
+  handlePhotoRemove: () => void | Promise<void>;
   onSubmit: (event: React.FormEvent) => void;
 }) {
   return (
     <section className="rec-panel">
       <SectionHeader eyebrow="Company Profile" title="Trusted hiring identity" />
       <form onSubmit={props.onSubmit} className="rec-profile-grid">
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="flex items-center gap-4">
+            <UserAvatar name={props.currentUser.name} src={props.currentUser.profilePhotoUrl} className="h-16 w-16 rounded-2xl border border-white shadow-sm" />
+            <div>
+              <strong className="block text-slate-900">Recruiter profile photo</strong>
+              <small className="text-slate-500">Shown in the navbar and recruiter workspace.</small>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <label className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/avif" className="hidden" onChange={(event) => event.target.files?.[0] && props.handlePhotoUpload(event.target.files[0])} />
+              {props.photoUploading ? 'Uploading...' : 'Upload photo'}
+            </label>
+            {props.currentUser.profilePhotoUrl && (
+              <button type="button" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={props.handlePhotoRemove} disabled={props.photoUploading}>
+                Remove photo
+              </button>
+            )}
+          </div>
+          {props.photoError && <p className="mt-3 text-xs text-rose-600">{props.photoError}</p>}
+        </div>
         <TextField label="Registered Legal Entity" value={props.values.companyName} onChange={props.setters.setCompanyName} required />
         <TextField label="Industry" value={props.values.industry} onChange={props.setters.setIndustry} />
         <TextField label="Website" value={props.values.website} onChange={props.setters.setWebsite} />
@@ -853,7 +937,7 @@ function CompanyProfilePanel(props: {
           <input id="company-doc-upload" type="file" className="hidden" onChange={props.handleFileChange} />
           <label htmlFor="company-doc-upload">
             <Upload className="h-5 w-5" />
-            <strong>{props.values.documentsName}</strong>
+            <strong>{props.values.documentsName || 'No document uploaded'}</strong>
             <span>{props.isUploading ? `Uploading ${props.uploadProgress}%` : 'Drop verification document or browse'}</span>
           </label>
           <input value={props.values.documentsName} readOnly />
@@ -886,18 +970,33 @@ function RecruiterAnalytics({ jobs, applications }: { jobs: Job[]; applications:
   const hired = applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length;
   const interviews = applications.filter((app) => app.status === 'interviewing').length;
   const review = applications.filter((app) => app.status === 'under_review' || app.status === 'shortlisted' || app.status === 'forwarded').length;
+  const applicationTrend = getRecentMonthCounts(applications, (app) => app.appliedAt);
+  const statusBars = [
+    applications.filter((app) => app.status === 'applied').length,
+    review,
+    interviews,
+    hired,
+  ];
+  const jobVolumeBars = ['approved', 'submitted', 'closed', 'rejected'].map((status) => jobs.filter((job) => job.status === status).length);
+  const selectedApplications = applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired');
+  const avgTimeToHire = selectedApplications.length
+    ? Math.round(selectedApplications.reduce((total, app) => total + Math.max(0, Date.now() - new Date(app.appliedAt).getTime()), 0) / selectedApplications.length / (1000 * 60 * 60 * 24))
+    : null;
+  const timeToHireBars = selectedApplications.map((app) => Math.max(1, Math.round((Date.now() - new Date(app.appliedAt).getTime()) / (1000 * 60 * 60 * 24))));
+
   return (
     <section className="rec-analytics-grid">
-      <AnalyticsCard title="Application Trends" icon={LineChart} value={applications.length} bars={[30, 44, 38, 58, 72, 64, 84]} />
-      <AnalyticsCard title="Hiring Funnel" icon={Filter} value={`${hired} hires`} bars={[applications.length, review, interviews, hired].map((value) => Math.max(8, value * 18))} />
-      <AnalyticsCard title="Time-to-Hire" icon={Clock} value="18 days" bars={[55, 48, 42, 36, 31]} />
-      <AnalyticsCard title="Source Performance" icon={Target} value={`${jobs.length} roles`} bars={[72, 58, 42, 28]} />
+      <AnalyticsCard title="Application Trends" icon={LineChart} value={applications.length} bars={applicationTrend} empty="No applications yet" />
+      <AnalyticsCard title="Hiring Funnel" icon={Filter} value={`${hired} hires`} bars={statusBars} empty="No funnel activity yet" />
+      <AnalyticsCard title="Time-to-Hire" icon={Clock} value={avgTimeToHire === null ? 'No hires yet' : `${avgTimeToHire} days`} bars={timeToHireBars} empty="No completed hires yet" />
+      <AnalyticsCard title="Job Status Mix" icon={Target} value={`${jobs.length} roles`} bars={jobVolumeBars} empty="No jobs posted yet" />
     </section>
   );
 }
 
-function AnalyticsCard({ title, icon: Icon, value, bars }: { title: string; icon: React.ElementType; value: React.ReactNode; bars: number[] }) {
+function AnalyticsCard({ title, icon: Icon, value, bars, empty }: { title: string; icon: React.ElementType; value: React.ReactNode; bars: number[]; empty: string }) {
   const max = Math.max(...bars, 1);
+  const hasData = bars.some((bar) => bar > 0);
   return (
     <article className="rec-analytics-card">
       <div>
@@ -906,10 +1005,31 @@ function AnalyticsCard({ title, icon: Icon, value, bars }: { title: string; icon
       </div>
       <strong>{value}</strong>
       <div className="rec-bars">
-        {bars.map((bar, index) => <span key={`${bar}-${index}`} style={{ height: `${Math.max(12, (bar / max) * 100)}%` }} />)}
+        {hasData
+          ? bars.map((bar, index) => <span key={`${bar}-${index}`} style={{ height: `${Math.max(12, (bar / max) * 100)}%` }} />)
+          : <small>{empty}</small>}
       </div>
     </article>
   );
+}
+
+function getRecentMonthCounts<T>(items: T[], getDate: (item: T) => string) {
+  const now = new Date();
+  const buckets = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    return { key: `${date.getFullYear()}-${date.getMonth()}`, count: 0 };
+  });
+  const indexByKey = new Map(buckets.map((bucket, index) => [bucket.key, index]));
+
+  for (const item of items) {
+    const date = new Date(getDate(item));
+    const index = indexByKey.get(`${date.getFullYear()}-${date.getMonth()}`);
+    if (index !== undefined) {
+      buckets[index].count += 1;
+    }
+  }
+
+  return buckets.map((bucket) => bucket.count);
 }
 
 function CandidateReviewModal(props: {
@@ -973,6 +1093,7 @@ function CandidateReviewModal(props: {
         </header>
         <section className="rec-review-body">
           <div className="rec-review-profile">
+            <UserAvatar name={props.app.candidateName} src={props.app.candidateProfilePhotoUrl} className="h-16 w-16 rounded-2xl border border-slate-200" />
             <span className="rec-score large">{props.app.score}%</span>
             <StatusBadge status={props.app.status} />
             <PreviewStat icon={FileText} label="Resume" value={props.app.candidateEmail} />

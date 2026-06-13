@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Award,
+  Bookmark,
   BookOpen,
   Briefcase,
   CalendarClock,
@@ -17,6 +18,10 @@ import {
   Map,
   Medal,
   Rocket,
+  Search,
+  Send,
+  Share2,
+  SlidersHorizontal,
   Sparkles,
   Target,
   Trophy,
@@ -34,6 +39,12 @@ interface CareerEcosystemProps {
   profileStrength: number;
   profileSkills: string[];
   resumeText: string;
+  savedJobIds: string[];
+  getJobMatch: (job: Job) => number;
+  onViewOpportunity: (jobId: string) => void;
+  onApplyOpportunity: (job: Job) => void;
+  onSaveOpportunity: (jobId: string) => void;
+  onShareOpportunity: (job: Job) => void;
 }
 
 type RoadmapId = 'frontend' | 'backend' | 'ai' | 'data' | 'cloud' | 'security';
@@ -47,28 +58,28 @@ const roadmapCatalog: Array<{ id: RoadmapId; title: string; skills: string[]; pr
   { id: 'security', title: 'Cybersecurity Engineer', skills: ['Networking', 'OWASP', 'IAM', 'SIEM', 'Threat Modeling'], project: 'Security audit report', certification: 'Security+' },
 ];
 
-const learningModules = [
-  { title: 'React Production Patterns', skill: 'React', progress: 72, type: 'Course' },
-  { title: 'API Design Fundamentals', skill: 'Node.js', progress: 48, type: 'Training' },
-  { title: 'Resume Keyword Lab', skill: 'Resume Quality', progress: 86, type: 'Workshop' },
-];
+const opportunityKinds = ['Jobs', 'Internships'];
 
-const trainingPrograms = [
-  { title: 'Frontend Career Accelerator', percent: 68, deadline: '14 days', mentor: 'Mentor access open', certificate: 'Certificate unlocked at 90%' },
-  { title: 'Full-Stack Internship Prep', percent: 42, deadline: '21 days', mentor: 'Weekly office hours', certificate: 'Capstone certificate' },
-  { title: 'AI Career Sprint', percent: 25, deadline: '30 days', mentor: 'Project review available', certificate: 'AI portfolio badge' },
-];
-
-const opportunityKinds = ['Jobs', 'Internships', 'Courses', 'Training', 'Hackathons', 'Events', 'Certifications', 'Mentorship'];
-
-export default function CareerEcosystem({ currentUser, jobs, applications, profile, profileStrength, profileSkills, resumeText }: CareerEcosystemProps) {
+export default function CareerEcosystem({
+  currentUser,
+  jobs,
+  applications,
+  profile,
+  profileStrength,
+  profileSkills,
+  resumeText,
+  savedJobIds,
+  getJobMatch,
+  onViewOpportunity,
+  onApplyOpportunity,
+  onSaveOpportunity,
+  onShareOpportunity,
+}: CareerEcosystemProps) {
   const [activeRoadmap, setActiveRoadmap] = useState<RoadmapId>('frontend');
   const selectedRoadmap = roadmapCatalog.find((roadmap) => roadmap.id === activeRoadmap) || roadmapCatalog[0];
   const internships = useMemo(() => jobs.filter((job) => job.jobType === 'Internship').slice(0, 4), [jobs]);
   const careerScore = getCareerScore(profileStrength, profileSkills, resumeText, applications);
   const displayedCareerScore = useCountUp(careerScore);
-  const completedModules = learningModules.filter((module) => module.progress >= 80).length;
-  const streak = Math.max(3, Math.min(14, profileSkills.length + applications.length + 3));
   const nextStep = getNextCareerStep(profileSkills, resumeText, applications);
 
   return (
@@ -90,61 +101,97 @@ export default function CareerEcosystem({ currentUser, jobs, applications, profi
       <CareerProgressEngine profile={profile} profileSkills={profileSkills} resumeText={resumeText} applications={applications} />
 
       <div className="eco-grid-main">
-        <LearningHub streak={streak} completedModules={completedModules} profileSkills={profileSkills} />
-        <TrainingAccelerator />
+        <LearningHub jobs={jobs} applications={applications} profileSkills={profileSkills} resumeText={resumeText} />
+        <TrainingAccelerator profileStrength={profileStrength} profileSkills={profileSkills} resumeText={resumeText} applications={applications} />
       </div>
 
-      <InternshipExplorer internships={internships} profileSkills={profileSkills} careerScore={careerScore} />
+      <InternshipExplorer
+        internships={internships}
+        profileSkills={profileSkills}
+        careerScore={careerScore}
+        onViewOpportunity={onViewOpportunity}
+        onApplyOpportunity={onApplyOpportunity}
+      />
 
       <CareerRoadmaps activeRoadmap={activeRoadmap} setActiveRoadmap={setActiveRoadmap} selectedRoadmap={selectedRoadmap} />
 
-      <OpportunityFeed jobs={jobs} internships={internships} selectedRoadmap={selectedRoadmap} />
+      <OpportunityFeed
+        jobs={jobs}
+        selectedRoadmap={selectedRoadmap}
+        savedJobIds={savedJobIds}
+        getJobMatch={getJobMatch}
+        applications={applications}
+        onViewOpportunity={onViewOpportunity}
+        onApplyOpportunity={onApplyOpportunity}
+        onSaveOpportunity={onSaveOpportunity}
+        onShareOpportunity={onShareOpportunity}
+      />
     </motion.section>
   );
 }
 
-function LearningHub({ streak, completedModules, profileSkills }: { streak: number; completedModules: number; profileSkills: string[] }) {
-  const recommendedSkills = ['TypeScript', 'System Design', 'SQL', 'Cloud Basics'].filter((skill) => !profileSkills.includes(skill.toLowerCase()));
+function LearningHub({ jobs, applications, profileSkills, resumeText }: { jobs: Job[]; applications: Application[]; profileSkills: string[]; resumeText: string }) {
+  const recommendedSkills = Array.from(new Set(
+    jobs
+      .flatMap((job) => [...job.requirements, ...(job.preferredSkills || [])])
+      .filter((skill) => !profileSkills.includes(skill.toLowerCase()))
+  )).slice(0, 6);
+  const readinessItems = [
+    { title: 'Resume signal', detail: resumeText.trim() ? 'Uploaded' : 'Missing', progress: resumeText.trim() ? 100 : 0 },
+    { title: 'Skill coverage', detail: `${profileSkills.length} skills listed`, progress: Math.min(100, profileSkills.length * 20) },
+    { title: 'Application activity', detail: `${applications.length} applications`, progress: Math.min(100, applications.length * 25) },
+  ];
+
   return (
     <section className="eco-panel">
       <SectionHeader eyebrow="Learning Hub" title="Continue learning" icon={BookOpen} />
       <div className="eco-learning-strip">
-        <Achievement icon={Flame} label="Learning streak" value={`${streak} days`} />
-        <Achievement icon={CheckCircle2} label="Completed modules" value={completedModules} />
-        <Achievement icon={Medal} label="Certifications" value="2 ready" />
+        <Achievement icon={Flame} label="Skills listed" value={profileSkills.length} />
+        <Achievement icon={CheckCircle2} label="Applications" value={applications.length} />
+        <Achievement icon={Medal} label="Open roles" value={jobs.length} />
       </div>
       <div className="eco-module-list">
-        {learningModules.map((module) => (
-          <article key={module.title} className="eco-learning-module">
+        {readinessItems.map((item) => (
+          <article key={item.title} className="eco-learning-module">
             <div>
-              <strong>{module.title}</strong>
-              <span>{module.type} - {module.skill}</span>
+              <strong>{item.title}</strong>
+              <span>{item.detail}</span>
             </div>
-            <ProgressRing progress={module.progress} size={58} strokeWidth={6} />
+            <ProgressRing progress={item.progress} size={58} strokeWidth={6} />
           </article>
         ))}
       </div>
       <div className="eco-skill-cloud">
-        <strong>Recommended skills</strong>
-        <div>{recommendedSkills.map((skill) => <span key={skill}>{skill}</span>)}</div>
+        <strong>Skills requested by current jobs</strong>
+        <div>{recommendedSkills.length ? recommendedSkills.map((skill) => <span key={skill}>{skill}</span>) : <small>No new skill gaps from active jobs.</small>}</div>
       </div>
     </section>
   );
 }
 
-function TrainingAccelerator() {
+function TrainingAccelerator({ profileStrength, profileSkills, resumeText, applications }: {
+  profileStrength: number;
+  profileSkills: string[];
+  resumeText: string;
+  applications: Application[];
+}) {
+  const actions = [
+    { title: 'Profile readiness', percent: profileStrength, detail: profileStrength >= 80 ? 'Strong profile' : 'Complete profile fields' },
+    { title: 'Resume readiness', percent: resumeText.trim() ? 100 : 0, detail: resumeText.trim() ? 'Resume available' : 'Upload resume' },
+    { title: 'Placement activity', percent: Math.min(100, applications.length * 25), detail: applications.length ? `${applications.length} applications submitted` : 'Apply to matching roles' },
+  ];
+
   return (
     <section className="eco-panel">
-      <SectionHeader eyebrow="Training Programs" title="Placement accelerator" icon={Rocket} />
+      <SectionHeader eyebrow="Placement Actions" title="Next readiness checks" icon={Rocket} />
       <div className="eco-training-timeline">
-        {trainingPrograms.map((program) => (
-          <article key={program.title} className="eco-training-card">
-            <ProgressRing progress={program.percent} size={66} strokeWidth={7} />
+        {actions.map((action) => (
+          <article key={action.title} className="eco-training-card">
+            <ProgressRing progress={action.percent} size={66} strokeWidth={7} />
             <div>
-              <strong>{program.title}</strong>
-              <span>{program.deadline} remaining</span>
-              <small>{program.mentor}</small>
-              <em>{program.certificate}</em>
+              <strong>{action.title}</strong>
+              <span>{action.detail}</span>
+              <small>{profileSkills.length ? `${profileSkills.length} skills in profile` : 'No skills listed yet'}</small>
             </div>
           </article>
         ))}
@@ -153,55 +200,57 @@ function TrainingAccelerator() {
   );
 }
 
-function InternshipExplorer({ internships, profileSkills, careerScore }: { internships: Job[]; profileSkills: string[]; careerScore: number }) {
+function InternshipExplorer({
+  internships,
+  profileSkills,
+  careerScore,
+  onViewOpportunity,
+  onApplyOpportunity,
+}: {
+  internships: Job[];
+  profileSkills: string[];
+  careerScore: number;
+  onViewOpportunity: (jobId: string) => void;
+  onApplyOpportunity: (job: Job) => void;
+}) {
   return (
     <section className="eco-panel">
       <SectionHeader eyebrow="Internship Explorer" title="Practice-ready opportunities" icon={Briefcase} />
       <div className="eco-internship-band">
-        <Achievement icon={Target} label="Readiness score" value={`${Math.min(96, careerScore + 6)}%`} />
-        <Achievement icon={Sparkles} label="Application confidence" value={`${Math.min(94, 58 + profileSkills.length * 7)}%`} />
-        <Achievement icon={CalendarClock} label="Typical duration" value="8-12 weeks" />
+        <Achievement icon={Target} label="Readiness score" value={`${careerScore}%`} />
+        <Achievement icon={Sparkles} label="Profile skills" value={profileSkills.length} />
+        <Achievement icon={CalendarClock} label="Open internships" value={internships.length} />
       </div>
       <div className="eco-internships">
-        {(internships.length ? internships : placeholderInternships).map((internship) => (
+        {internships.length ? internships.map((internship) => (
           <article key={internship.id} className="eco-internship-card">
-            <div>
+            <button type="button" className="text-left" onClick={() => onViewOpportunity(internship.id)}>
               <strong>{internship.title}</strong>
               <span>{internship.companyName} - {internship.location}</span>
-            </div>
+            </button>
             <div className="eco-internship-facts">
               <span>{internship.salary || 'Stipend TBD'}</span>
               <span>{internship.experience || 'Beginner friendly'}</span>
               <span>{internship.location.toLowerCase().includes('remote') ? 'Remote' : 'In-office / Hybrid'}</span>
             </div>
-            <p>Learning outcomes: portfolio project, mentor feedback, interview-ready evidence.</p>
             <div>{internship.requirements.slice(0, 4).map((skill) => <em key={skill}>{skill}</em>)}</div>
+            <button type="button" className="eco-apply-inline" onClick={() => onApplyOpportunity(internship)}>
+              <Send className="h-3.5 w-3.5" />
+              Apply
+            </button>
           </article>
-        ))}
+        )) : (
+          <article className="eco-internship-card">
+            <div>
+              <strong>No internships available</strong>
+              <span>Approved internship roles will appear here when recruiters publish them.</span>
+            </div>
+          </article>
+        )}
       </div>
     </section>
   );
 }
-
-const placeholderInternships: Job[] = [
-  {
-    id: 'placeholder-internship-frontend',
-    companyId: 'placeholder',
-    companyName: 'Persevex Career Lab',
-    title: 'Frontend Product Internship',
-    department: 'Learning',
-    location: 'Remote',
-    jobType: 'Internship',
-    experience: '8 weeks',
-    salary: 'Stipend placeholder',
-    description: 'Placeholder until internship data is available.',
-    requirements: ['React', 'CSS', 'Git'],
-    preferredSkills: ['TypeScript'],
-    status: 'approved',
-    viewCount: 0,
-    createdAt: new Date().toISOString(),
-  },
-];
 
 function CareerRoadmaps({ activeRoadmap, setActiveRoadmap, selectedRoadmap }: {
   activeRoadmap: RoadmapId;
@@ -239,32 +288,136 @@ function CareerRoadmaps({ activeRoadmap, setActiveRoadmap, selectedRoadmap }: {
   );
 }
 
-function OpportunityFeed({ jobs, internships, selectedRoadmap }: { jobs: Job[]; internships: Job[]; selectedRoadmap: (typeof roadmapCatalog)[number] }) {
-  const feed = [
-    ...jobs.slice(0, 3).map((job) => ({ type: 'Job', title: job.title, detail: `${job.companyName} - ${job.location}` })),
-    ...internships.slice(0, 2).map((job) => ({ type: 'Internship', title: job.title, detail: `${job.experience} - ${job.salary}` })),
-    { type: 'Course', title: `${selectedRoadmap.title} foundations`, detail: 'Recommended roadmap module' },
-    { type: 'Training', title: 'Career Accelerator Sprint', detail: 'Progress-based cohort' },
-    { type: 'Hackathon', title: 'Portfolio Build Weekend', detail: 'Project evidence for recruiters' },
-    { type: 'Mentorship', title: 'Mentor review session', detail: 'Placeholder until mentor scheduling is connected' },
-  ];
+type OpportunitySort = 'recommended' | 'recent' | 'closing' | 'featured';
+
+function OpportunityFeed({
+  jobs,
+  selectedRoadmap,
+  savedJobIds,
+  getJobMatch,
+  applications,
+  onViewOpportunity,
+  onApplyOpportunity,
+  onSaveOpportunity,
+  onShareOpportunity,
+}: {
+  jobs: Job[];
+  selectedRoadmap: (typeof roadmapCatalog)[number];
+  savedJobIds: string[];
+  getJobMatch: (job: Job) => number;
+  applications: Application[];
+  onViewOpportunity: (jobId: string) => void;
+  onApplyOpportunity: (job: Job) => void;
+  onSaveOpportunity: (jobId: string) => void;
+  onShareOpportunity: (job: Job) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [sort, setSort] = useState<OpportunitySort>('recommended');
+  const categories = useMemo(() => ['all', ...Array.from(new Set(jobs.map((job) => job.jobType))).filter(Boolean)], [jobs]);
+  const feed = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return [...jobs]
+      .filter((job) => category === 'all' || job.jobType === category)
+      .filter((job) => {
+        if (!normalizedQuery) return true;
+        return [
+          job.title,
+          job.companyName,
+          job.location,
+          job.department,
+          job.description,
+          ...job.requirements,
+          ...(job.preferredSkills || []),
+        ].some((item) => item.toLowerCase().includes(normalizedQuery));
+      })
+      .sort((a, b) => {
+        if (sort === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (sort === 'closing') return getDeadlineSortValue(a.deadline) - getDeadlineSortValue(b.deadline);
+        if (sort === 'featured') return getPromotionScore(b) - getPromotionScore(a);
+        return getJobMatch(b) - getJobMatch(a);
+      });
+  }, [category, getJobMatch, jobs, query, sort]);
 
   return (
     <section className="eco-panel">
       <SectionHeader eyebrow="Opportunity Feed" title="Everything helping your career" icon={Trophy} />
+      <div className="eco-feed-controls">
+        <label>
+          <Search className="h-4 w-4" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search opportunities" />
+        </label>
+        <label>
+          <SlidersHorizontal className="h-4 w-4" />
+          <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            {categories.map((item) => <option key={item} value={item}>{item === 'all' ? 'All categories' : item}</option>)}
+          </select>
+        </label>
+        <select value={sort} onChange={(event) => setSort(event.target.value as OpportunitySort)}>
+          <option value="recommended">Recommended</option>
+          <option value="recent">Recently Added</option>
+          <option value="closing">Closing Soon</option>
+          <option value="featured">Featured</option>
+        </select>
+      </div>
       <div className="eco-feed-kinds">{opportunityKinds.map((kind) => <span key={kind}>{kind}</span>)}</div>
       <div className="eco-feed">
-        {feed.map((item, index) => (
-          <article key={`${item.type}-${item.title}-${index}`} className="eco-feed-item">
-            <span>{item.type}</span>
-            <strong>{item.title}</strong>
-            <small>{item.detail}</small>
-            <ChevronRight className="h-4 w-4" />
+        {feed.length ? feed.map((job) => {
+          const applied = applications.some((application) => application.jobId === job.id);
+          const saved = savedJobIds.includes(job.id);
+          return (
+          <article key={job.id} className="eco-feed-item">
+            <button type="button" className="eco-feed-main" onClick={() => onViewOpportunity(job.id)}>
+              <span>{job.jobType}</span>
+              <strong>{job.title}</strong>
+              <small>{job.companyName} - {job.location}</small>
+              <em>{getOpportunityBadge(job, getJobMatch(job))}</em>
+            </button>
+            <div className="eco-feed-actions">
+              <button type="button" onClick={() => onSaveOpportunity(job.id)} aria-label={saved ? 'Remove saved opportunity' : 'Save opportunity'}>
+                <Bookmark className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => onShareOpportunity(job)} aria-label="Share opportunity">
+                <Share2 className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => onApplyOpportunity(job)} disabled={applied} aria-label={applied ? 'Already applied' : 'Apply to opportunity'}>
+                {applied ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+              </button>
+              <button type="button" onClick={() => onViewOpportunity(job.id)} aria-label="Open opportunity details">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </article>
-        ))}
+          );
+        }) : (
+          <article className="eco-feed-item">
+            <span>{selectedRoadmap.title}</span>
+            <strong>No live opportunities yet</strong>
+            <small>Approved jobs and internships will appear here.</small>
+          </article>
+        )}
       </div>
     </section>
   );
+}
+
+function getDeadlineSortValue(deadline?: string) {
+  if (!deadline) return Number.MAX_SAFE_INTEGER;
+  const value = new Date(deadline).getTime();
+  return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
+}
+
+function getPromotionScore(job: Job) {
+  return (job.sponsored ? 3 : 0) + (job.featured ? 2 : 0) + (job.priority ? 1 : 0);
+}
+
+function getOpportunityBadge(job: Job, match: number) {
+  if (job.sponsored) return 'Sponsored';
+  if (job.featured) return 'Featured';
+  if (job.priority) return 'Priority';
+  if (job.deadline && getDeadlineSortValue(job.deadline) - Date.now() < 1000 * 60 * 60 * 24 * 7) return 'Closing soon';
+  if (match >= 75) return `${match}% match`;
+  return 'Recently added';
 }
 
 function CareerProgressEngine({ profile, profileSkills, resumeText, applications }: {
@@ -277,10 +430,10 @@ function CareerProgressEngine({ profile, profileSkills, resumeText, applications
     { label: 'Profile Created', done: Boolean(profile) },
     { label: 'Resume Uploaded', done: Boolean(resumeText.trim()) },
     { label: 'Skills Added', done: profileSkills.length > 0 },
-    { label: 'Training Completed', done: false },
-    { label: 'Internship Ready', done: profileSkills.length >= 4 },
-    { label: 'Placement Ready', done: applications.length > 0 },
-    { label: 'Career Growth', done: applications.some((app) => app.status === 'selected' || app.finalResult === 'hired') },
+    { label: 'Applied', done: applications.length > 0 },
+    { label: 'In Review', done: applications.some((app) => ['under_review', 'shortlisted', 'forwarded'].includes(app.status)) },
+    { label: 'Interview', done: applications.some((app) => app.status === 'interviewing') },
+    { label: 'Offer', done: applications.some((app) => app.status === 'selected' || app.finalResult === 'hired') },
   ];
 
   return (
@@ -323,7 +476,7 @@ function getCareerScore(profileStrength: number, profileSkills: string[], resume
   score += resumeText.trim() ? 15 : 0;
   score += Math.min(14, applications.length * 4);
   score += applications.some((app) => app.status === 'interviewing' || app.status === 'selected') ? 15 : 0;
-  return Math.min(100, Math.max(18, score));
+  return Math.min(100, Math.max(0, score));
 }
 
 function getNextCareerStep(profileSkills: string[], resumeText: string, applications: Application[]) {

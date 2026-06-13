@@ -15,6 +15,8 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock3,
+  ChevronDown,
+  ChevronUp,
   FileText,
   GraduationCap,
   Layers3,
@@ -40,10 +42,16 @@ import { AnimatedButton, CareerFlowBackground, CareerFlowStream, SuccessAnimatio
 import type { JourneyStage } from './motion';
 import CareerEcosystem from './CareerEcosystem';
 import BrandLogo from './BrandLogo';
+import SkeletonLoader from './SkeletonLoader';
+import { formatEmailAlertPreview } from '../utils/messageFormatting';
+import type { ToastTone } from './ToastViewport';
+import UserAvatar from './UserAvatar';
 
 interface CandidateDashboardProps {
   currentUser: User;
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
+  showToast: (tone: ToastTone, title: string, message?: string) => void;
+  onCurrentUserUpdate: (updates: Partial<User>) => void;
 }
 
 type WorkspaceMode = 'jobs' | 'ecosystem' | 'saved' | 'applications' | 'profile' | 'signals';
@@ -77,6 +85,45 @@ const applicationStages = [
   { keys: ['rejected'], label: 'Rejected' },
 ];
 
+type MatchQualityTone = 'excellent' | 'very-strong' | 'good' | 'partial' | 'weak' | 'low';
+
+type JobFitAnalysis = {
+  score: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  quality: {
+    label: string;
+    tone: MatchQualityTone;
+  };
+  resumeInsight: string;
+  resumeFitSummary: string;
+};
+
+type ResumeOption = {
+  id: string;
+  label: string;
+  fileName: string;
+  resumeText: string;
+  updatedAt: string;
+  source: 'current' | 'recent' | 'upload';
+  resumeScore: number | null;
+};
+
+type ApplyResult = {
+  applicationId: string;
+  appliedAt: string;
+  status: string;
+  score: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  communication: {
+    notificationCount: number;
+    emailCount: number;
+    failures: string[];
+  };
+  activityHistory: Array<{ label: string; timestamp: string; detail: string }>;
+};
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -102,7 +149,29 @@ function normalizeProfilePhotoUrl(url: string): string {
   return url;
 }
 
-export default function CandidateDashboard({ currentUser, apiFetch }: CandidateDashboardProps) {
+function getResumeLibraryKey(userId: string): string {
+  return `persevex_resume_library_${userId}`;
+}
+
+function loadResumeHistory(userId: string): ResumeOption[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(getResumeLibraryKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.resumeText === 'string' && typeof item.fileName === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function saveResumeHistory(userId: string, options: ResumeOption[]) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(getResumeLibraryKey(userId), JSON.stringify(options.slice(0, 5)));
+}
+
+export default function CandidateDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CandidateDashboardProps) {
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('jobs');
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -116,13 +185,17 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
   const [filterSkill, setFilterSkill] = useState<string>('all');
   const [filterSalary, setFilterSalary] = useState<SalaryFilter>('all');
   const [filterExperience, setFilterExperience] = useState<ExperienceFilter>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('match');
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('job');
+  });
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [resumeText, setResumeText] = useState('');
-  const [resumeFileName, setResumeFileName] = useState('My_Resume.pdf');
+  const [resumeFileName, setResumeFileName] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState('');
@@ -130,6 +203,7 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
   const [applying, setApplying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [applyResult, setApplyResult] = useState<ApplyResult | null>(null);
 
   const [education, setEducation] = useState('');
   const [experience, setExperience] = useState('');
@@ -148,7 +222,43 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
 
   useEffect(() => {
     fetchInitialData();
-  }, [currentUser]);
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (selectedJobId) {
+      url.searchParams.set('job', selectedJobId);
+    } else {
+      url.searchParams.delete('job');
+    }
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [selectedJobId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = () => {
+      setSelectedJobId(new URLSearchParams(window.location.search).get('job'));
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (!resumeText.trim() || !resumeFileName.trim()) return;
+    const currentEntry: ResumeOption = {
+      id: `resume-current-${currentUser.id}`,
+      label: 'Current resume',
+      fileName: resumeFileName,
+      resumeText,
+      updatedAt: new Date().toISOString(),
+      source: 'current',
+      resumeScore: resumeIntelligence?.careerInsights?.placementReadiness ?? null,
+    };
+    const history = loadResumeHistory(currentUser.id)
+      .filter((item) => item.resumeText !== currentEntry.resumeText || item.fileName !== currentEntry.fileName);
+    saveResumeHistory(currentUser.id, [currentEntry, ...history]);
+  }, [currentUser.id, resumeFileName, resumeIntelligence?.careerInsights?.placementReadiness, resumeText]);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -172,8 +282,12 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
         setExperience(remoteProf.experience || '');
         setSkillsStr(Array.isArray(remoteProf.skills) ? remoteProf.skills.join(', ') : '');
         setResumeText(remoteProf.resumeText || '');
-        setResumeFileName(remoteProf.resumeFileName || 'resume_portfolio.pdf');
-        setProfilePhotoUrl(normalizeProfilePhotoUrl(remoteProf.profilePhotoUrl || ''));
+        setResumeFileName(remoteProf.resumeFileName || '');
+        const normalizedPhoto = normalizeProfilePhotoUrl(remoteProf.profilePhotoUrl || '');
+        setProfilePhotoUrl(normalizedPhoto);
+        if ((currentUser.profilePhotoUrl || '') !== normalizedPhoto) {
+          onCurrentUserUpdate({ profilePhotoUrl: normalizedPhoto });
+        }
       }
     } catch (err) {
       console.error('Error fetching candidate datasets', err);
@@ -185,6 +299,26 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
   const profileSkills = useMemo(() => skillsStr.split(',').map((skill) => skill.trim().toLowerCase()).filter(Boolean), [skillsStr]);
   const allSkills = useMemo(() => Array.from(new Set(jobs.flatMap((job) => [...job.requirements, ...(job.preferredSkills || [])]))).filter(Boolean).slice(0, 18), [jobs]);
   const savedJobs = useMemo(() => jobs.filter((job) => savedJobIds.includes(job.id)), [jobs, savedJobIds]);
+  const resumeOptions = useMemo(() => {
+    const currentResume = resumeText.trim() ? [{
+      id: `current-${currentUser.id}`,
+      label: 'Use current resume',
+      fileName: resumeFileName || 'Current resume',
+      resumeText,
+      updatedAt: new Date().toISOString(),
+      source: 'current' as const,
+      resumeScore: resumeIntelligence?.careerInsights?.placementReadiness ?? null,
+    }] : [];
+    const history = loadResumeHistory(currentUser.id)
+      .filter((item) => item.resumeText.trim())
+      .filter((item) => item.resumeText !== resumeText || item.fileName !== resumeFileName)
+      .map((item, index) => ({
+        ...item,
+        id: `${item.source}-${index}-${item.updatedAt}`,
+        label: item.source === 'upload' ? 'Latest uploaded draft' : 'Previously uploaded resume',
+      }));
+    return [...currentResume, ...history].slice(0, 4);
+  }, [currentUser.id, resumeFileName, resumeIntelligence?.careerInsights?.placementReadiness, resumeText]);
 
   const parseSalaryValue = (salary: string) => {
     const numbers = salary.match(/\d+/g)?.map(Number) || [];
@@ -225,23 +359,6 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
     return textMatch && typeMatch && locMatch && skillMatch && matchesExperience(job.experience) && matchesSalary(job.salary);
   }), [jobs, searchTerm, filterType, filterLoc, filterSkill, filterExperience, filterSalary]);
 
-  const getJobMatch = (job: Job) => {
-    const required = [...job.requirements, ...(job.preferredSkills || [])].map((skill) => skill.toLowerCase());
-    if (!required.length || !profileSkills.length) return applications.find((app) => app.jobId === job.id)?.score || 0;
-    const matched = required.filter((skill) => profileSkills.some((candidateSkill) => candidateSkill.includes(skill) || skill.includes(candidateSkill)));
-    return Math.min(98, Math.round((matched.length / required.length) * 100));
-  };
-
-  const rankedJobs = useMemo(() => [...filteredJobs].sort((a, b) => {
-    if (sortMode === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    if (sortMode === 'salary') return parseSalaryValue(b.salary) - parseSalaryValue(a.salary);
-    return getJobMatch(b) - getJobMatch(a);
-  }), [filteredJobs, applications, profileSkills, sortMode]);
-  const selectedJobPreview = rankedJobs.find((job) => job.id === selectedJobId) || rankedJobs[0] || null;
-  const bestMatch = rankedJobs.length ? getJobMatch(rankedJobs[0]) : 0;
-  const hasApplied = (jobId: string) => applications.some((app) => app.jobId === jobId);
-  const toggleSavedJob = (jobId: string) => setSavedJobIds((current) => current.includes(jobId) ? current.filter((id) => id !== jobId) : [...current, jobId]);
-
   const profileStrength = useMemo(() => {
     let score = 0;
     if (education.trim()) score += 20;
@@ -250,6 +367,34 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
     if (resumeText.trim()) score += 35;
     return Math.min(100, score);
   }, [education, experience, skillsStr, resumeText]);
+
+  const getJobFit = (job: Job) => analyzeJobFit(job, {
+    profileSkills,
+    education,
+    experience,
+    resumeText,
+    profileStrength,
+    applications,
+  });
+
+  const getJobMatch = (job: Job) => getJobFit(job).score;
+
+  const rankedJobs = useMemo(() => [...filteredJobs].sort((a, b) => {
+    if (sortMode === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortMode === 'salary') return parseSalaryValue(b.salary) - parseSalaryValue(a.salary);
+    return getJobMatch(b) - getJobMatch(a);
+  }), [filteredJobs, applications, profileSkills, sortMode, education, experience, resumeText, profileStrength]);
+  const selectedJobPreview = jobs.find((job) => job.id === selectedJobId) || null;
+  const bestMatch = rankedJobs.length ? getJobMatch(rankedJobs[0]) : 0;
+  const hasApplied = (jobId: string) => applications.some((app) => app.jobId === jobId);
+  const toggleSavedJob = (jobId: string) => {
+    const job = jobs.find((item) => item.id === jobId);
+    setSavedJobIds((current) => {
+      const isSaved = current.includes(jobId);
+      showToast(isSaved ? 'info' : 'success', isSaved ? 'Saved job removed' : 'Job saved', job ? job.title : 'Your saved jobs list was updated.');
+      return isSaved ? current.filter((id) => id !== jobId) : [...current, jobId];
+    });
+  };
   const activation = useMemo(() => {
     const missing = [
       !profilePhotoUrl && 'Add a profile photo',
@@ -285,12 +430,6 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
     return 'training';
   }, [applications, experience]);
 
-  const nextRecommendation = useMemo(() => {
-    if (rankedJobs[0]) return `Apply next: ${rankedJobs[0].title} at ${rankedJobs[0].companyName}.`;
-    if (profileStrength < 70) return 'Upload your resume to unlock stronger job matches.';
-    return 'No active matches. Broaden filters or check recent approved roles.';
-  }, [profileStrength, rankedJobs]);
-
   const handleFileUpload = async (file: File) => {
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
@@ -314,6 +453,7 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
 
           if (res.error) {
             setParseError(res.error);
+            showToast('error', 'Resume upload failed', res.error);
           } else {
             setResumeText(res.text || '');
             setResumeFileName(file.name);
@@ -321,9 +461,11 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
             if (res.autofill?.applied?.education) setEducation(res.autofill.applied.education);
             if (res.autofill?.applied?.experience) setExperience(res.autofill.applied.experience);
             if (Array.isArray(res.autofill?.applied?.skills)) setSkillsStr(res.autofill.applied.skills.join(', '));
+            showToast('success', 'Resume uploaded', `${file.name} is ready for profile updates and applications.`);
           }
         } catch (err: any) {
           setParseError(err.message || 'Error occurred calling server PDF parsing engine.');
+          showToast('error', 'Resume upload failed', err.message || 'Error occurred calling server PDF parsing engine.');
         } finally {
           setParsingFile(false);
         }
@@ -367,9 +509,13 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ base64, fileName: file.name, mimeType: file.type }),
       });
-      setProfilePhotoUrl(normalizeProfilePhotoUrl(response.profilePhotoUrl || response.profile?.profilePhotoUrl || ''));
+      const photoUrl = normalizeProfilePhotoUrl(response.profilePhotoUrl || response.profile?.profilePhotoUrl || '');
+      setProfilePhotoUrl(photoUrl);
+      onCurrentUserUpdate({ profilePhotoUrl: photoUrl });
+      showToast('success', 'Profile photo updated', 'Your avatar is live across the workspace.');
     } catch (err: any) {
       setPhotoError(err.message || 'Profile photo upload failed.');
+      showToast('error', 'Upload failed', err.message || 'Profile photo upload failed.');
     } finally {
       setPhotoUploading(false);
     }
@@ -381,8 +527,11 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
     try {
       await apiFetch('/api/candidates/profile/photo', { method: 'DELETE' });
       setProfilePhotoUrl('');
+      onCurrentUserUpdate({ profilePhotoUrl: '' });
+      showToast('info', 'Profile photo removed', 'Initials will be shown until you upload a new photo.');
     } catch (err: any) {
       setPhotoError(err.message || 'Profile photo removal failed.');
+      showToast('error', 'Removal failed', err.message || 'Profile photo removal failed.');
     } finally {
       setPhotoUploading(false);
     }
@@ -408,6 +557,7 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
     setErrorMsg('');
     setSuccessMsg('');
     setApplying(true);
+    setApplyResult(null);
 
     try {
       const response = await apiFetch('/api/applications/apply', {
@@ -424,11 +574,23 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
         setErrorMsg(response.error);
       } else {
         setFeedbackScore(response.score);
-        setSuccessMsg(`Application uploaded. Smart Scoring Engine found ${response.score}% keyword alignment.`);
+        setSuccessMsg(`Application submitted with ${response.score}% match confidence.`);
+        setApplyResult({
+          applicationId: response.application?.id || '',
+          appliedAt: response.application?.appliedAt || new Date().toISOString(),
+          status: response.application?.status || 'applied',
+          score: response.score || 0,
+          matchedSkills: response.matchedSkills || [],
+          missingSkills: response.missingSkills || [],
+          communication: response.communication || { notificationCount: 0, emailCount: 0, failures: [] },
+          activityHistory: response.activityHistory || [],
+        });
+        showToast('success', 'Application submitted', `${selectedJob.title} has been added to your application tracker.`);
         fetchInitialData();
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error occurred applying to job post');
+      showToast('error', 'Application failed', err.message || 'Error occurred applying to job post');
     } finally {
       setApplying(false);
     }
@@ -444,24 +606,14 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
         body: JSON.stringify({ education, experience, skills: skillsStr, resumeText }),
       });
       if (response.profile) {
-        alert('Profile saved successfully! Your default skills are parsed.');
+        showToast('success', 'Profile updated', 'Your profile changes are saved and ready for matching.');
         fetchInitialData();
       }
     } catch (err) {
       console.error(err);
-      alert('Fail to update profile information');
+      showToast('error', 'Failed to save changes', 'Profile information could not be updated.');
     } finally {
       setProfileSaving(false);
-    }
-  };
-
-  const autofillTemplate = (type: 'high' | 'low') => {
-    if (type === 'high') {
-      setResumeFileName('senior_react_developer.pdf');
-      setResumeText(`ALEX MERCER\nGeorgia Institute of Technology - CS Graduate\n\nPROFESSIONAL SUMMARY\nMaster software craftsman. High skill with modern stacks.\n\nSKILLS INCLUDED\nReact, Node.js, MongoDB, AWS, Tailwind CSS, TypeScript, GraphQL\n\nEXPERIENCE\nRefined low-latency architectures with React context, AWS serverless routes, and MongoDB aggregation.`);
-    } else {
-      setResumeFileName('graphic_artist_creative.pdf');
-      setResumeText(`MONICA GELLER\nNYU Fine Arts\n\nSUMMARY\nVisual consultant. Specializing in visual wireframes in Figma & CSS layouts.\n\nSKILLS\nFigma, Adobe XD, Typography, CSS3, Git`);
     }
   };
 
@@ -471,6 +623,33 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
     setFeedbackScore(null);
     setErrorMsg('');
     setSuccessMsg('');
+    setApplyResult(null);
+  };
+
+  const shareOpportunity = async (job: Job) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('job', job.id);
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      showToast('success', 'Opportunity link copied', `${job.title} is ready to share.`);
+    } catch {
+      window.prompt('Copy opportunity link', url.toString());
+      showToast('info', 'Share link ready', 'Use the copied opportunity URL to share this role.');
+    }
+  };
+
+  const reportOpportunity = async (job: Job) => {
+    try {
+      await apiFetch(`/api/jobs/${job.id}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Candidate reported from opportunity detail view' }),
+      });
+      showToast('warning', 'Opportunity reported', 'The admin team has been notified for review.');
+    } catch (err: any) {
+      showToast('error', 'Report failed', err.message || 'Unable to report this opportunity.');
+    }
   };
 
   return (
@@ -506,7 +685,7 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
         </header>
 
         {loading ? (
-          <EfficiencyLoading />
+          <SkeletonLoader type="jobGrid" count={6} />
         ) : (
           <>
             {!showOnboarding && (
@@ -564,84 +743,69 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22 }}
                 >
-                  <FilterSidebar
-                    skills={allSkills}
-                    searchTerm={searchTerm}
-                    filterType={filterType}
-                    filterLoc={filterLoc}
-                    filterSkill={filterSkill}
-                    filterSalary={filterSalary}
-                    filterExperience={filterExperience}
-                    setSearchTerm={setSearchTerm}
-                    setFilterType={setFilterType}
-                    setFilterLoc={setFilterLoc}
-                    setFilterSkill={setFilterSkill}
-                    setFilterSalary={setFilterSalary}
-                    setFilterExperience={setFilterExperience}
-                    onReset={() => {
-                      setSearchTerm('');
-                      setFilterType('all');
-                      setFilterLoc('all');
-                      setFilterSkill('all');
-                      setFilterSalary('all');
-                      setFilterExperience('all');
-                    }}
-                  />
-
                   <section className="eff-opportunities">
+                    <JobsFilterToolbar
+                      filtersOpen={filtersOpen}
+                      setFiltersOpen={setFiltersOpen}
+                      skills={allSkills}
+                      searchTerm={searchTerm}
+                      setSearchTerm={setSearchTerm}
+                      filterType={filterType}
+                      filterLoc={filterLoc}
+                      filterSkill={filterSkill}
+                      filterSalary={filterSalary}
+                      filterExperience={filterExperience}
+                      setFilterType={setFilterType}
+                      setFilterLoc={setFilterLoc}
+                      setFilterSkill={setFilterSkill}
+                      setFilterSalary={setFilterSalary}
+                      setFilterExperience={setFilterExperience}
+                      sortMode={sortMode}
+                      setSortMode={setSortMode}
+                      onReset={() => {
+                        setSearchTerm('');
+                        setFilterType('all');
+                        setFilterLoc('all');
+                        setFilterSkill('all');
+                        setFilterSalary('all');
+                        setFilterExperience('all');
+                      }}
+                    />
                     <SectionHeader
                       eyebrow="Job Search"
                       title={`${rankedJobs.length} recommended jobs`}
-                      action={(
-                        <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-                          <option value="match">Sort by match</option>
-                          <option value="recent">Newest first</option>
-                          <option value="salary">Highest salary</option>
-                        </select>
-                      )}
-                    />
-                    <JobSearchBar
-                      searchTerm={searchTerm}
-                      setSearchTerm={setSearchTerm}
+                      action={<span className="eff-results-hint">{bestMatch ? `Top match ${bestMatch}%` : 'Adjust filters to refine your results'}</span>}
                     />
 
                     {rankedJobs.length === 0 ? (
-                      <EmptyCompact icon={Briefcase} title="No jobs found" body="Adjust filters to find internships, fresher roles, and early-career openings." />
+                      <JobEmptyState onReset={() => {
+                        setSearchTerm('');
+                        setFilterType('all');
+                        setFilterLoc('all');
+                        setFilterSkill('all');
+                        setFilterSalary('all');
+                        setFilterExperience('all');
+                      }} />
                     ) : (
-                      <div className="eff-job-grid">
+                      <div className="eff-job-grid eff-job-grid-discovery">
                         {rankedJobs.map((job, index) => (
                           <JobCard
                             key={job.id}
                             job={job}
                             index={index}
-                            match={getJobMatch(job)}
-                            selected={selectedJobPreview?.id === job.id}
+                            fit={getJobFit(job)}
+                            profileStrength={profileStrength}
+                            selected={selectedJobId === job.id}
                             saved={savedJobIds.includes(job.id)}
                             applied={hasApplied(job.id)}
-                            onPreview={() => setSelectedJobId(job.id)}
                             onApply={() => openApply(job)}
                             onSave={() => toggleSavedJob(job.id)}
+                            onViewDetails={() => setSelectedJobId(job.id)}
                           />
                         ))}
                       </div>
                     )}
                   </section>
-
-                  <JobPreviewPanel
-                    selectedJob={selectedJobPreview}
-                    selectedMatch={selectedJobPreview ? getJobMatch(selectedJobPreview) : 0}
-                    profileStrength={profileStrength}
-                    recommendation={nextRecommendation}
-                    alerts={emailAlerts}
-                    applications={applications}
-                    similarJobs={rankedJobs.filter((job) => job.id !== selectedJobPreview?.id).slice(0, 3)}
-                    saved={selectedJobPreview ? savedJobIds.includes(selectedJobPreview.id) : false}
-                    applied={selectedJobPreview ? hasApplied(selectedJobPreview.id) : false}
-                    onApplications={() => setActiveMode('applications')}
-                    onApply={selectedJobPreview ? () => openApply(selectedJobPreview) : undefined}
-                    onSave={selectedJobPreview ? () => toggleSavedJob(selectedJobPreview.id) : undefined}
-                    onSelectSimilar={setSelectedJobId}
-                  />
                 </motion.section>
               )}
 
@@ -665,6 +829,12 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
                   profileStrength={profileStrength}
                   profileSkills={profileSkills}
                   resumeText={resumeText}
+                  savedJobIds={savedJobIds}
+                  getJobMatch={getJobMatch}
+                  onViewOpportunity={(jobId) => setSelectedJobId(jobId)}
+                  onApplyOpportunity={openApply}
+                  onSaveOpportunity={toggleSavedJob}
+                  onShareOpportunity={shareOpportunity}
                 />
               )}
 
@@ -747,18 +917,37 @@ export default function CandidateDashboard({ currentUser, apiFetch }: CandidateD
         )}
       </main>
 
+      <JobDetailsDrawer
+        selectedJob={selectedJobPreview}
+        selectedFit={selectedJobPreview ? getJobFit(selectedJobPreview) : null}
+        saved={selectedJobPreview ? savedJobIds.includes(selectedJobPreview.id) : false}
+        applied={selectedJobPreview ? hasApplied(selectedJobPreview.id) : false}
+        similarJobs={selectedJobPreview ? rankedJobs.filter((job) => job.id !== selectedJobPreview.id).slice(0, 3) : []}
+        onClose={() => setSelectedJobId(null)}
+        onApply={selectedJobPreview ? () => openApply(selectedJobPreview) : undefined}
+        onSave={selectedJobPreview ? () => toggleSavedJob(selectedJobPreview.id) : undefined}
+        onShare={selectedJobPreview ? () => shareOpportunity(selectedJobPreview) : undefined}
+        onReport={selectedJobPreview ? () => reportOpportunity(selectedJobPreview) : undefined}
+        onSelectSimilar={(id) => setSelectedJobId(id)}
+      />
+
       <ApplyModal
         selectedJob={selectedJob}
+        selectedFit={selectedJob ? getJobFit(selectedJob) : null}
         resumeText={resumeText}
         resumeFileName={resumeFileName}
+        resumeOptions={resumeOptions}
+        resumeQualityScore={resumeIntelligence?.careerInsights?.placementReadiness ?? profileStrength}
         feedbackScore={feedbackScore}
         applying={applying}
         errorMsg={errorMsg}
         successMsg={successMsg}
+        applyResult={applyResult}
         onClose={() => setSelectedJob(null)}
         onSubmit={handleApplySubmit}
         onResumeText={setResumeText}
-        onTemplate={autofillTemplate}
+        onResumeFileName={setResumeFileName}
+        onResumeUpload={handleFileUpload}
         onViewApplications={() => {
           setSelectedJob(null);
           setActiveMode('applications');
@@ -834,7 +1023,7 @@ function OnboardingFunnel({
 }) {
   const currentIndex = onboardingSteps.findIndex((item) => item.id === step);
   const goNext = () => setStep(onboardingSteps[Math.min(onboardingSteps.length - 1, currentIndex + 1)].id);
-  const targetRoles = ['Software Developer', 'Frontend Developer', 'Data Analyst', 'AI Engineer', 'Digital Marketing', 'HR / Operations'];
+  const targetRoles = Array.from(new Set(recommendedJobs.map((job) => job.title).filter(Boolean))).slice(0, 6);
 
   return (
     <motion.section className="onboarding-funnel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -869,9 +1058,7 @@ function OnboardingFunnel({
             <p>Step 2</p>
             <h2>Add a profile photo</h2>
             <div className="onboarding-photo-row">
-              <div className="onboarding-avatar">
-                {profilePhotoUrl ? <img src={profilePhotoUrl} alt={`${currentUser.name} profile`} /> : <UserRound className="h-8 w-8" />}
-              </div>
+              <UserAvatar name={currentUser.name} src={profilePhotoUrl} alt={`${currentUser.name} profile`} className="onboarding-avatar" />
               <label className="eff-action">
                 {photoUploading ? 'Uploading...' : profilePhotoUrl ? 'Replace photo' : 'Upload photo'}
                 <input type="file" accept="image/png,image/jpeg,image/webp,image/avif" className="hidden" onChange={(e) => e.target.files?.[0] && onPhotoUpload(e.target.files[0])} />
@@ -893,12 +1080,12 @@ function OnboardingFunnel({
             <h2>Upload your resume</h2>
             <label className="onboarding-upload">
               <Upload className="h-5 w-5" />
-              <strong>{parsingFile ? 'Parsing resume...' : resumeFileName}</strong>
+              <strong>{parsingFile ? 'Parsing resume...' : resumeFileName || 'Upload resume PDF'}</strong>
               <span>PDF only. Persevex will extract skills, education, and experience.</span>
               <input type="file" accept=".pdf" className="hidden" onChange={(e) => e.target.files?.[0] && onResumeUpload(e.target.files[0])} />
             </label>
             {parseError && <em>{parseError}</em>}
-            <button type="button" className="eff-action" onClick={() => setStep('review')} disabled={!resumeIntelligence && resumeFileName === 'My_Resume.pdf'}>
+            <button type="button" className="eff-action" onClick={() => setStep('review')} disabled={!resumeIntelligence && !resumeFileName}>
               Review parsed resume
             </button>
           </div>
@@ -925,7 +1112,7 @@ function OnboardingFunnel({
           <div className="onboarding-body">
             <p>Step 5</p>
             <h2>Confirm your skills</h2>
-            <textarea value={skillsStr} onChange={(e) => setSkillsStr(e.target.value)} rows={3} placeholder="React, Python, SQL, Communication" />
+            <textarea value={skillsStr} onChange={(e) => setSkillsStr(e.target.value)} rows={3} placeholder="List skills separated by commas" />
             <small>{experience ? 'Experience summary detected.' : 'Add experience later if you are a fresher.'}</small>
             <button type="button" className="eff-action" onClick={goNext}>Next: target role</button>
           </div>
@@ -935,12 +1122,13 @@ function OnboardingFunnel({
           <div className="onboarding-body">
             <p>Step 6</p>
             <h2>Pick your target role</h2>
+            <input value={careerPreference} onChange={(event) => setCareerPreference(event.target.value)} placeholder="Target role" />
             <div className="onboarding-choice-grid">
-              {targetRoles.map((role) => (
+              {targetRoles.length ? targetRoles.map((role) => (
                 <button key={role} type="button" className={careerPreference === role ? 'is-active' : ''} onClick={() => setCareerPreference(role)}>
                   {role}
                 </button>
-              ))}
+              )) : <small>Recommended roles appear after approved jobs match your profile.</small>}
             </div>
             <button type="button" className="eff-action" onClick={goNext}>Show recommended jobs</button>
           </div>
@@ -1033,12 +1221,65 @@ function SectionHeader({ eyebrow, title, action }: { eyebrow: string; title: str
   );
 }
 
-function JobSearchBar({ searchTerm, setSearchTerm }: { searchTerm: string; setSearchTerm: (value: string) => void }) {
+function JobsFilterToolbar(props: {
+  filtersOpen: boolean;
+  setFiltersOpen: (value: boolean) => void;
+  skills: string[];
+  searchTerm: string;
+  filterType: string;
+  filterLoc: string;
+  filterSkill: string;
+  filterSalary: SalaryFilter;
+  filterExperience: ExperienceFilter;
+  sortMode: SortMode;
+  setSearchTerm: (value: string) => void;
+  setFilterType: (value: string) => void;
+  setFilterLoc: (value: string) => void;
+  setFilterSkill: (value: string) => void;
+  setFilterSalary: (value: SalaryFilter) => void;
+  setFilterExperience: (value: ExperienceFilter) => void;
+  setSortMode: (value: SortMode) => void;
+  onReset: () => void;
+}) {
   return (
-    <label className="eff-search eff-search-wide">
-      <Search className="h-4 w-4 text-cyan-500" />
-      <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search title, company, skill, or keyword" />
-    </label>
+    <div className="eff-filter-toolbar-shell">
+      <div className="eff-filter-toolbar" role="region" aria-label="Job discovery filters">
+        <label className="eff-search eff-search-toolbar">
+          <Search className="h-4 w-4 text-cyan-500" />
+          <input value={props.searchTerm} onChange={(e) => props.setSearchTerm(e.target.value)} placeholder="Search title, company, skill, or keyword" />
+        </label>
+        <FilterSelect compact label="Skills" value={props.filterSkill} onChange={props.setFilterSkill} options={[['all', 'Skills'], ...props.skills.map((skill) => [skill, skill] as [string, string])]} />
+        <FilterSelect compact label="Experience" value={props.filterExperience} onChange={(value) => props.setFilterExperience(value as ExperienceFilter)} options={[['all', 'Experience'], ['entry', 'Entry / Junior'], ['mid', 'Mid-level'], ['senior', 'Senior / Lead']]} />
+        <FilterSelect compact label="Location" value={props.filterLoc} onChange={props.setFilterLoc} options={[['all', 'Location'], ['remote', 'Remote'], ['on-site', 'On-site']]} />
+        <button type="button" className="eff-toolbar-toggle" onClick={() => props.setFiltersOpen(!props.filtersOpen)} aria-expanded={props.filtersOpen}>
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>{props.filtersOpen ? 'Hide Filters' : 'Show Filters'}</span>
+          {props.filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {props.filtersOpen && (
+          <motion.div
+            className="eff-filter-drawer"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <div className="eff-filter-drawer-grid">
+              <FilterSelect label="Search" value={props.searchTerm} onChange={props.setSearchTerm} options={[]} isSearchOnly />
+              <FilterSelect label="Skills" value={props.filterSkill} onChange={props.setFilterSkill} options={[['all', 'All skills'], ...props.skills.map((skill) => [skill, skill] as [string, string])]} />
+              <FilterSelect label="Experience" value={props.filterExperience} onChange={(value) => props.setFilterExperience(value as ExperienceFilter)} options={[['all', 'Any level'], ['entry', 'Entry / Junior'], ['mid', 'Mid-level'], ['senior', 'Senior / Lead']]} />
+              <FilterSelect label="Location" value={props.filterLoc} onChange={props.setFilterLoc} options={[['all', 'All places'], ['remote', 'Remote'], ['on-site', 'On-site']]} />
+              <FilterSelect label="Salary" value={props.filterSalary} onChange={(value) => props.setFilterSalary(value as SalaryFilter)} options={[['all', 'Any salary'], ['lt10', 'Below 10 LPA'], ['10-20', '10-20 LPA'], ['20plus', '20+ LPA']]} />
+              <FilterSelect label="Employment Type" value={props.filterType} onChange={props.setFilterType} options={[['all', 'All types'], ['Full-time', 'Full-time'], ['Part-time', 'Part-time'], ['Contract', 'Contract'], ['Internship', 'Internship']]} />
+              <FilterSelect label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Sort by match'], ['recent', 'Newest first'], ['salary', 'Highest salary']]} />
+              <button type="button" className="eff-ghost-action eff-reset-filters" onClick={props.onReset}>Reset Filters</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -1075,15 +1316,29 @@ function FilterSidebar(props: {
   );
 }
 
-function FilterSelect({ label, value, options, onChange }: {
+function FilterSelect({ label, value, options, onChange, compact, isSearchOnly }: {
   label: string;
   value: string;
   options: Array<[string, string]>;
   onChange: (value: string) => void;
+  compact?: boolean;
+  isSearchOnly?: boolean;
 }) {
+  if (isSearchOnly) {
+    return (
+      <label className="eff-filter-field">
+        <span>{label}</span>
+        <label className="eff-search eff-search-inline">
+          <Search className="h-4 w-4 text-cyan-500" />
+          <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Role, company, skill" />
+        </label>
+      </label>
+    );
+  }
+
   return (
-    <label className="eff-filter-field">
-      <span>{label}</span>
+    <label className={`eff-filter-field${compact ? ' is-compact' : ''}`}>
+      {!compact && <span>{label}</span>}
       <select value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
@@ -1091,46 +1346,90 @@ function FilterSelect({ label, value, options, onChange }: {
   );
 }
 
-function JobCard({ job, index, match, selected, saved, applied, onPreview, onApply, onSave }: {
+function JobCard({ job, index, fit, profileStrength, selected, saved, applied, onApply, onSave, onViewDetails }: {
   job: Job;
   index: number;
-  match: number;
+  fit: JobFitAnalysis;
+  profileStrength: number;
   selected: boolean;
   saved: boolean;
   applied: boolean;
-  onPreview: () => void;
   onApply: () => void;
   onSave: () => void;
+  onViewDetails: () => void;
 }) {
   const daysLeft = getDaysLeft(job.deadline);
+  const workMode = getWorkMode(job.location);
+  const recent = isRecentlyPosted(job.createdAt);
+  const additionalSkills = Math.max(0, job.requirements.length - 6);
   return (
     <motion.article
       className={`eff-job-card ${selected ? 'is-selected' : ''}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.15) }}
-      onMouseEnter={onPreview}
+      onClick={onViewDetails}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onViewDetails();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
     >
-      <button type="button" className="eff-job-main" onClick={onPreview}>
+      <div className="eff-job-main">
         <CompanyBadge company={job.companyName} />
-        <span className="min-w-0">
-          <strong>{job.title}</strong>
-          <small>{job.companyName} - {job.department || 'Hiring team'}</small>
-        </span>
-        <span className="eff-match">{match}%</span>
-      </button>
-      <div className="eff-job-facts">
-        <span><MapPin className="h-3.5 w-3.5" />{job.location}</span>
-        <span>{job.salary}</span>
-        <span>{job.jobType}</span>
-        {daysLeft !== null && <span className={daysLeft <= 7 ? 'urgent' : ''}><Clock3 className="h-3.5 w-3.5" />{daysLeft <= 0 ? 'Closing today' : `${daysLeft}d left`}</span>}
+        <div className="min-w-0">
+          <div className="eff-job-card-head">
+            <strong>{job.title}</strong>
+            <span className={`eff-work-mode ${workMode.tone}`}>{workMode.label}</span>
+          </div>
+          <small>{job.companyName}</small>
+          <div className="eff-job-location-row">
+            <span><MapPin className="h-3.5 w-3.5" />{job.location}</span>
+            {recent && <em>Recently Posted</em>}
+          </div>
+        </div>
+      </div>
+      <div className="eff-job-metrics">
+        <div className="eff-match-panel">
+          <div className="eff-match-ring">
+            <span>{fit.score}%</span>
+            <i style={{ '--match': `${fit.score}%` } as React.CSSProperties} />
+          </div>
+          <div className="eff-match-copy">
+            <strong>{fit.quality.label}</strong>
+            <small>{fit.missingSkills.length} skill{fit.missingSkills.length === 1 ? '' : 's'} missing</small>
+          </div>
+        </div>
+        <div className="eff-salary-highlight">{job.salary || 'Compensation not listed'}</div>
+        <div className="eff-job-meta-grid">
+          <span>{job.experience || 'Experience flexible'}</span>
+          <span>{job.jobType}</span>
+          <span>{formatPostedDate(job.createdAt)}</span>
+          {daysLeft !== null && <span className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft}d left`}</span>}
+        </div>
+        <div className="eff-resume-fit">
+          <strong>Resume Fit</strong>
+          <span>{fit.resumeInsight}</span>
+          <div><i style={{ width: `${Math.max(18, profileStrength)}%` }} /></div>
+        </div>
       </div>
       <div className="eff-job-skills">
-        {job.requirements.slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
+        {job.requirements.slice(0, 6).map((skill) => <span key={skill}>{skill}</span>)}
+        {additionalSkills > 0 && <span className="eff-skill-more">+{additionalSkills} More</span>}
+      </div>
+      <div className="eff-ai-chip-row">
+        <span className={`eff-quality-chip ${fit.quality.tone}`}>{fit.quality.label}</span>
+        <span>{fit.score}% Match</span>
+        <span>{fit.missingSkills.length} Skills Missing</span>
       </div>
       <div className="eff-job-actions">
-        <button type="button" onClick={onSave} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
-        <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Quick Apply'}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save Job'}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} disabled={applied}>{applied ? 'Applied' : 'Quick Apply'}</button>
+        <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onViewDetails(); }}>View Details</button>
       </div>
     </motion.article>
   );
@@ -1140,84 +1439,203 @@ function CompanyBadge({ company }: { company: string }) {
   return <span className="eff-company-badge">{company.slice(0, 2).toUpperCase()}</span>;
 }
 
-function JobPreviewPanel({ selectedJob, selectedMatch, profileStrength, recommendation, alerts, applications, similarJobs, saved, applied, onApplications, onApply, onSave, onSelectSimilar }: {
+function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applied, onClose, onApply, onSave, onShare, onReport, onSelectSimilar }: {
   selectedJob: Job | null;
-  selectedMatch: number;
-  profileStrength: number;
-  recommendation: string;
-  alerts: EmailAlert[];
-  applications: Application[];
+  selectedFit: JobFitAnalysis | null;
   similarJobs: Job[];
   saved: boolean;
   applied: boolean;
-  onApplications: () => void;
+  onClose: () => void;
   onApply?: () => void;
   onSave?: () => void;
+  onShare?: () => void;
+  onReport?: () => void;
   onSelectSimilar: (id: string) => void;
 }) {
-  const latestApplication = applications[0];
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocused = useRef<Element | null>(null);
+  const parsedDescription = selectedJob ? parseJobDescription(selectedJob.description) : null;
+
+  useEffect(() => {
+    if (!selectedJob) return;
+    previouslyFocused.current = document.activeElement;
+
+    const focusableSelector = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
+    const focusFirst = window.setTimeout(() => {
+      const first = modalRef.current?.querySelector<HTMLElement>(focusableSelector);
+      first?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !modalRef.current) return;
+      const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => !element.hasAttribute('disabled'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.clearTimeout(focusFirst);
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused.current instanceof HTMLElement) previouslyFocused.current.focus();
+    };
+  }, [selectedJob?.id, onClose]);
+
+  const shareJob = async () => {
+    if (!selectedJob || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('job', selectedJob.id);
+    try {
+      await navigator.clipboard.writeText(url.toString());
+    } catch {
+      window.prompt('Copy job link', url.toString());
+    }
+  };
+
+  if (!selectedJob || !selectedFit) return null;
+
   return (
-    <aside className="eff-intel">
-      <div className="eff-intel-block featured">
-        <p><PanelRightOpen className="h-4 w-4" /> Next best action</p>
-        <strong>{recommendation}</strong>
-        <small>Resume signal: {profileStrength}%</small>
-      </div>
-
-      {selectedJob && (
-        <div className="eff-intel-block">
-        <p>Recommended role</p>
-          <h3>{selectedJob.title}</h3>
-          <small>{selectedJob.companyName} - {selectedJob.location}</small>
-          <div className="eff-preview-score">
-            <span>{selectedMatch}%</span>
-            <em>estimated match</em>
-          </div>
-          <div className="eff-preview-salary">{selectedJob.salary}</div>
-          <p className="eff-description">{selectedJob.description}</p>
-          <SkillSet title="Required Skills" skills={selectedJob.requirements.slice(0, 8)} empty="No skill list supplied" />
-          <SkillSet title="Preferred" skills={(selectedJob.preferredSkills || []).slice(0, 6)} empty="No preferred skills listed" good />
-          <div className="eff-sticky-apply">
-            <button type="button" onClick={onSave} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
-            <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Already applied' : 'Apply now'}</button>
-          </div>
-        </div>
-      )}
-
-      <button type="button" className="eff-intel-row" onClick={onApplications}>
-        <FileText className="h-4 w-4 text-cyan-500" />
-        <span>
-          <strong>{latestApplication ? latestApplication.jobTitle : 'No applications yet'}</strong>
-          <small>{latestApplication ? latestApplication.status.replace('_', ' ') : 'Apply to start tracking'}</small>
-        </span>
-      </button>
-
-      <div className="eff-intel-row">
-        <Bell className="h-4 w-4 text-cyan-500" />
-        <span>
-          <strong>{alerts.length} notification{alerts.length === 1 ? '' : 's'}</strong>
-          <small>{alerts[0]?.subject || 'No new alerts'}</small>
-        </span>
-      </div>
-
-      <div className="eff-intel-block">
-        <p><Layers3 className="h-4 w-4" /> Similar jobs</p>
-        <div className="eff-similar-list">
-          {similarJobs.length ? similarJobs.map((job) => (
-            <button key={job.id} type="button" onClick={() => onSelectSimilar(job.id)}>
-              <span>{job.title}</span>
-              <small>{job.companyName}</small>
+    <AnimatePresence>
+      <motion.div className="eff-job-drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+        <motion.aside
+          ref={modalRef}
+          className="eff-job-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="job-drawer-title"
+          tabIndex={-1}
+          initial={{ x: 40, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 32, opacity: 0 }}
+          transition={{ duration: 0.22 }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <header className="eff-drawer-head">
+            <div className="eff-drawer-title-row">
+              <CompanyBadge company={selectedJob.companyName} />
+              <div>
+                <small>{selectedJob.companyName}</small>
+                <h3 id="job-drawer-title">{selectedJob.title}</h3>
+                <div className="eff-drawer-meta">
+                  <span>{selectedJob.location}</span>
+                  <span>{selectedJob.jobType}</span>
+                  <span>{selectedJob.experience}</span>
+                  <span>{formatPostedDate(selectedJob.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+            <button type="button" className="eff-drawer-close" onClick={onClose} aria-label="Close job details">
+              <X className="h-5 w-5" />
             </button>
-          )) : <small>No similar jobs in this result set.</small>}
-        </div>
-      </div>
+          </header>
 
-      {selectedJob && (
-        <div className="eff-mobile-cta">
-          <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
-        </div>
-      )}
-    </aside>
+          <div className="eff-drawer-scroll">
+            <section className="eff-drawer-hero">
+              <div className="eff-salary-highlight">{selectedJob.salary || 'Compensation not listed'}</div>
+              <div className="eff-drawer-badges">
+                <span className={`eff-work-mode ${getWorkMode(selectedJob.location).tone}`}>{getWorkMode(selectedJob.location).label}</span>
+                {isRecentlyPosted(selectedJob.createdAt) && <span className="eff-job-flag">Recently Posted</span>}
+                {getDaysLeft(selectedJob.deadline) !== null && <span className="eff-job-flag">Deadline {getDaysLeft(selectedJob.deadline) === 0 ? 'Today' : `${getDaysLeft(selectedJob.deadline)}d`}</span>}
+              </div>
+            </section>
+
+            <section className="eff-drawer-section eff-ai-match-panel">
+              <div className="eff-match-panel">
+                <div className="eff-match-ring is-large">
+                  <span>{selectedFit.score}%</span>
+                  <i style={{ '--match': `${selectedFit.score}%` } as React.CSSProperties} />
+                </div>
+                <div className="eff-match-copy">
+                  <strong>{selectedFit.quality.label}</strong>
+                  <small>{selectedFit.resumeInsight}</small>
+                </div>
+              </div>
+              <div className="eff-ai-summary">
+                <span className={`eff-quality-chip ${selectedFit.quality.tone}`}>{selectedFit.quality.label}</span>
+                <p>{selectedFit.missingSkills.length ? `Missing ${selectedFit.missingSkills.length} skills: ${selectedFit.missingSkills.join(', ')}` : 'Your current profile covers the listed required skills.'}</p>
+                <small>Resume fit: {selectedFit.resumeFitSummary}</small>
+              </div>
+            </section>
+
+            <section className="eff-drawer-section">
+              <SectionHeader eyebrow="Role Overview" title="Job Description" />
+              <p className="eff-drawer-copy">{parsedDescription?.summary || selectedJob.description}</p>
+              {parsedDescription?.responsibilities.length ? (
+                <DrawerList title="Responsibilities" items={parsedDescription.responsibilities} />
+              ) : null}
+              {parsedDescription?.requirements.length ? (
+                <DrawerList title="Requirements" items={parsedDescription.requirements} />
+              ) : null}
+              {parsedDescription?.preferred.length ? (
+                <DrawerList title="Preferred Qualifications" items={parsedDescription.preferred} />
+              ) : null}
+              {parsedDescription?.benefits.length ? (
+                <DrawerList title="Benefits" items={parsedDescription.benefits} />
+              ) : null}
+            </section>
+
+            <section className="eff-drawer-section">
+              <SectionHeader eyebrow="Skills" title="What this role asks for" />
+              <SkillSet title="Required Skills" skills={selectedJob.requirements.slice(0, 12)} empty="No required skills listed" />
+              <SkillSet title="Preferred Skills" skills={(selectedJob.preferredSkills || []).slice(0, 12)} empty="No preferred skills listed" good />
+            </section>
+
+            <section className="eff-drawer-section">
+              <SectionHeader eyebrow="Company" title="About the hiring team" />
+              <div className="eff-company-overview">
+                <div>
+                  <strong>{selectedJob.companyName}</strong>
+                  <span>{selectedJob.department || 'Hiring team'}</span>
+                </div>
+                <p>This role is being offered through {selectedJob.companyName}. Additional company metadata such as website, size, and industry is not currently exposed in the candidate jobs payload.</p>
+              </div>
+            </section>
+
+            <section className="eff-drawer-section">
+              <SectionHeader eyebrow="More Roles" title="Compare similar jobs" />
+              <div className="eff-similar-list">
+                {similarJobs.length ? similarJobs.map((job) => (
+                  <button key={job.id} type="button" onClick={() => onSelectSimilar(job.id)}>
+                    <span>{job.title}</span>
+                    <small>{job.companyName}</small>
+                  </button>
+                )) : <small>No similar jobs in this result set.</small>}
+              </div>
+            </section>
+          </div>
+
+          <div className="eff-drawer-actions">
+            <button type="button" onClick={onSave} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved Job' : 'Save Job'}</button>
+            <button type="button" onClick={onShare || shareJob}><ArrowUpRight className="h-4 w-4" />Share Job</button>
+            <button type="button" onClick={onReport}><AlertCircle className="h-4 w-4" />Report</button>
+            <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Already Applied' : 'Apply Now'}</button>
+          </div>
+        </motion.aside>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function DrawerList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="eff-drawer-list">
+      <strong>{title}</strong>
+      <ul>
+        {items.map((item) => <li key={item}>{item}</li>)}
+      </ul>
+    </div>
   );
 }
 
@@ -1277,6 +1695,177 @@ function getDaysLeft(deadline?: string) {
   const end = new Date(deadline).getTime();
   if (Number.isNaN(end)) return null;
   return Math.max(0, Math.ceil((end - Date.now()) / 86400000));
+}
+
+function formatPostedDate(createdAt: string) {
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return 'Recently posted';
+  const days = Math.max(0, Math.floor((Date.now() - created) / 86400000));
+  if (days === 0) return 'Posted today';
+  if (days === 1) return 'Posted 1 day ago';
+  if (days < 30) return `Posted ${days} days ago`;
+  return `Posted ${new Date(createdAt).toLocaleDateString()}`;
+}
+
+function isRecentlyPosted(createdAt: string) {
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  return (Date.now() - created) / 86400000 <= 7;
+}
+
+function getWorkMode(location: string) {
+  if (/hybrid/i.test(location)) return { label: 'Hybrid', tone: 'hybrid' };
+  if (/remote/i.test(location)) return { label: 'Remote', tone: 'remote' };
+  return { label: 'Onsite', tone: 'onsite' };
+}
+
+function analyzeJobFit(job: Job, candidate: {
+  profileSkills: string[];
+  education: string;
+  experience: string;
+  resumeText: string;
+  profileStrength: number;
+  applications: Application[];
+}): JobFitAnalysis {
+  const requirements = job.requirements || [];
+  const preferredSkills = job.preferredSkills || [];
+  const normalizedCandidateSkills = candidate.profileSkills.map((skill) => skill.toLowerCase());
+  const normalizedResume = candidate.resumeText.toLowerCase();
+  const normalizedEducation = candidate.education.toLowerCase();
+  const normalizedExperience = candidate.experience.toLowerCase();
+
+  const matchedSkills = requirements.filter((skill) => {
+    const normalized = skill.toLowerCase();
+    return normalizedCandidateSkills.some((candidateSkill) => candidateSkill.includes(normalized) || normalized.includes(candidateSkill))
+      || normalizedResume.includes(normalized);
+  });
+
+  const missingSkills = requirements.filter((skill) => !matchedSkills.includes(skill));
+
+  const preferredMatches = preferredSkills.filter((skill) => {
+    const normalized = skill.toLowerCase();
+    return normalizedCandidateSkills.some((candidateSkill) => candidateSkill.includes(normalized) || normalized.includes(candidateSkill))
+      || normalizedResume.includes(normalized);
+  });
+
+  const skillCoverage = requirements.length ? matchedSkills.length / requirements.length : 0.55;
+  const preferredCoverage = preferredSkills.length ? preferredMatches.length / preferredSkills.length : 0.4;
+
+  const experienceHints = job.experience.toLowerCase();
+  const candidateHasExperience = Boolean(normalizedExperience.trim());
+  const candidateHasEducation = Boolean(normalizedEducation.trim());
+  const seniorRole = /senior|lead|principal|5\+|6\+|7\+|8\+/i.test(experienceHints);
+  const midRole = /3\+|4\+|mid/i.test(experienceHints);
+  const entryRole = /0-2|0 to 2|entry|junior|fresher|intern/i.test(experienceHints);
+
+  let experienceAlignment = 0.55;
+  if (entryRole) experienceAlignment = candidateHasExperience ? 0.84 : 0.72;
+  else if (midRole) experienceAlignment = candidateHasExperience ? 0.76 : 0.44;
+  else if (seniorRole) experienceAlignment = candidateHasExperience ? 0.63 : 0.26;
+  else if (candidateHasExperience) experienceAlignment = 0.7;
+
+  let educationAlignment = 0.52;
+  if (/bachelor|b\.tech|degree|graduate|computer science|engineering|master|msc|mba/i.test(normalizedEducation)) {
+    educationAlignment = 0.78;
+  } else if (candidateHasEducation) {
+    educationAlignment = 0.64;
+  }
+
+  const projectSignals = ['project', 'built', 'developed', 'implemented', 'shipped', 'designed'];
+  const relevantProjects = projectSignals.some((signal) => normalizedResume.includes(signal) || normalizedExperience.includes(signal));
+  const projectAlignment = relevantProjects ? 0.74 : 0.42;
+  const resumeAlignment = Math.min(0.88, Math.max(0.32, candidate.profileStrength / 100));
+
+  const previousApplicationBonus = candidate.applications.some((application) => application.jobId === job.id)
+    ? -0.03
+    : 0;
+
+  const weightedScore =
+    skillCoverage * 0.42
+    + preferredCoverage * 0.1
+    + experienceAlignment * 0.18
+    + educationAlignment * 0.1
+    + resumeAlignment * 0.14
+    + projectAlignment * 0.06
+    + previousApplicationBonus;
+
+  const rawScore = Math.round(weightedScore * 100);
+  const boundedScore = Math.max(18, Math.min(92, rawScore));
+  const score = boundedScore >= 90 ? Math.min(92, boundedScore) : boundedScore;
+  const quality = getMatchQuality(score);
+
+  return {
+    score,
+    matchedSkills,
+    missingSkills,
+    quality,
+    resumeInsight: getResumeInsight(score),
+    resumeFitSummary: getResumeFitLabel(score, missingSkills.length),
+  };
+}
+
+function getMatchQuality(match: number) {
+  if (match >= 90) return { label: 'Excellent Match', tone: 'excellent' as const };
+  if (match >= 82) return { label: 'Very Strong Match', tone: 'very-strong' as const };
+  if (match >= 70) return { label: 'Good Match', tone: 'good' as const };
+  if (match >= 55) return { label: 'Partial Match', tone: 'partial' as const };
+  if (match >= 40) return { label: 'Weak Match', tone: 'weak' as const };
+  return { label: 'Low Match', tone: 'low' as const };
+}
+
+function getResumeInsight(match: number) {
+  if (match >= 90) return 'Your profile strongly aligns with this role.';
+  if (match >= 82) return 'You satisfy most requirements and appear highly competitive.';
+  if (match >= 70) return 'You meet many requirements, but a few additional skills could improve your fit.';
+  if (match >= 55) return 'You match some requirements but may need additional experience.';
+  if (match >= 40) return 'This role requires several competencies not currently reflected in your profile.';
+  return 'This role has significant skill and experience gaps compared to your current profile.';
+}
+
+function getResumeFitLabel(match: number, missingSkillCount: number) {
+  if (match >= 90) return missingSkillCount === 0 ? 'Strong alignment with your profile' : 'Highly relevant to your background';
+  if (match >= 82) return 'Skills align well with the position';
+  if (match >= 70) return 'Good opportunity based on your profile';
+  if (match >= 55) return 'You meet some core requirements';
+  if (match >= 40) return 'Competitive only with further upskilling';
+  return 'Significant gaps compared to this role';
+}
+
+function parseJobDescription(description: string) {
+  const chunks = description.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const buckets = {
+    summary: chunks.slice(0, 2).join(' '),
+    responsibilities: [] as string[],
+    requirements: [] as string[],
+    preferred: [] as string[],
+    benefits: [] as string[],
+  };
+
+  let active: keyof typeof buckets | null = null;
+  for (const line of chunks) {
+    const normalized = line.toLowerCase();
+    if (/responsibilities|what you'll do|what you will do/.test(normalized)) {
+      active = 'responsibilities';
+      continue;
+    }
+    if (/requirements|must have|qualifications/.test(normalized)) {
+      active = 'requirements';
+      continue;
+    }
+    if (/preferred|nice to have/.test(normalized)) {
+      active = 'preferred';
+      continue;
+    }
+    if (/benefits|perks/.test(normalized)) {
+      active = 'benefits';
+      continue;
+    }
+    if (active && active !== 'summary') {
+      buckets[active].push(line.replace(/^[-*]\s*/, ''));
+    }
+  }
+
+  return buckets;
 }
 
 function CompactApplicationStrip({ applications, activeApplicationId, setActiveApplicationId, onViewAll }: {
@@ -1461,7 +2050,7 @@ function ProfileEfficiency(props: {
     !props.education.trim() && 'Add education to improve recruiter confidence.',
     skills.length < 4 && 'Add at least four core skills for stronger matching.',
     !props.experience.trim() && 'Summarize your most relevant work or training.',
-    props.resumeFileName === 'My_Resume.pdf' && 'Upload a current PDF resume.',
+    !props.resumeFileName && 'Upload a current PDF resume.',
   ].filter(Boolean) as string[];
 
   return (
@@ -1472,9 +2061,7 @@ function ProfileEfficiency(props: {
         <span>{props.profile ? `Indexed ${new Date(props.profile.createdAt).toLocaleDateString()}` : 'Not indexed yet'}</span>
         <div className="eff-completion-bar"><span style={{ width: `${props.profileStrength}%` }} /></div>
         <div className="eff-profile-photo">
-          <div className="onboarding-avatar">
-            {props.profilePhotoUrl ? <img src={props.profilePhotoUrl} alt="" /> : <UserRound className="h-7 w-7 text-cyan-500" />}
-          </div>
+          <UserAvatar name={props.currentUser.name} src={props.profilePhotoUrl} className="onboarding-avatar" fallbackClassName="text-cyan-500" />
           <div>
             <b>Profile photo</b>
             <small>{props.profilePhotoUrl ? 'Visible on recruiter review.' : 'Add a clear headshot for profile trust.'}</small>
@@ -1508,11 +2095,11 @@ function ProfileEfficiency(props: {
         <div className="eff-field-grid">
           <FlowInput label="Name" value={props.currentUser.name} readOnly icon={UserRound} />
           <FlowInput label="Email" value={props.currentUser.email} readOnly icon={Mail} />
-          <FlowInput label="Education" value={props.education} onChange={props.setEducation} placeholder="B.S. Computer Science" icon={GraduationCap} />
-          <FlowInput label="Skills" value={props.skillsStr} onChange={props.setSkillsStr} placeholder="React, TypeScript, Node.js" icon={Zap} />
+          <FlowInput label="Education" value={props.education} onChange={props.setEducation} placeholder="Degree, institution, or education summary" icon={GraduationCap} />
+          <FlowInput label="Skills" value={props.skillsStr} onChange={props.setSkillsStr} placeholder="List skills separated by commas" icon={Zap} />
         </div>
         <FlowTextarea label="Experience" value={props.experience} onChange={props.setExperience} placeholder="Describe your work, training, or internship experience." />
-        <FlowInput label="Preferred skills" value={props.preferredSkillsStr} onChange={props.setPreferredSkillsStr} placeholder="AWS, GraphQL, Docker" icon={Target} />
+        <FlowInput label="Preferred skills" value={props.preferredSkillsStr} onChange={props.setPreferredSkillsStr} placeholder="Optional preferred skills" icon={Target} />
         <div className="eff-profile-sections">
           {['Skills', 'Resume', 'Experience', 'Education', 'Certifications'].map((section) => <span key={section}>{section}</span>)}
         </div>
@@ -1521,7 +2108,7 @@ function ProfileEfficiency(props: {
           <input id="pdf-upload-profile" type="file" accept=".pdf" className="hidden" onChange={(e) => e.target.files?.[0] && props.handleFileUpload(e.target.files[0])} />
           <label htmlFor="pdf-upload-profile">
             <Upload className="h-5 w-5 text-cyan-500" />
-            <strong>{props.parsingFile ? 'Reading PDF...' : props.resumeFileName || 'Upload resume PDF'}</strong>
+              <strong>{props.parsingFile ? 'Reading PDF...' : props.resumeFileName || 'Upload resume PDF'}</strong>
             <span>PDF only. Used for matching.</span>
             {props.parseError && <em>{props.parseError}</em>}
           </label>
@@ -1562,9 +2149,9 @@ function ProfileEfficiency(props: {
           </div>
           <div className="eff-resume-body">
             <div>
-              {resumeStep === 'basics' && <p>Template: Focused Candidate - clean summary, skills first, recruiter scan optimized.</p>}
-              {resumeStep === 'experience' && <p>Experience blocks use your profile summary and preferred skills to keep applications aligned.</p>}
-              {resumeStep === 'preview' && <p>Live preview uses the same resume signal submitted with Quick Apply.</p>}
+              {resumeStep === 'basics' && <p>{props.resumeFileName ? `Using ${props.resumeFileName}` : 'Upload a resume to build your candidate signal.'}</p>}
+              {resumeStep === 'experience' && <p>{props.experience || 'Add experience, internship, or project details.'}</p>}
+              {resumeStep === 'preview' && <p>{props.resumeFileName ? 'This resume signal is used during Quick Apply.' : 'Resume preview is unavailable until upload.'}</p>}
             </div>
             <aside className="eff-resume-preview">
               <strong>{props.currentUser.name}</strong>
@@ -1601,15 +2188,21 @@ function SignalCenter({ emailAlerts, activeEmailId, setActiveEmailId }: {
             <div key={group} className="eff-alert-group">
               <p>{group}</p>
               {alerts.map((alert) => (
-                <button key={alert.id} type="button" onClick={() => setActiveEmailId(activeEmailId === alert.id ? null : alert.id)} className={activeEmailId === alert.id ? 'is-open' : ''}>
-                  <Bell className="h-4 w-4 text-cyan-500" />
-                  <span>
-                    <strong>{alert.subject}</strong>
-                    <small>{new Date(alert.createdAt).toLocaleString()} - {alert.status}</small>
-                    {activeEmailId === alert.id && <p>{alert.body}</p>}
-                  </span>
-                  <em>{activeEmailId === alert.id ? 'Read' : 'Unread'}</em>
-                </button>
+                (() => {
+                  const preview = formatEmailAlertPreview(alert);
+                  const isOpen = activeEmailId === alert.id;
+                  return (
+                    <button key={alert.id} type="button" onClick={() => setActiveEmailId(isOpen ? null : alert.id)} className={isOpen ? 'is-open' : ''}>
+                      <Bell className="h-4 w-4 text-cyan-500" />
+                      <span>
+                        <strong>{alert.subject}</strong>
+                        <small>{new Date(alert.createdAt).toLocaleString()} - {preview.statusLabel}</small>
+                        <p>{isOpen ? preview.preview : preview.summary}</p>
+                      </span>
+                      <em>{isOpen ? 'Read' : 'Unread'}</em>
+                    </button>
+                  );
+                })()
               ))}
             </div>
           ))}
@@ -1692,6 +2285,17 @@ function EmptyCompact({ icon: Icon, title, body }: { icon: React.ElementType; ti
   );
 }
 
+function JobEmptyState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="eff-empty eff-empty-jobs">
+      <Briefcase className="h-9 w-9 text-cyan-500" />
+      <strong>No jobs match your current filters.</strong>
+      <span>Try widening your skills, location, salary, or experience filters to discover more opportunities.</span>
+      <button type="button" className="eff-action" onClick={onReset}>Reset Filters</button>
+    </div>
+  );
+}
+
 function EfficiencyLoading() {
   return (
     <div className="eff-loading">
@@ -1703,33 +2307,47 @@ function EfficiencyLoading() {
 
 function ApplyModal({
   selectedJob,
+  selectedFit,
   resumeText,
   resumeFileName,
+  resumeOptions,
+  resumeQualityScore,
   feedbackScore,
   applying,
   errorMsg,
   successMsg,
+  applyResult,
   onClose,
   onSubmit,
   onResumeText,
-  onTemplate,
+  onResumeFileName,
+  onResumeUpload,
   onViewApplications,
 }: {
   selectedJob: Job | null;
+  selectedFit: JobFitAnalysis | null;
   resumeText: string;
   resumeFileName: string;
+  resumeOptions: ResumeOption[];
+  resumeQualityScore: number;
   feedbackScore: number | null;
   applying: boolean;
   errorMsg: string;
   successMsg: string;
+  applyResult: ApplyResult | null;
   onClose: () => void;
   onSubmit: (event: React.FormEvent) => void;
   onResumeText: (value: string) => void;
-  onTemplate: (type: 'high' | 'low') => void;
+  onResumeFileName: (value: string) => void;
+  onResumeUpload: (file: File) => void | Promise<void>;
   onViewApplications: () => void;
 }) {
   const modalRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<Element | null>(null);
+  const [step, setStep] = useState(0);
+  const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [uploadingDraft, setUploadingDraft] = useState(false);
+  const steps = ['Resume', 'Fit Check', 'Readiness', 'Summary', 'Submit'];
 
   useEffect(() => {
     if (!selectedJob) return;
@@ -1768,6 +2386,36 @@ function ApplyModal({
     };
   }, [selectedJob?.id]);
 
+  useEffect(() => {
+    if (!selectedJob) return;
+    setStep(0);
+    setSelectedResumeId(resumeOptions[0]?.id || '');
+  }, [resumeOptions, selectedJob]);
+
+  useEffect(() => {
+    const selectedResume = resumeOptions.find((item) => item.id === selectedResumeId);
+    if (!selectedResume) return;
+    if (selectedResume.resumeText !== resumeText) onResumeText(selectedResume.resumeText);
+    if (selectedResume.fileName !== resumeFileName) onResumeFileName(selectedResume.fileName);
+  }, [onResumeFileName, onResumeText, resumeFileName, resumeOptions, resumeText, selectedResumeId]);
+
+  const selectedResume = resumeOptions.find((item) => item.id === selectedResumeId) || null;
+  const hasResume = Boolean((selectedResume?.resumeText || resumeText).trim());
+  const canAdvance = step === 0 ? hasResume : true;
+  const readinessLabel = (selectedFit?.score || 0) >= 80 ? 'High readiness' : (selectedFit?.score || 0) >= 60 ? 'Good readiness' : 'Needs profile work';
+
+  const handleResumeUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploadingDraft(true);
+    await Promise.resolve(onResumeUpload(file));
+    setUploadingDraft(false);
+  };
+
+  const handleNext = () => {
+    if (!canAdvance) return;
+    setStep((current) => Math.min(current + 1, steps.length - 1));
+  };
+
   return (
     <AnimatePresence>
       {selectedJob && (
@@ -1775,34 +2423,182 @@ function ApplyModal({
           <motion.div ref={modalRef} className="eff-modal" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" tabIndex={-1} initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }} onClick={(e) => e.stopPropagation()}>
             <div className="eff-modal-head">
               <div>
-                <p>Smart Apply</p>
+                <p>Premium Apply</p>
                 <h3 id="apply-modal-title">{selectedJob.title}</h3>
                 <span>{selectedJob.companyName} - {selectedJob.location}</span>
               </div>
               <button type="button" onClick={onClose}><X className="h-5 w-5" /></button>
             </div>
 
-            {feedbackScore !== null ? (
+            {applyResult ? (
               <div className="eff-success">
                 <SuccessAnimation size={72} />
-                <h4>{feedbackScore}% alignment</h4>
+                <h4>{applyResult.score}% alignment</h4>
                 <p>{successMsg}</p>
+                <div className="grid gap-2 text-left text-sm text-slate-600">
+                  <span><strong>Application ID:</strong> {applyResult.applicationId}</span>
+                  <span><strong>Date:</strong> {new Date(applyResult.appliedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span><strong>Status:</strong> {applyResult.status.replace('_', ' ')}</span>
+                  <span><strong>Notifications:</strong> {applyResult.communication.notificationCount}</span>
+                  <span><strong>Email events:</strong> {applyResult.communication.emailCount}</span>
+                </div>
+                <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700">
+                  {applyResult.activityHistory.map((item) => (
+                    <div key={`${item.label}-${item.timestamp}`}>
+                      <strong>{item.label}</strong>
+                      <p>{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
                 <button type="button" className="eff-action" onClick={onViewApplications}>View application</button>
               </div>
             ) : (
               <form onSubmit={onSubmit} className="eff-apply-form">
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => onTemplate('high')} className="eff-chip-button">High-match template</button>
-                  <button type="button" onClick={() => onTemplate('low')} className="eff-chip-button">Low-match template</button>
+                <div className="grid gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {steps.map((label, index) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${index === step ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+                        onClick={() => setStep(index)}
+                      >
+                        {index + 1}. {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {step === 0 && (
+                    <div className="grid gap-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <strong className="block text-sm text-slate-900">Choose resume source</strong>
+                        <small className="text-slate-500">Select your current resume, upload a new PDF, or reuse a recent version.</small>
+                      </div>
+                      <div className="grid gap-3">
+                        {resumeOptions.map((option) => (
+                          <label key={option.id} className={`rounded-2xl border p-4 text-left ${selectedResumeId === option.id ? 'border-emerald-500 bg-emerald-50/70' : 'border-slate-200 bg-white'}`}>
+                            <input
+                              type="radio"
+                              name="resume-source"
+                              className="mr-3"
+                              checked={selectedResumeId === option.id}
+                              onChange={() => setSelectedResumeId(option.id)}
+                            />
+                            <strong>{option.label}</strong>
+                            <p>{option.fileName}</p>
+                            <small>{option.resumeScore !== null ? `Resume score ${option.resumeScore}%` : 'Resume score pending'} • {new Date(option.updatedAt).toLocaleDateString()}</small>
+                          </label>
+                        ))}
+                      </div>
+                      <label className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
+                        <input type="file" accept="application/pdf" className="hidden" onChange={(event) => handleResumeUpload(event.target.files?.[0] || null)} />
+                        <strong>{uploadingDraft ? 'Uploading new resume...' : 'Upload new resume'}</strong>
+                        <p className="text-sm text-slate-500">PDF only. We will parse it and use it in this application.</p>
+                      </label>
+                    </div>
+                  )}
+
+                  {step === 1 && selectedFit && (
+                    <div className="grid gap-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <strong className="block text-sm text-slate-900">Job fit verification</strong>
+                        <small className="text-slate-500">We checked your skills and resume signal against required technologies.</small>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                          <strong className="block text-sm text-emerald-900">Matched skills</strong>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {selectedFit.matchedSkills.length ? selectedFit.matchedSkills.map((skill) => (
+                              <span key={skill} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">+ {skill}</span>
+                            )) : <span className="text-sm text-emerald-700">No strong matches detected yet.</span>}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                          <strong className="block text-sm text-rose-900">Missing skills</strong>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {selectedFit.missingSkills.length ? selectedFit.missingSkills.map((skill) => (
+                              <span key={skill} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700">- {skill}</span>
+                            )) : <span className="text-sm text-emerald-700">No required skill gaps recorded.</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <small className="text-slate-500">Match score</small>
+                        <strong className="mt-2 block text-3xl text-slate-900">{selectedFit?.score || feedbackScore || 0}%</strong>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <small className="text-slate-500">Missing skills</small>
+                        <strong className="mt-2 block text-3xl text-slate-900">{selectedFit?.missingSkills.length || 0}</strong>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <small className="text-slate-500">Resume quality</small>
+                        <strong className="mt-2 block text-3xl text-slate-900">{resumeQualityScore}%</strong>
+                      </div>
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 md:col-span-3">
+                        <strong className="block text-sm text-amber-900">{readinessLabel}</strong>
+                        <p className="text-sm text-amber-800">{selectedFit?.resumeFitSummary || 'Complete your profile and upload a stronger resume to improve readiness.'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 3 && (
+                    <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                      <div>
+                        <small className="text-slate-500">Job title</small>
+                        <strong className="block text-lg text-slate-900">{selectedJob.title}</strong>
+                      </div>
+                      <div>
+                        <small className="text-slate-500">Company</small>
+                        <strong className="block text-lg text-slate-900">{selectedJob.companyName}</strong>
+                      </div>
+                      <div>
+                        <small className="text-slate-500">Resume selected</small>
+                        <strong className="block text-lg text-slate-900">{selectedResume?.fileName || resumeFileName || 'No resume selected'}</strong>
+                      </div>
+                      <div>
+                        <small className="text-slate-500">Estimated readiness</small>
+                        <strong className="block text-lg text-slate-900">{readinessLabel}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 4 && (
+                    <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <strong className="block text-lg text-slate-900">Ready to apply</strong>
+                          <p className="text-sm text-slate-600">Persevex will submit this resume signal, log activity, and notify the right teams.</p>
+                        </div>
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">{selectedFit?.score || 0}% match</span>
+                      </div>
+                      <label className="eff-field block">
+                        <span>Resume signal preview</span>
+                        <textarea value={resumeText} onChange={(e) => onResumeText(e.target.value)} rows={6} placeholder="Resume signal used for this application" />
+                      </label>
+                    </div>
+                  )}
                 </div>
-                <label className="eff-field block">
-                  <span>Resume signal: {resumeFileName}</span>
-                  <textarea value={resumeText} onChange={(e) => onResumeText(e.target.value)} rows={7} placeholder="Resume text for keyword matching..." />
-                </label>
+
                 {errorMsg && <p className="eff-error">{errorMsg}</p>}
-                <AnimatedButton type="submit" disabled={applying} className="w-full">
-                  {applying ? 'Analyzing signal...' : 'Submit application'}
-                </AnimatedButton>
+                <div className="flex gap-3">
+                  <button type="button" className="eff-action subtle" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || applying}>
+                    Back
+                  </button>
+                  {step < steps.length - 1 ? (
+                    <AnimatedButton type="button" onClick={handleNext} disabled={!canAdvance || applying} className="w-full">
+                      {hasResume ? `Next: ${steps[step + 1]}` : 'Resume required'}
+                    </AnimatedButton>
+                  ) : (
+                    <AnimatedButton type="submit" disabled={applying || !hasResume} className="w-full">
+                      {applying ? 'Submitting application...' : 'Apply now'}
+                    </AnimatedButton>
+                  )}
+                </div>
               </form>
             )}
           </motion.div>
