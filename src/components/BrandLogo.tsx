@@ -21,9 +21,11 @@ export default function BrandLogo({
   subline = 'Hiring & Placement Engine',
   compact = false,
 }: BrandLogoProps) {
+  const logoSrc = typeof persevexLogo === 'string' ? persevexLogo : persevexLogo.src;
+
   return (
     <span className={`pvx-brand-logo ${className}`}>
-      <img className={`pvx-brand-logo-mark ${markClassName}`} src={persevexLogo} alt="Persevex" />
+      <img className={`pvx-brand-logo-mark ${markClassName}`} src={logoSrc} alt="Persevex" />
       {!compact && (
         <span className={`pvx-brand-logo-text ${textClassName}`}>
           <strong>Persevex</strong>
