@@ -1,21 +1,29 @@
-import { createClient } from '@supabase/supabase-js';
+import 'server-only';
 
-function getServerEnv(key: string): string | undefined {
-  return process.env[key]?.trim() || undefined;
-}
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServiceRoleKey, getSupabaseUrl, validateNextServerEnvironment } from '@/lib/env/server';
 
-export function createServerSupabaseClient() {
-  const url = getServerEnv('NEXT_PUBLIC_SUPABASE_URL') || getServerEnv('VITE_SUPABASE_URL');
-  const serviceRoleKey = getServerEnv('SUPABASE_SERVICE_ROLE_KEY');
+let cachedServerSupabaseAdmin: SupabaseClient | null = null;
 
-  if (!url || !serviceRoleKey) {
-    throw new Error('Supabase server environment is not configured');
-  }
+export function createServerSupabaseClient(): SupabaseClient {
+  validateNextServerEnvironment();
 
-  return createClient(url, serviceRoleKey, {
+  return createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
+}
+
+export function getServerSupabaseAdmin(): SupabaseClient {
+  if (!cachedServerSupabaseAdmin) {
+    cachedServerSupabaseAdmin = createServerSupabaseClient();
+  }
+
+  return cachedServerSupabaseAdmin;
+}
+
+export function requireServerSupabaseAdmin(): SupabaseClient {
+  return getServerSupabaseAdmin();
 }

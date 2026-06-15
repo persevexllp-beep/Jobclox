@@ -11,7 +11,7 @@
     "start": "node dist/server.cjs",
     "next:start": "next start",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
+    "lint": "tsc -p tsconfig.lint.json --noEmit",
     "test": "npm run test:resume && npm run test:communications",
     "test:resume": "tsx scripts/resume-intelligence-tests.ts",
     "test:communications": "tsx scripts/communication-reliability-tests.ts"
