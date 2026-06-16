@@ -4,14 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "next:dev": "next dev",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "next:build": "next build",
-    "start": "node dist/server.cjs",
-    "next:start": "next start",
-    "clean": "rm -rf dist server.js",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+
+    "legacy:dev": "tsx server.ts",
+    "legacy:build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "legacy:start": "node dist/server.cjs",
+
+    "clean": "rm -rf dist .next server.js",
+
     "lint": "tsc -p tsconfig.lint.json --noEmit",
+
     "test": "npm run test:resume && npm run test:communications",
     "test:resume": "tsx scripts/resume-intelligence-tests.ts",
     "test:communications": "tsx scripts/communication-reliability-tests.ts"
@@ -25,7 +29,7 @@
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
-    "next": "^15.0.0",
+    "next": "^15.5.19",
     "pdf-parse": "^2.4.5",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
