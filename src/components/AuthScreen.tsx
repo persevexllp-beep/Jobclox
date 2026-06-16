@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ArrowRight,
@@ -38,6 +38,7 @@ const journey = [
 ];
 
 export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: AuthScreenProps) {
+  const loginSuccessTimerRef = useRef<number | null>(null);
   const [mode, setMode] = useState<AuthMode>('login');
   const [role, setRole] = useState<UserRole>('candidate');
   const [name, setName] = useState('');
@@ -46,6 +47,12 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => () => {
+    if (loginSuccessTimerRef.current !== null) {
+      window.clearTimeout(loginSuccessTimerRef.current);
+    }
+  }, []);
 
   const resetFeedback = () => {
     setError('');
@@ -101,7 +108,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
         if (mode === 'register') {
           setSuccess('Account created. Opening your workspace...');
           showToast('success', 'Account created', 'Opening your workspace now.');
-          setTimeout(() => onLoginSuccess(response.user, response.token), 700);
+          loginSuccessTimerRef.current = window.setTimeout(() => onLoginSuccess(response.user, response.token), 700);
         } else {
           onLoginSuccess(response.user, response.token);
         }

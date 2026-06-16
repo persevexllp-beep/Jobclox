@@ -22,13 +22,31 @@ export default function CareerFlowBackground({
   const cursorGlow = useMotionTemplate`radial-gradient(circle at ${springX}% ${springY}%, rgba(34, 211, 238, 0.22), transparent 34%)`;
 
   useEffect(() => {
+    let frame = 0;
+    let nextX = 50;
+    let nextY = 35;
+
+    const flushPointerPosition = () => {
+      frame = 0;
+      cursorX.set(nextX);
+      cursorY.set(nextY);
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
-      cursorX.set((event.clientX / window.innerWidth) * 100);
-      cursorY.set((event.clientY / window.innerHeight) * 100);
+      nextX = (event.clientX / window.innerWidth) * 100;
+      nextY = (event.clientY / window.innerHeight) * 100;
+      if (frame === 0) {
+        frame = window.requestAnimationFrame(flushPointerPosition);
+      }
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    return () => window.removeEventListener('pointermove', handlePointerMove);
+    return () => {
+      if (frame !== 0) {
+        window.cancelAnimationFrame(frame);
+      }
+      window.removeEventListener('pointermove', handlePointerMove);
+    };
   }, [cursorX, cursorY]);
 
   return (

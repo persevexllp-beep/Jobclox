@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { buildSessionCookie } from '@/lib/auth/cookies';
+import { buildSessionCookie, buildSessionRoleCookie } from '@/lib/auth/cookies';
 import { ensureLoginProfile, tryBootstrapPassword } from '@/lib/auth/login';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { checkRateLimit } from '@/lib/http/rate-limit';
@@ -82,7 +82,9 @@ export async function POST(request: Request) {
   const token = createSessionToken(hydratedUser);
   const response = jsonOk({ user: hydratedUser, token });
   const sessionCookie = buildSessionCookie(token);
+  const roleCookie = buildSessionRoleCookie(hydratedUser.role);
   response.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.options);
+  response.cookies.set(roleCookie.name, roleCookie.value, roleCookie.options);
 
   logger.info('auth', 'login succeeded', { userId: user.id, role: user.role });
   return response;

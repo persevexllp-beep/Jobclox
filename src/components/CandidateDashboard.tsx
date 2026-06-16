@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
@@ -166,9 +166,8 @@ function loadResumeHistory(userId: string): ResumeOption[] {
   }
 }
 
-function saveResumeHistory(userId: string, options: ResumeOption[]) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(getResumeLibraryKey(userId), JSON.stringify(options.slice(0, 5)));
+function serializeResumeHistory(options: ResumeOption[]) {
+  return JSON.stringify(options.slice(0, 5));
 }
 
 export default function CandidateDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CandidateDashboardProps) {
@@ -219,48 +218,11 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [activeApplicationId, setActiveApplicationId] = useState<string | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('basics');
   const [careerPreference, setCareerPreference] = useState(() => localStorage.getItem(`persevex_pref_${currentUser.id}`) || '');
+  const [resumeHistory, setResumeHistory] = useState<ResumeOption[]>(() => loadResumeHistory(currentUser.id));
+  const resumeHistoryRef = useRef('');
+  const resumeHistoryKey = useMemo(() => getResumeLibraryKey(currentUser.id), [currentUser.id]);
 
-  useEffect(() => {
-    fetchInitialData();
-  }, [currentUser.id]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    if (selectedJobId) {
-      url.searchParams.set('job', selectedJobId);
-    } else {
-      url.searchParams.delete('job');
-    }
-    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
-  }, [selectedJobId]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onPopState = () => {
-      setSelectedJobId(new URLSearchParams(window.location.search).get('job'));
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  useEffect(() => {
-    if (!resumeText.trim() || !resumeFileName.trim()) return;
-    const currentEntry: ResumeOption = {
-      id: `resume-current-${currentUser.id}`,
-      label: 'Current resume',
-      fileName: resumeFileName,
-      resumeText,
-      updatedAt: new Date().toISOString(),
-      source: 'current',
-      resumeScore: resumeIntelligence?.careerInsights?.placementReadiness ?? null,
-    };
-    const history = loadResumeHistory(currentUser.id)
-      .filter((item) => item.resumeText !== currentEntry.resumeText || item.fileName !== currentEntry.fileName);
-    saveResumeHistory(currentUser.id, [currentEntry, ...history]);
-  }, [currentUser.id, resumeFileName, resumeIntelligence?.careerInsights?.placementReadiness, resumeText]);
-
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     setLoading(true);
     try {
       const [{ jobs: remoteJobs }, { applications: remoteApps }, { profile: remoteProf }, emailData] = await Promise.all([
@@ -294,11 +256,74 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiFetch, currentUser.id, currentUser.profilePhotoUrl, onCurrentUserUpdate]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (selectedJobId) {
+      url.searchParams.set('job', selectedJobId);
+    } else {
+      url.searchParams.delete('job');
+    }
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [selectedJobId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = () => {
+      setSelectedJobId(new URLSearchParams(window.location.search).get('job'));
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    const nextHistory = loadResumeHistory(currentUser.id);
+    resumeHistoryRef.current = serializeResumeHistory(nextHistory);
+    setResumeHistory(nextHistory);
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    if (!resumeText.trim() || !resumeFileName.trim()) return;
+    const currentEntry: ResumeOption = {
+      id: `resume-current-${currentUser.id}`,
+      label: 'Current resume',
+      fileName: resumeFileName,
+      resumeText,
+      updatedAt: new Date().toISOString(),
+      source: 'current',
+      resumeScore: resumeIntelligence?.careerInsights?.placementReadiness ?? null,
+    };
+    setResumeHistory((current) => [
+      currentEntry,
+      ...current.filter((item) => item.resumeText !== currentEntry.resumeText || item.fileName !== currentEntry.fileName),
+    ].slice(0, 5));
+  }, [currentUser.id, resumeFileName, resumeIntelligence?.careerInsights?.placementReadiness, resumeText]);
+
+  useEffect(() => {
+    const serialized = serializeResumeHistory(resumeHistory);
+    if (serialized === resumeHistoryRef.current) return;
+
+    const persistTimer = window.setTimeout(() => {
+      if (serialized === resumeHistoryRef.current) return;
+      window.localStorage.setItem(resumeHistoryKey, serialized);
+      resumeHistoryRef.current = serialized;
+    }, 350);
+
+    return () => window.clearTimeout(persistTimer);
+  }, [resumeHistory, resumeHistoryKey]);
 
   const profileSkills = useMemo(() => skillsStr.split(',').map((skill) => skill.trim().toLowerCase()).filter(Boolean), [skillsStr]);
   const allSkills = useMemo(() => Array.from(new Set(jobs.flatMap((job) => [...job.requirements, ...(job.preferredSkills || [])]))).filter(Boolean).slice(0, 18), [jobs]);
-  const savedJobs = useMemo(() => jobs.filter((job) => savedJobIds.includes(job.id)), [jobs, savedJobIds]);
+  const savedJobIdSet = useMemo(() => new Set(savedJobIds), [savedJobIds]);
+  const appliedJobIdSet = useMemo(() => new Set(applications.map((application) => application.jobId)), [applications]);
+  const jobById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
+  const savedJobs = useMemo(() => jobs.filter((job) => savedJobIdSet.has(job.id)), [jobs, savedJobIdSet]);
   const resumeOptions = useMemo(() => {
     const currentResume = resumeText.trim() ? [{
       id: `current-${currentUser.id}`,
@@ -309,7 +334,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
       source: 'current' as const,
       resumeScore: resumeIntelligence?.careerInsights?.placementReadiness ?? null,
     }] : [];
-    const history = loadResumeHistory(currentUser.id)
+    const history = resumeHistory
       .filter((item) => item.resumeText.trim())
       .filter((item) => item.resumeText !== resumeText || item.fileName !== resumeFileName)
       .map((item, index) => ({
@@ -318,7 +343,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
         label: item.source === 'upload' ? 'Latest uploaded draft' : 'Previously uploaded resume',
       }));
     return [...currentResume, ...history].slice(0, 4);
-  }, [currentUser.id, resumeFileName, resumeIntelligence?.careerInsights?.placementReadiness, resumeText]);
+  }, [currentUser.id, resumeFileName, resumeHistory, resumeIntelligence?.careerInsights?.placementReadiness, resumeText]);
 
   const parseSalaryValue = (salary: string) => {
     const numbers = salary.match(/\d+/g)?.map(Number) || [];
@@ -368,33 +393,57 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     return Math.min(100, score);
   }, [education, experience, skillsStr, resumeText]);
 
-  const getJobFit = (job: Job) => analyzeJobFit(job, {
+  const jobFitInputs = useMemo(() => ({
     profileSkills,
     education,
     experience,
     resumeText,
     profileStrength,
     applications,
-  });
+  }), [applications, education, experience, profileSkills, profileStrength, resumeText]);
 
-  const getJobMatch = (job: Job) => getJobFit(job).score;
+  const jobFitById = useMemo(() => {
+    const next = new Map<string, JobFitAnalysis>();
+    for (const job of jobs) {
+      next.set(job.id, analyzeJobFit(job, jobFitInputs));
+    }
+    return next;
+  }, [jobFitInputs, jobs]);
+
+  const getJobFit = useCallback((job: Job) => (
+    jobFitById.get(job.id) ?? analyzeJobFit(job, jobFitInputs)
+  ), [jobFitById, jobFitInputs]);
+
+  const getJobMatch = useCallback((job: Job) => getJobFit(job).score, [getJobFit]);
 
   const rankedJobs = useMemo(() => [...filteredJobs].sort((a, b) => {
     if (sortMode === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortMode === 'salary') return parseSalaryValue(b.salary) - parseSalaryValue(a.salary);
     return getJobMatch(b) - getJobMatch(a);
-  }), [filteredJobs, applications, profileSkills, sortMode, education, experience, resumeText, profileStrength]);
-  const selectedJobPreview = jobs.find((job) => job.id === selectedJobId) || null;
-  const bestMatch = rankedJobs.length ? getJobMatch(rankedJobs[0]) : 0;
-  const hasApplied = (jobId: string) => applications.some((app) => app.jobId === jobId);
-  const toggleSavedJob = (jobId: string) => {
-    const job = jobs.find((item) => item.id === jobId);
+  }), [filteredJobs, getJobMatch, sortMode]);
+  const selectedJobPreview = useMemo(() => (
+    selectedJobId ? jobById.get(selectedJobId) || null : null
+  ), [jobById, selectedJobId]);
+  const selectedJobPreviewFit = useMemo(() => (
+    selectedJobPreview ? getJobFit(selectedJobPreview) : null
+  ), [getJobFit, selectedJobPreview]);
+  const selectedApplyFit = useMemo(() => (
+    selectedJob ? getJobFit(selectedJob) : null
+  ), [getJobFit, selectedJob]);
+  const similarJobs = useMemo(() => (
+    selectedJobPreview ? rankedJobs.filter((job) => job.id !== selectedJobPreview.id).slice(0, 3) : []
+  ), [rankedJobs, selectedJobPreview]);
+  const recommendedOnboardingJobs = useMemo(() => rankedJobs.slice(0, 3), [rankedJobs]);
+  const bestMatch = useMemo(() => (rankedJobs.length ? getJobMatch(rankedJobs[0]) : 0), [getJobMatch, rankedJobs]);
+  const hasApplied = useCallback((jobId: string) => appliedJobIdSet.has(jobId), [appliedJobIdSet]);
+  const toggleSavedJob = useCallback((jobId: string) => {
+    const job = jobById.get(jobId);
     setSavedJobIds((current) => {
       const isSaved = current.includes(jobId);
       showToast(isSaved ? 'info' : 'success', isSaved ? 'Saved job removed' : 'Job saved', job ? job.title : 'Your saved jobs list was updated.');
       return isSaved ? current.filter((id) => id !== jobId) : [...current, jobId];
     });
-  };
+  }, [jobById, showToast]);
   const activation = useMemo(() => {
     const missing = [
       !profilePhotoUrl && 'Add a profile photo',
@@ -430,7 +479,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     return 'training';
   }, [applications, experience]);
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = useCallback(async (file: File) => {
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
       setParseError('Support is limited to PDF files only.');
@@ -479,7 +528,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
       setParseError(err.message || 'Error executing file upload parse request.');
       setParsingFile(false);
     }
-  };
+  }, [apiFetch, showToast]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -494,7 +543,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     if (e.dataTransfer.files?.[0]) handleFileUpload(e.dataTransfer.files[0]);
   };
 
-  const handlePhotoUpload = async (file: File) => {
+  const handlePhotoUpload = useCallback(async (file: File) => {
     if (!file) return;
     if (!/^image\/(png|jpe?g|webp|avif)$/i.test(file.type)) {
       setPhotoError('Use PNG, JPG, WebP, or AVIF.');
@@ -519,9 +568,9 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     } finally {
       setPhotoUploading(false);
     }
-  };
+  }, [apiFetch, onCurrentUserUpdate, showToast]);
 
-  const handlePhotoRemove = async () => {
+  const handlePhotoRemove = useCallback(async () => {
     setPhotoUploading(true);
     setPhotoError('');
     try {
@@ -535,21 +584,21 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     } finally {
       setPhotoUploading(false);
     }
-  };
+  }, [apiFetch, onCurrentUserUpdate, showToast]);
 
-  const saveCareerPreference = (value: string) => {
+  const saveCareerPreference = useCallback((value: string) => {
     setCareerPreference(value);
     localStorage.setItem(`persevex_pref_${currentUser.id}`, value);
-  };
+  }, [currentUser.id]);
 
-  const completeOnboarding = () => {
+  const completeOnboarding = useCallback(() => {
     if (!minimumOnboardingComplete) {
       setOnboardingStep('photo');
       return;
     }
     localStorage.setItem(`persevex_onboarding_done_${currentUser.id}`, 'true');
     setActiveMode('jobs');
-  };
+  }, [currentUser.id, minimumOnboardingComplete]);
 
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -617,16 +666,16 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     }
   };
 
-  const openApply = (job: Job) => {
+  const openApply = useCallback((job: Job) => {
     setSelectedJob(job);
     setSelectedJobId(job.id);
     setFeedbackScore(null);
     setErrorMsg('');
     setSuccessMsg('');
     setApplyResult(null);
-  };
+  }, []);
 
-  const shareOpportunity = async (job: Job) => {
+  const shareOpportunity = useCallback(async (job: Job) => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     url.searchParams.set('job', job.id);
@@ -637,9 +686,9 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
       window.prompt('Copy opportunity link', url.toString());
       showToast('info', 'Share link ready', 'Use the copied opportunity URL to share this role.');
     }
-  };
+  }, [showToast]);
 
-  const reportOpportunity = async (job: Job) => {
+  const reportOpportunity = useCallback(async (job: Job) => {
     try {
       await apiFetch(`/api/jobs/${job.id}/report`, {
         method: 'POST',
@@ -650,7 +699,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     } catch (err: any) {
       showToast('error', 'Report failed', err.message || 'Unable to report this opportunity.');
     }
-  };
+  }, [apiFetch, showToast]);
 
   return (
     <div className="career-flow-os efficiency-os relative min-h-screen overflow-hidden">
@@ -685,7 +734,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
         </header>
 
         {loading ? (
-          <SkeletonLoader type="jobGrid" count={6} />
+          <EfficiencyLoading />
         ) : (
           <>
             {!showOnboarding && (
@@ -722,7 +771,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                 experience={experience}
                 careerPreference={careerPreference}
                 setCareerPreference={saveCareerPreference}
-                recommendedJobs={rankedJobs.slice(0, 3)}
+                recommendedJobs={recommendedOnboardingJobs}
                 getJobMatch={getJobMatch}
                 onSelectJob={(job) => {
                   openApply(job);
@@ -796,7 +845,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                             fit={getJobFit(job)}
                             profileStrength={profileStrength}
                             selected={selectedJobId === job.id}
-                            saved={savedJobIds.includes(job.id)}
+                            saved={savedJobIdSet.has(job.id)}
                             applied={hasApplied(job.id)}
                             onApply={() => openApply(job)}
                             onSave={() => toggleSavedJob(job.id)}
@@ -919,10 +968,10 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
       <JobDetailsDrawer
         selectedJob={selectedJobPreview}
-        selectedFit={selectedJobPreview ? getJobFit(selectedJobPreview) : null}
-        saved={selectedJobPreview ? savedJobIds.includes(selectedJobPreview.id) : false}
+        selectedFit={selectedJobPreviewFit}
+        saved={selectedJobPreview ? savedJobIdSet.has(selectedJobPreview.id) : false}
         applied={selectedJobPreview ? hasApplied(selectedJobPreview.id) : false}
-        similarJobs={selectedJobPreview ? rankedJobs.filter((job) => job.id !== selectedJobPreview.id).slice(0, 3) : []}
+        similarJobs={similarJobs}
         onClose={() => setSelectedJobId(null)}
         onApply={selectedJobPreview ? () => openApply(selectedJobPreview) : undefined}
         onSave={selectedJobPreview ? () => toggleSavedJob(selectedJobPreview.id) : undefined}
@@ -933,7 +982,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
       <ApplyModal
         selectedJob={selectedJob}
-        selectedFit={selectedJob ? getJobFit(selectedJob) : null}
+        selectedFit={selectedApplyFit}
         resumeText={resumeText}
         resumeFileName={resumeFileName}
         resumeOptions={resumeOptions}

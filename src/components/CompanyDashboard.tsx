@@ -80,6 +80,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export default function CompanyDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CompanyDashboardProps) {
+  const uploadResetTimerRef = useRef<number | null>(null);
   const [activeTab, setActiveTab] = useState<RecruiterTab>('command');
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
@@ -132,6 +133,12 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
   useEffect(() => {
     fetchCompanyData();
   }, [currentUser.id]);
+
+  useEffect(() => () => {
+    if (uploadResetTimerRef.current !== null) {
+      window.clearTimeout(uploadResetTimerRef.current);
+    }
+  }, []);
 
   const fetchCompanyData = async () => {
     setLoading(true);
@@ -205,12 +212,39 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
       setDocumentError(err.message || 'Failed to upload verification document.');
       showToast('error', 'Upload failed', err.message || 'Failed to upload verification document.');
     } finally {
-      window.setTimeout(() => {
+      if (uploadResetTimerRef.current !== null) {
+        window.clearTimeout(uploadResetTimerRef.current);
+      }
+      uploadResetTimerRef.current = window.setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
       }, 180);
     }
   };
+
+  const applicationCountByJobId = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const application of applications) {
+      counts.set(application.jobId, (counts.get(application.jobId) || 0) + 1);
+    }
+    return counts;
+  }, [applications]);
+
+  const pipelineApplications = useMemo(() => {
+    const grouped: Record<string, Application[]> = {
+      applied: [],
+      reviewing: [],
+      interview: [],
+      offer: [],
+      hired: [],
+    };
+
+    for (const application of applications) {
+      grouped[getPipelineColumn(application)].push(application);
+    }
+
+    return grouped;
+  }, [applications]);
 
   const handlePostJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -373,10 +407,10 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
       })
       .sort((a, b) => {
         if (jobSort === 'status') return a.status.localeCompare(b.status);
-        if (jobSort === 'applications') return getJobApplicationCount(b.id, applications) - getJobApplicationCount(a.id, applications);
+        if (jobSort === 'applications') return (applicationCountByJobId.get(b.id) || 0) - (applicationCountByJobId.get(a.id) || 0);
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [applications, jobSearch, jobSort, jobStatusFilter, jobs]);
+  }, [applicationCountByJobId, jobSearch, jobSort, jobStatusFilter, jobs]);
 
   return (
     <div className="platform-page recruiter-os mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
@@ -450,7 +484,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
           {activeTab === 'jobs' && (
             <ManageJobs
               jobs={filteredJobs}
-              applications={applications}
+              applicationCountByJobId={applicationCountByJobId}
               search={jobSearch}
               statusFilter={jobStatusFilter}
               sort={jobSort}
@@ -462,7 +496,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
 
           {activeTab === 'pipeline' && (
             <ApplicantTracking
-              applications={applications}
+              applications={pipelineApplications}
               notes={candidateNotes}
               setNotes={setCandidateNotes}
               onReview={setSelectedApp}
@@ -720,7 +754,7 @@ function PostJobWizard(props: {
 
 function ManageJobs(props: {
   jobs: Job[];
-  applications: Application[];
+  applicationCountByJobId: Map<string, number>;
   search: string;
   statusFilter: string;
   sort: JobSort;
@@ -750,12 +784,12 @@ function ManageJobs(props: {
           <option value="applications">Applications</option>
         </select>
       </div>
-      <JobTable jobs={props.jobs} applications={props.applications} />
+      <JobTable jobs={props.jobs} applicationCountByJobId={props.applicationCountByJobId} />
     </section>
   );
 }
 
-function JobTable({ jobs, applications }: { jobs: Job[]; applications: Application[] }) {
+function JobTable({ jobs, applicationCountByJobId }: { jobs: Job[]; applicationCountByJobId: Map<string, number> }) {
   if (jobs.length === 0) return <EmptyState icon={BriefcaseBusiness} title="No jobs match the current filters" body="Adjust filters or post a new opening." />;
   return (
     <div className="rec-table-wrap">
@@ -779,7 +813,7 @@ function JobTable({ jobs, applications }: { jobs: Job[]; applications: Applicati
               </td>
               <td><StatusBadge status={job.status} /></td>
               <td>{job.location}</td>
-              <td>{getJobApplicationCount(job.id, applications)}</td>
+              <td>{applicationCountByJobId.get(job.id) || 0}</td>
               <td>{job.deadline || 'Open'}</td>
               <td>
                 <div className="rec-row-actions">
@@ -798,17 +832,18 @@ function JobTable({ jobs, applications }: { jobs: Job[]; applications: Applicati
 }
 
 function ApplicantTracking({ applications, notes, setNotes, onReview, onMove }: {
-  applications: Application[];
+  applications: Record<string, Application[]>;
   notes: Record<string, string>;
   setNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onReview: (app: Application) => void;
   onMove: (app: Application, status: Application['status']) => void;
 }) {
-  if (applications.length === 0) return <EmptyState icon={UsersRound} title="No applicants yet" body="Forwarded and screened candidates will appear in this pipeline." />;
+  const totalApplications = pipelineColumns.reduce((total, column) => total + (applications[column.key]?.length || 0), 0);
+  if (totalApplications === 0) return <EmptyState icon={UsersRound} title="No applicants yet" body="Forwarded and screened candidates will appear in this pipeline." />;
   return (
     <section className="rec-kanban">
       {pipelineColumns.map((column) => {
-        const apps = applications.filter((app) => getPipelineColumn(app) === column.key);
+        const apps = applications[column.key] || [];
         return (
           <PipelineColumn key={column.key} label={column.label} count={apps.length}>
             {apps.map((app) => (
@@ -1179,7 +1214,14 @@ function SkillBlock({ title, skills }: { title: string; skills: string[] }) {
 }
 
 function MiniFunnel({ applications }: { applications: Application[] }) {
-  const counts = pipelineColumns.map((column) => applications.filter((app) => getPipelineColumn(app) === column.key).length);
+  const counts = useMemo(() => {
+    const grouped = new Map(pipelineColumns.map((column) => [column.key, 0]));
+    for (const application of applications) {
+      const key = getPipelineColumn(application);
+      grouped.set(key, (grouped.get(key) || 0) + 1);
+    }
+    return pipelineColumns.map((column) => grouped.get(column.key) || 0);
+  }, [applications]);
   const max = Math.max(...counts, 1);
   return (
     <div className="rec-mini-funnel">
@@ -1211,10 +1253,6 @@ function EmptyState({ icon: Icon, title, body }: { icon: React.ElementType; titl
 function StatusBadge({ status }: { status: Job['status'] | Application['status'] }) {
   const tone = status === 'rejected' ? 'danger' : status === 'selected' || status === 'approved' ? 'success' : status === 'interviewing' || status === 'forwarded' || status === 'submitted' ? 'active' : 'neutral';
   return <span className={`rec-status ${tone}`}>{status.replace('_', ' ')}</span>;
-}
-
-function getJobApplicationCount(jobId: string, applications: Application[]) {
-  return applications.filter((app) => app.jobId === jobId).length;
 }
 
 function getPipelineColumn(app: Application) {

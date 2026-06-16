@@ -28,7 +28,7 @@ const roleLabels = {
   candidate: { label: 'Candidate', icon: CheckCircle2 },
 };
 
-export default function Navbar({
+function Navbar({
   currentUser,
   notifications,
   onLogout,
@@ -149,3 +149,5 @@ export default function Navbar({
     </header>
   );
 }
+
+export default React.memo(Navbar);
