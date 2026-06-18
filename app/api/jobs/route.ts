@@ -13,8 +13,8 @@ export async function GET(request: Request) {
 
     if (user && user.role === 'company') {
       try {
-        const { getCompanyByUserId } = await import('@/services/companyService');
-        const company = await getCompanyByUserId(user.id);
+        const { resolveCompanyForUser } = await import('@/services/companyService');
+        const company = await resolveCompanyForUser(user);
         if (!company) {
           return jsonOk({ jobs: [] });
         }

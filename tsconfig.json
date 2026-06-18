@@ -23,9 +23,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": [
-      "vite/client"
-    ],
     "plugins": [
       {
         "name": "next"

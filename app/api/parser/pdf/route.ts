@@ -133,10 +133,9 @@ Return no markdown, comments, or prose.`,
     const errorLike = err as { message?: string; statusCode?: unknown; warnings?: unknown; errors?: unknown };
     const message = errorLike.message || 'Failed to process the PDF.';
     const status = typeof errorLike.statusCode === 'number' ? errorLike.statusCode : 500;
-    return Response.json({
-      error: message,
+    return jsonError(status, message, {
       warnings: Array.isArray(errorLike.warnings) ? errorLike.warnings : undefined,
       errors: Array.isArray(errorLike.errors) ? errorLike.errors : undefined,
-    }, { status });
+    });
   }
 }

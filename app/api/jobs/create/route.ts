@@ -47,8 +47,8 @@ export async function POST(request: Request) {
 
   if (user.role === 'company') {
     try {
-      const { getCompanyByUserId } = await import('@/services/companyService');
-      const company = await getCompanyByUserId(user.id);
+      const { resolveCompanyForUser } = await import('@/services/companyService');
+      const company = await resolveCompanyForUser(user);
       if (!company) {
         return jsonError(404, 'Please configure your corporate registration first');
       }

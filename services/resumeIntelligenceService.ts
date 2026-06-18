@@ -17,6 +17,12 @@ type PipelineInput = {
   geminiGenerate?: GeminiGenerate;
 };
 
+type ResumePipelineError = Error & {
+  statusCode: number;
+  warnings?: string[];
+  errors?: string[];
+};
+
 const EMPTY_PARSED_RESUME: ParsedResumeData = {
   name: '',
   email: '',
@@ -98,6 +104,19 @@ function clampScore(value: number): number {
 
 function normalizeWhitespace(text: string): string {
   return text.replace(/\r/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function createResumePipelineError(
+  message: string,
+  statusCode: number,
+  diagnostics?: { warnings?: string[]; errors?: string[] }
+): ResumePipelineError {
+  const error = new Error(message) as ResumePipelineError;
+  error.name = 'ResumePipelineError';
+  error.statusCode = statusCode;
+  if (diagnostics?.warnings) error.warnings = diagnostics.warnings;
+  if (diagnostics?.errors) error.errors = diagnostics.errors;
+  return error;
 }
 
 function normalizeSkill(skill: string): string {
@@ -432,10 +451,10 @@ async function extractTextWithPdfParse(buffer: Buffer): Promise<string> {
 
 function assertPdf(buffer: Buffer) {
   if (buffer.length < 5) {
-    throw Object.assign(new Error('The selected file is empty or too small to be a PDF.'), { statusCode: 400 });
+    throw createResumePipelineError('The selected file is empty or too small to be a PDF.', 400);
   }
   if (buffer.subarray(0, 5).toString('utf8') !== '%PDF-') {
-    throw Object.assign(new Error('Invalid PDF file. Please upload a readable PDF document.'), { statusCode: 400 });
+    throw createResumePipelineError('Invalid PDF file. Please upload a readable PDF document.', 400);
   }
 }
 
@@ -492,8 +511,7 @@ export async function runResumeIntelligencePipeline(input: PipelineInput): Promi
   parsed.skills = normalizeSkills(parsed.skills);
 
   if (!text.trim()) {
-    throw Object.assign(new Error('No readable resume text found. The PDF may be scanned, empty, or corrupted.'), {
-      statusCode: 422,
+    throw createResumePipelineError('No readable resume text found. The PDF may be scanned, empty, or corrupted.', 422, {
       warnings,
       errors,
     });

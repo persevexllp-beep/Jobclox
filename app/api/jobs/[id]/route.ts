@@ -15,7 +15,7 @@ export async function PATCH(
   let existing;
   try {
     const { getJobById, updateJob } = await import('@/services/jobService');
-    const { getCompanyByUserId } = await import('@/services/companyService');
+    const { resolveCompanyForUser } = await import('@/services/companyService');
     const body = await request.json().catch(() => ({} as Record<string, unknown>));
 
     existing = await getJobById(id);
@@ -24,7 +24,7 @@ export async function PATCH(
     }
 
     if (user.role === 'company') {
-      const company = await getCompanyByUserId(user.id);
+      const company = await resolveCompanyForUser(user);
       if (!company || company.id !== existing.companyId) {
         return jsonError(403, 'Recruiters can only manage jobs owned by their company');
       }

@@ -1,4 +1,4 @@
-import { Company } from '../src/types';
+import { Company, User } from '../src/types';
 import { supabaseAdmin } from '../lib/supabase';
 
 type VerificationStatus = Company['verificationStatus'];
@@ -147,6 +147,26 @@ export async function getCompanyByUserId(userId: string): Promise<Company | null
   return data ? mapSupabaseCompany(data) : null;
 }
 
+export async function getCompanyByEmail(email: string): Promise<Company | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const { data, error } = await requireSupabaseAdmin()
+    .from('companies')
+    .select(COMPANY_SELECT)
+    .ilike('company_email', normalizedEmail)
+    .limit(1)
+    .maybeSingle<SupabaseCompanyRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? mapSupabaseCompany(data) : null;
+}
+
 export async function getAllCompanies(): Promise<Company[]> {
   const { data, error } = await requireSupabaseAdmin()
     .from('companies')
@@ -200,4 +220,47 @@ export async function updateVerificationStatus(
   status: VerificationStatus
 ): Promise<Company | null> {
   return updateCompany(id, { verificationStatus: status });
+}
+
+export async function reassignCompanyOwner(id: string, userId: string): Promise<Company | null> {
+  const { data, error } = await requireSupabaseAdmin()
+    .from('companies')
+    .update({ user_id: userId })
+    .eq('id', id)
+    .select(COMPANY_SELECT)
+    .maybeSingle<SupabaseCompanyRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? mapSupabaseCompany(data) : null;
+}
+
+export async function resolveCompanyForUser(user: Pick<User, 'id' | 'email' | 'role'>): Promise<Company | null> {
+  const directCompany = await getCompanyByUserId(user.id);
+  if (directCompany) {
+    return directCompany;
+  }
+
+  if (user.role !== 'company') {
+    return null;
+  }
+
+  const companyByEmail = await getCompanyByEmail(user.email);
+  if (!companyByEmail) {
+    return null;
+  }
+
+  if (companyByEmail.userId === user.id) {
+    return companyByEmail;
+  }
+
+  const { getUserById } = await import('./userService');
+  const owner = await getUserById(companyByEmail.userId);
+  if (owner?.role === 'admin') {
+    return reassignCompanyOwner(companyByEmail.id, user.id);
+  }
+
+  return companyByEmail.userId === user.id ? companyByEmail : null;
 }

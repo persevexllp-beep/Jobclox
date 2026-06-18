@@ -42,14 +42,14 @@ export async function POST(
 
   try {
     const { getJobById, updateJob } = await import('@/services/jobService');
-    const { getCompanyByUserId } = await import('@/services/companyService');
+    const { resolveCompanyForUser } = await import('@/services/companyService');
     const existing = await getJobById(id);
     if (!existing) {
       return jsonError(404, 'Job opening not found');
     }
 
     if (user.role === 'company') {
-      const company = await getCompanyByUserId(user.id);
+      const company = await resolveCompanyForUser(user);
       if (!company || company.id !== existing.companyId) {
         return jsonError(403, 'Recruiters can only manage jobs owned by their company');
       }

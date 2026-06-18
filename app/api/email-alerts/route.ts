@@ -36,8 +36,8 @@ export async function GET(request: Request) {
     }
   } else if (user.role === 'company') {
     try {
-      const { getCompanyByUserId } = await import('@/services/companyService');
-      const company = await getCompanyByUserId(user.id);
+      const { resolveCompanyForUser } = await import('@/services/companyService');
+      const company = await resolveCompanyForUser(user);
       if (company) {
         targetEmails.push(company.companyEmail.toLowerCase());
       }

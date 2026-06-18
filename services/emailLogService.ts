@@ -136,3 +136,16 @@ export async function getEmailLogsByUser(userId: string): Promise<EmailAlert[]> 
 
   return (data || []).map(row => mapSupabaseEmailLog(row as SupabaseEmailLogRow));
 }
+
+export async function deleteEmailLog(id: string): Promise<boolean> {
+  const { error } = await requireSupabaseAdmin()
+    .from('email_logs')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw error;
+  }
+
+  return true;
+}

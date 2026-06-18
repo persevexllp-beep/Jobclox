@@ -1,19 +1,21 @@
 import { getCurrentUser } from '@/lib/auth/session';
+import { jsonError, jsonOk } from '@/lib/http/responses';
+
+function getNotificationRecipientIds(userId: string, role: string) {
+  return role === 'admin' ? ['all_admin', userId] : [userId];
+}
 
 export async function POST(request: Request) {
   const user = await getCurrentUser(request);
   if (!user) {
-    return new Response('Unauthorized', { status: 401 });
+    return jsonError(401, 'Access token missing');
   }
 
   try {
-    const { getNotificationsByUser, markAsRead } = await import('@/services/notificationService');
-    const notifications = await getNotificationsByUser(user.id, user.role);
-    for (const notification of notifications) {
-      await markAsRead(notification.id);
-    }
-    return new Response('OK', { status: 200 });
+    const { markAllAsRead } = await import('@/services/notificationService');
+    const updated = await markAllAsRead(getNotificationRecipientIds(user.id, user.role));
+    return jsonOk({ updated });
   } catch {
-    return Response.json({ error: 'Notification service unavailable' }, { status: 500 });
+    return jsonError(500, 'Notification service unavailable');
   }
 }

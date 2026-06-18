@@ -27,12 +27,29 @@ export default function CareerFlowStream({
   className = '',
   intensity = 'subtle',
 }: CareerFlowStreamProps) {
+  const [reduceMotion, setReduceMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncReducedMotion = () => {
+      setReduceMotion(media.matches || window.innerWidth < 768);
+    };
+
+    syncReducedMotion();
+    media.addEventListener('change', syncReducedMotion);
+    window.addEventListener('resize', syncReducedMotion, { passive: true });
+    return () => {
+      media.removeEventListener('change', syncReducedMotion);
+      window.removeEventListener('resize', syncReducedMotion);
+    };
+  }, []);
+
   const opacity = intensity === 'subtle' ? 0.35 : 0.55;
 
   return (
-    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden>
+    <div className={`career-flow-stream-layer pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden>
       <svg
-        className="absolute w-[200%] h-full -left-1/4"
+        className="career-flow-stream-svg absolute w-[200%] h-full -left-1/4"
         viewBox="0 0 1400 700"
         preserveAspectRatio="xMidYMid slice"
         fill="none"
@@ -63,9 +80,9 @@ export default function CareerFlowStream({
               strokeLinecap="round"
               opacity={opacity}
               filter="url(#flowGlow)"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity }}
-              transition={{ duration: 2.5, ease: 'easeInOut', delay: path.delay }}
+              initial={reduceMotion ? undefined : { pathLength: 0, opacity: 0 }}
+              animate={reduceMotion ? { opacity: opacity * 0.7 } : { pathLength: 1, opacity }}
+              transition={reduceMotion ? undefined : { duration: 2.5, ease: 'easeInOut', delay: path.delay }}
             />
             <motion.path
               d={path.d}
@@ -74,14 +91,14 @@ export default function CareerFlowStream({
               strokeLinecap="round"
               strokeDasharray="8 24"
               opacity={opacity * 0.8}
-              animate={{ strokeDashoffset: [0, -64] }}
-              transition={{ duration: 4 + i, repeat: Infinity, ease: 'linear', delay: path.delay }}
+              animate={reduceMotion ? { opacity: opacity * 0.55 } : { strokeDashoffset: [0, -64] }}
+              transition={reduceMotion ? undefined : { duration: 4 + i, repeat: Infinity, ease: 'linear', delay: path.delay }}
             />
           </g>
         ))}
 
         {/* Flowing opportunity nodes */}
-        {[0, 1, 2, 3, 4].map((node) => (
+        {!reduceMotion && [0, 1, 2, 3, 4].map((node) => (
           <motion.circle
             key={node}
             r="4"

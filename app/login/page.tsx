@@ -1,45 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/src/types';
+import AuthScreen from '@/src/components/AuthScreen';
 import ToastViewport, { type ToastItem, type ToastTone } from '@/src/components/ToastViewport';
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
-
-const AuthScreen = dynamic(() => import('@/src/components/AuthScreen'), { ssr: false });
-
-type StoredSession = {
-  user: User;
-  token: string;
-};
-
-function readStoredSession(): StoredSession | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem('persevex_session_user');
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed?.user && parsed?.token) {
-      return parsed as StoredSession;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function persistStoredSession(user: User, token: string) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem('persevex_session_user', JSON.stringify({ user, token }));
-}
-
-function clearStoredSession() {
-  if (typeof window === 'undefined') return;
-  window.localStorage.removeItem('persevex_session_user');
-}
+import { clearStoredSession, persistStoredSession, readStoredSession } from '@/src/lib/sessionClient';
 
 export default function LoginPage() {
   const router = useRouter();

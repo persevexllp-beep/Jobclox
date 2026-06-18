@@ -11,8 +11,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { getCompanyByUserId, updateCompany } = await import('@/services/companyService');
-    const currentCompany = await getCompanyByUserId(user.id);
+    const { resolveCompanyForUser, updateCompany } = await import('@/services/companyService');
+    const currentCompany = await resolveCompanyForUser(user);
     if (!currentCompany) {
       return jsonError(404, 'Company profile not found');
     }

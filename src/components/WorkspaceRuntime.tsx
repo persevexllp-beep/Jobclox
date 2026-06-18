@@ -66,17 +66,8 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
   const [apiError, setApiError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const saved = window.localStorage.getItem('persevex_theme');
-    if (saved === 'dark' || saved === 'light') {
-      return saved;
-    }
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [themeReady, setThemeReady] = useState(false);
   const notificationsSnapshotRef = useRef<{ count: number; unreadCount: number; ids: string; timestamps: string }>({
     count: 0,
     unreadCount: 0,
@@ -136,6 +127,17 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
   }, []);
 
   useEffect(() => {
+    const saved = window.localStorage.getItem('persevex_theme');
+    if (saved === 'dark' || saved === 'light') {
+      setTheme(saved);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    }
+    setThemeReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!themeReady) return;
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
@@ -143,7 +145,7 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
       root.classList.remove('dark');
     }
     window.localStorage.setItem('persevex_theme', theme);
-  }, [theme]);
+  }, [theme, themeReady]);
 
   const apiFetch = useCallback(async (url: string, options: RequestInit = {}, silent = false) => {
     const storedSession = readStoredSession();
@@ -262,7 +264,6 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
           if (token) {
             persistStoredSession(user, token);
           }
-          setCheckingSession(false);
         }
       } catch (error: any) {
         if (error?.name === 'AbortError') {
@@ -271,6 +272,10 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
         clearStoredSession();
         if (!cancelled) {
           router.replace('/login');
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false);
         }
       }
     };
@@ -306,42 +311,57 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
   }, [currentUser, fetchNotifications]);
 
   const handleMarkNotificationRead = useCallback(async (id: string) => {
-    const storedSession = readStoredSession();
-    const token = authToken || storedSession?.token || null;
     try {
-      const headers = new Headers();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      await fetch(`/api/notifications/${id}/read`, {
+      await apiFetch(`/api/notifications/${id}/read`, {
         method: 'POST',
-        headers,
-        credentials: 'include',
-      });
-      fetchNotifications();
-    } catch {
-      // Keep notification UX resilient to transient failures.
+      }, true);
+      void fetchNotifications();
+    } catch (err: any) {
+      showToast('error', 'Notification update failed', err.message || 'Could not mark notification as read.');
     }
-  }, [authToken, fetchNotifications]);
+  }, [apiFetch, fetchNotifications, showToast]);
 
   const handleMarkAllNotificationsRead = useCallback(async () => {
-    const storedSession = readStoredSession();
-    const token = authToken || storedSession?.token || null;
     try {
-      const headers = new Headers();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      await fetch('/api/notifications/read-all', {
+      await apiFetch('/api/notifications/read-all', {
         method: 'POST',
-        headers,
-        credentials: 'include',
-      });
-      fetchNotifications();
-    } catch {
-      // Keep notification UX resilient to transient failures.
+      }, true);
+      void fetchNotifications();
+      showToast('success', 'Notifications updated', 'All notifications were marked as read.');
+    } catch (err: any) {
+      showToast('error', 'Notification update failed', err.message || 'Could not mark all notifications as read.');
     }
-  }, [authToken, fetchNotifications]);
+  }, [apiFetch, fetchNotifications, showToast]);
+
+  const handleDeleteNotification = useCallback(async (id: string) => {
+    try {
+      await apiFetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+      }, true);
+      setNotifications((current) => current.filter((notification) => notification.id !== id));
+      void fetchNotifications();
+    } catch (err: any) {
+      showToast('error', 'Notification delete failed', err.message || 'Could not delete notification.');
+    }
+  }, [apiFetch, fetchNotifications, showToast]);
+
+  const handleClearAllNotifications = useCallback(async () => {
+    try {
+      await apiFetch('/api/notifications/clear-all', {
+        method: 'DELETE',
+      }, true);
+      setNotifications([]);
+      notificationsSnapshotRef.current = {
+        count: 0,
+        unreadCount: 0,
+        ids: '',
+        timestamps: '',
+      };
+      showToast('success', 'Notifications cleared', 'Your notification inbox has been cleaned up.');
+    } catch (err: any) {
+      showToast('error', 'Notification cleanup failed', err.message || 'Could not clear notifications.');
+    }
+  }, [apiFetch, showToast]);
 
   const dashboardProps = useMemo(() => ({
     currentUser,
@@ -382,6 +402,8 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
         onLogout={handleLogout}
         onMarkNotificationRead={handleMarkNotificationRead}
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+        onDeleteNotification={handleDeleteNotification}
+        onClearAllNotifications={handleClearAllNotifications}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         showToast={showToast}

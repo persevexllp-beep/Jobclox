@@ -9,8 +9,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { getCompanyByUserId } = await import('@/services/companyService');
-    const company = await getCompanyByUserId(user.id);
+    const { resolveCompanyForUser } = await import('@/services/companyService');
+    const company = await resolveCompanyForUser(user);
     if (!company) {
       return jsonError(404, 'Company profile not found');
     }

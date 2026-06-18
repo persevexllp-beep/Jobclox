@@ -1,5 +1,5 @@
 import { getCurrentUser } from '@/lib/auth/session';
-import { jsonError } from '@/lib/http/responses';
+import { jsonError, jsonOk } from '@/lib/http/responses';
 import { canAccessNotification } from '@/lib/jobs/workflow';
 
 export async function POST(
@@ -22,7 +22,7 @@ export async function POST(
       return jsonError(403, 'Notification access denied');
     }
     await markAsRead(id);
-    return new Response('OK', { status: 200 });
+    return jsonOk({ ok: true });
   } catch {
     return jsonError(500, 'Notification service unavailable');
   }

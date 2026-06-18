@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { AppNotification, User } from '../types';
-import { Bell, Check, CheckCircle2, LogOut, Moon, ShieldAlert, Sun, UserCheck } from 'lucide-react';
+import { Bell, Check, CheckCircle2, LogOut, Moon, ShieldAlert, Sun, Trash2, UserCheck } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import { formatNotificationPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
@@ -17,6 +17,8 @@ interface NavbarProps {
   onLogout: () => void;
   onMarkNotificationRead: (id: string) => void;
   onMarkAllNotificationsRead: () => void;
+  onDeleteNotification: (id: string) => void;
+  onClearAllNotifications: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   showToast: (tone: ToastTone, title: string, message?: string) => void;
@@ -34,6 +36,8 @@ function Navbar({
   onLogout,
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
+  onDeleteNotification,
+  onClearAllNotifications,
   theme,
   onToggleTheme,
   showToast,
@@ -99,17 +103,30 @@ function Navbar({
                   <div className="pvx-notification-menu">
                     <div className="pvx-notification-head">
                       <span>Notifications</span>
-                      {unreadNotifs.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onMarkAllNotificationsRead();
-                            setShowNotifMenu(false);
-                          }}
-                        >
-                          Mark all read
-                        </button>
-                      )}
+                      <div>
+                        {unreadNotifs.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onMarkAllNotificationsRead();
+                              setShowNotifMenu(false);
+                            }}
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClearAllNotifications();
+                              setShowNotifMenu(false);
+                            }}
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="pvx-notification-list">
                       {notifications.length === 0 ? (
@@ -124,11 +141,16 @@ function Navbar({
                                 <p>{preview.summary}</p>
                                 <small>{new Date(n.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</small>
                               </div>
-                              {!n.isRead && (
-                                <button type="button" onClick={() => onMarkNotificationRead(n.id)} aria-label="Mark notification as read">
-                                  <Check className="h-3.5 w-3.5" />
+                              <div className="pvx-notification-actions">
+                                {!n.isRead && (
+                                  <button type="button" onClick={() => onMarkNotificationRead(n.id)} aria-label="Mark notification as read">
+                                    <Check className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                <button type="button" onClick={() => onDeleteNotification(n.id)} aria-label="Delete notification">
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
-                              )}
+                              </div>
                             </article>
                           );
                         })

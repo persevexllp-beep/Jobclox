@@ -52,10 +52,21 @@ export async function getAdminCompanyForJobRequest(
   }
 
   if (companyMode === 'new' && newCompanyName) {
+    let ownerUserId = user.id;
+    const normalizedCompanyEmail = (newCompanyEmail || '').trim().toLowerCase();
+
+    if (normalizedCompanyEmail) {
+      const { getUserByEmail } = await import('@/services/userService');
+      const recruiterUser = await getUserByEmail(normalizedCompanyEmail);
+      if (recruiterUser?.role === 'company') {
+        ownerUserId = recruiterUser.id;
+      }
+    }
+
     const created = await createCompany({
-      userId: user.id,
+      userId: ownerUserId,
       companyName: newCompanyName,
-      companyEmail: newCompanyEmail || user.email,
+      companyEmail: normalizedCompanyEmail || user.email,
       contactPerson: user.name,
       industry: newCompanyIndustry || '',
       verificationStatus: 'approved',

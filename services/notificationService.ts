@@ -131,6 +131,26 @@ export async function markAsRead(id: string): Promise<boolean> {
   return true;
 }
 
+export async function markAllAsRead(recipientIds: string[]): Promise<number> {
+  const normalizedRecipientIds = recipientIds.filter(Boolean);
+  if (normalizedRecipientIds.length === 0) {
+    return 0;
+  }
+
+  const { data, error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .update({ is_read: true })
+    .in('recipient_id', normalizedRecipientIds)
+    .eq('is_read', false)
+    .select('id');
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.length || 0;
+}
+
 export async function deleteNotification(id: string): Promise<boolean> {
   const { error } = await requireSupabaseAdmin()
     .from('notifications')
@@ -142,6 +162,25 @@ export async function deleteNotification(id: string): Promise<boolean> {
   }
 
   return true;
+}
+
+export async function deleteNotificationsByRecipients(recipientIds: string[]): Promise<number> {
+  const normalizedRecipientIds = recipientIds.filter(Boolean);
+  if (normalizedRecipientIds.length === 0) {
+    return 0;
+  }
+
+  const { data, error } = await requireSupabaseAdmin()
+    .from('notifications')
+    .delete()
+    .in('recipient_id', normalizedRecipientIds)
+    .select('id');
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.length || 0;
 }
 
 export async function getUnreadCount(userId: string, role?: string): Promise<number> {

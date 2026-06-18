@@ -253,6 +253,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
       }
     } catch (err) {
       console.error('Error fetching candidate datasets', err);
+      showToast('error', 'Workspace load failed', err instanceof Error ? err.message : 'Candidate data could not be loaded.');
     } finally {
       setLoading(false);
     }
@@ -702,7 +703,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   }, [apiFetch, showToast]);
 
   return (
-    <div className="career-flow-os efficiency-os relative min-h-screen overflow-hidden">
+    <div className="career-flow-os efficiency-os relative overflow-hidden">
       <CareerFlowBackground particleCount={16} />
       <CareerFlowStream intensity="subtle" />
 

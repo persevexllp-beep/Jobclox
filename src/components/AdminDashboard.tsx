@@ -153,6 +153,9 @@ function AdminJobManagementPanel(props: {
             <>
               <AdminField label="Company Email" value={props.form.newCompanyEmail} onChange={(value) => props.setField('newCompanyEmail', value)} type="email" />
               <AdminField label="Industry" value={props.form.newCompanyIndustry} onChange={(value) => props.setField('newCompanyIndustry', value)} />
+              <div className="md:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                Use the recruiter account email when it already exists. If no recruiter account exists yet, the company stays admin-managed until that email signs in.
+              </div>
             </>
           )}
           <AdminField label="Location" value={props.form.location} onChange={(value) => props.setField('location', value)} />
@@ -514,8 +517,23 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
       }
     } catch (err) {
       console.error('Error fetching admin logs', err);
+      showToast('error', 'Workspace load failed', err instanceof Error ? err.message : 'Admin data could not be loaded.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEmailAlert = async (id: string) => {
+    try {
+      await apiFetch(`/api/email-alerts/${id}`, {
+        method: 'DELETE',
+      });
+      setEmailAlerts((current) => current.filter((email) => email.id !== id));
+      setActiveEmailId((current) => (current === id ? null : current));
+      showToast('success', 'Email alert deleted', 'The audit entry was removed.');
+    } catch (err: any) {
+      console.error(err);
+      showToast('error', 'Delete failed', err.message || 'Unable to remove the email alert.');
     }
   };
 
@@ -1664,9 +1682,31 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
                           <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                             Delivered
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {new Date(email.createdAt).toLocaleDateString()}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(email.createdAt).toLocaleDateString()}
+                            </span>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                void handleDeleteEmailAlert(email.id);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void handleDeleteEmailAlert(email.id);
+                                }
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                              aria-label="Delete email alert"
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
                         </div>
                         <h4 className="text-xs font-bold text-slate-900 mt-1.5 truncate">
                           {email.subject}
@@ -1701,9 +1741,19 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
                               Envelope Dispatch Envelope
                             </span>
                           </div>
-                          <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold font-mono">
-                            VERIFIED SENT
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteEmailAlert(email.id)}
+                              className="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-200 transition hover:border-rose-400 hover:text-white"
+                            >
+                              <Trash className="h-3 w-3" />
+                              Delete
+                            </button>
+                            <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold font-mono">
+                              VERIFIED SENT
+                            </span>
+                          </div>
                         </div>
                         <div className="bg-slate-50 p-4 border-b border-slate-100 space-y-1.5 text-xs text-slate-650">
                           <div>

@@ -164,6 +164,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
       setApplications(remoteApps || []);
     } catch (err) {
       console.error('Error fetching corporate datasets', err);
+      showToast('error', 'Workspace load failed', err instanceof Error ? err.message : 'Recruiter data could not be loaded.');
     } finally {
       setLoading(false);
     }

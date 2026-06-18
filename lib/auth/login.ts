@@ -44,8 +44,8 @@ export async function ensureLoginProfile(user: User): Promise<boolean> {
 
   if (user.role === 'company') {
     try {
-      const { createCompany, getCompanyByUserId } = await import('@/services/companyService');
-      const existingCompany = await getCompanyByUserId(user.id);
+      const { createCompany, resolveCompanyForUser } = await import('@/services/companyService');
+      const existingCompany = await resolveCompanyForUser(user);
       if (!existingCompany) {
         await createCompany({
           userId: user.id,

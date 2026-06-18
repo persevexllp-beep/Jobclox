@@ -49,8 +49,8 @@ export async function POST(
   if (user.role === 'company') {
     let company;
     try {
-      const { getCompanyByUserId } = await import('@/services/companyService');
-      company = await getCompanyByUserId(user.id);
+      const { resolveCompanyForUser } = await import('@/services/companyService');
+      company = await resolveCompanyForUser(user);
     } catch {
       return jsonError(500, 'Company service unavailable');
     }
