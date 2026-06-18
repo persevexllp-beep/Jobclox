@@ -30,17 +30,17 @@ export function getServerEnv(key: string): string | undefined {
 }
 
 export function getSupabaseUrl(): string {
-  const url = getServerEnv('NEXT_PUBLIC_SUPABASE_URL') || getServerEnv('VITE_SUPABASE_URL');
+  const url = getServerEnv('NEXT_PUBLIC_SUPABASE_URL');
   if (!url) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL or VITE_SUPABASE_URL is required');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
   }
   return url;
 }
 
 export function getSupabaseAnonKey(): string {
-  const anonKey = getServerEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getServerEnv('VITE_SUPABASE_ANON_KEY');
+  const anonKey = getServerEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   if (!anonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY is required');
+    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
   }
   return anonKey;
 }
@@ -84,13 +84,13 @@ export function validateNextServerEnvironment(): NextRuntimeConfig {
   try {
     supabaseUrl = getSupabaseUrl();
   } catch {
-    missing.push('NEXT_PUBLIC_SUPABASE_URL|VITE_SUPABASE_URL');
+    missing.push('NEXT_PUBLIC_SUPABASE_URL');
   }
 
   try {
     supabaseAnonKey = getSupabaseAnonKey();
   } catch {
-    missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY|VITE_SUPABASE_ANON_KEY');
+    missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   }
 
   try {
@@ -121,8 +121,8 @@ export function validateNextServerEnvironment(): NextRuntimeConfig {
     supabaseServiceRoleKey,
     authSecret,
     requiredConfigured: [
-      'NEXT_PUBLIC_SUPABASE_URL|VITE_SUPABASE_URL',
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY|VITE_SUPABASE_ANON_KEY',
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
       'SUPABASE_SERVICE_ROLE_KEY',
       'AUTH_SECRET|AUTH_SESSION_SECRET|SUPABASE_SERVICE_ROLE_KEY',
     ],

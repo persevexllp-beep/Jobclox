@@ -5,8 +5,8 @@ function getBrowserEnv(key: string): string | undefined {
 }
 
 export function createBrowserSupabaseClient() {
-  const url = getBrowserEnv('NEXT_PUBLIC_SUPABASE_URL') || getBrowserEnv('VITE_SUPABASE_URL');
-  const anonKey = getBrowserEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getBrowserEnv('VITE_SUPABASE_ANON_KEY');
+  const url = getBrowserEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const anonKey = getBrowserEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
   if (!url || !anonKey) {
     throw new Error('Supabase browser environment is not configured');

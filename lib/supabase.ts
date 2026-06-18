@@ -9,8 +9,8 @@ const getEnv = (key: string): string | undefined => {
   return undefined
 }
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL')
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY')
+const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL')
+const supabaseAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 const supabaseServiceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY') || process.env?.SUPABASE_SERVICE_ROLE_KEY
 
 // Frontend client - anonymous key (read-only)
