@@ -191,6 +191,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     if (typeof window === 'undefined') return null;
     return new URLSearchParams(window.location.search).get('job');
   });
+  const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [resumeText, setResumeText] = useState('');
@@ -428,6 +429,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const selectedJobPreviewFit = useMemo(() => (
     selectedJobPreview ? getJobFit(selectedJobPreview) : null
   ), [getJobFit, selectedJobPreview]);
+  const inlinePreviewJob = selectedJobPreview || rankedJobs[0] || null;
+  const inlinePreviewFit = inlinePreviewJob ? getJobFit(inlinePreviewJob) : null;
   const selectedApplyFit = useMemo(() => (
     selectedJob ? getJobFit(selectedJob) : null
   ), [getJobFit, selectedJob]);
@@ -793,6 +796,29 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22 }}
                 >
+                  <FilterSidebar
+                    skills={allSkills}
+                    searchTerm={searchTerm}
+                    filterType={filterType}
+                    filterLoc={filterLoc}
+                    filterSkill={filterSkill}
+                    filterSalary={filterSalary}
+                    filterExperience={filterExperience}
+                    setSearchTerm={setSearchTerm}
+                    setFilterType={setFilterType}
+                    setFilterLoc={setFilterLoc}
+                    setFilterSkill={setFilterSkill}
+                    setFilterSalary={setFilterSalary}
+                    setFilterExperience={setFilterExperience}
+                    onReset={() => {
+                      setSearchTerm('');
+                      setFilterType('all');
+                      setFilterLoc('all');
+                      setFilterSkill('all');
+                      setFilterSalary('all');
+                      setFilterExperience('all');
+                    }}
+                  />
                   <section className="eff-opportunities">
                     <JobsFilterToolbar
                       filtersOpen={filtersOpen}
@@ -851,11 +877,26 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                             onApply={() => openApply(job)}
                             onSave={() => toggleSavedJob(job.id)}
                             onViewDetails={() => setSelectedJobId(job.id)}
+                            onOpenDetails={() => {
+                              setSelectedJobId(job.id);
+                              setDetailsDrawerOpen(true);
+                            }}
                           />
                         ))}
                       </div>
                     )}
                   </section>
+                  <JobPreviewPane
+                    selectedJob={inlinePreviewJob}
+                    selectedFit={inlinePreviewFit}
+                    saved={inlinePreviewJob ? savedJobIdSet.has(inlinePreviewJob.id) : false}
+                    applied={inlinePreviewJob ? hasApplied(inlinePreviewJob.id) : false}
+                    similarJobs={similarJobs}
+                    onApply={inlinePreviewJob ? () => openApply(inlinePreviewJob) : undefined}
+                    onSave={inlinePreviewJob ? () => toggleSavedJob(inlinePreviewJob.id) : undefined}
+                    onOpenDetails={() => setDetailsDrawerOpen(true)}
+                    onSelectSimilar={(id) => setSelectedJobId(id)}
+                  />
                 </motion.section>
               )}
 
@@ -968,12 +1009,12 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
       </main>
 
       <JobDetailsDrawer
-        selectedJob={selectedJobPreview}
-        selectedFit={selectedJobPreviewFit}
+        selectedJob={detailsDrawerOpen ? selectedJobPreview : null}
+        selectedFit={detailsDrawerOpen ? selectedJobPreviewFit : null}
         saved={selectedJobPreview ? savedJobIdSet.has(selectedJobPreview.id) : false}
         applied={selectedJobPreview ? hasApplied(selectedJobPreview.id) : false}
         similarJobs={similarJobs}
-        onClose={() => setSelectedJobId(null)}
+        onClose={() => setDetailsDrawerOpen(false)}
         onApply={selectedJobPreview ? () => openApply(selectedJobPreview) : undefined}
         onSave={selectedJobPreview ? () => toggleSavedJob(selectedJobPreview.id) : undefined}
         onShare={selectedJobPreview ? () => shareOpportunity(selectedJobPreview) : undefined}
@@ -1396,7 +1437,7 @@ function FilterSelect({ label, value, options, onChange, compact, isSearchOnly }
   );
 }
 
-function JobCard({ job, index, fit, profileStrength, selected, saved, applied, onApply, onSave, onViewDetails }: {
+function JobCard({ job, index, fit, profileStrength, selected, saved, applied, onApply, onSave, onViewDetails, onOpenDetails }: {
   job: Job;
   index: number;
   fit: JobFitAnalysis;
@@ -1407,11 +1448,14 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   onApply: () => void;
   onSave: () => void;
   onViewDetails: () => void;
+  onOpenDetails: () => void;
 }) {
   const daysLeft = getDaysLeft(job.deadline);
   const workMode = getWorkMode(job.location);
   const recent = isRecentlyPosted(job.createdAt);
-  const additionalSkills = Math.max(0, job.requirements.length - 6);
+  const additionalSkills = Math.max(0, job.requirements.length - 4);
+  const compactMeta = [job.location, job.jobType, job.experience].filter(Boolean).join(' • ');
+  void profileStrength;
   return (
     <motion.article
       className={`eff-job-card ${selected ? 'is-selected' : ''}`}
@@ -1429,57 +1473,34 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
       tabIndex={0}
       aria-pressed={selected}
     >
-      <div className="eff-job-main">
+      <div className="eff-job-row-main">
         <CompanyBadge company={job.companyName} />
-        <div className="min-w-0">
+        <div className="eff-job-row-copy">
           <div className="eff-job-card-head">
             <strong>{job.title}</strong>
             <span className={`eff-work-mode ${workMode.tone}`}>{workMode.label}</span>
           </div>
           <small>{job.companyName}</small>
-          <div className="eff-job-location-row">
-            <span><MapPin className="h-3.5 w-3.5" />{job.location}</span>
+          <div className="eff-job-location-row eff-job-row-meta">
+            <span><MapPin className="h-3.5 w-3.5" />{compactMeta}</span>
             {recent && <em>Recently Posted</em>}
           </div>
-        </div>
-      </div>
-      <div className="eff-job-metrics">
-        <div className="eff-match-panel">
-          <div className="eff-match-ring">
-            <span>{fit.score}%</span>
-            <i style={{ '--match': `${fit.score}%` } as React.CSSProperties} />
-          </div>
-          <div className="eff-match-copy">
-            <strong>{fit.quality.label}</strong>
-            <small>{fit.missingSkills.length} skill{fit.missingSkills.length === 1 ? '' : 's'} missing</small>
+          <div className="eff-job-skills">
+            {job.requirements.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}
+            {additionalSkills > 0 && <span className="eff-skill-more">+{additionalSkills}</span>}
           </div>
         </div>
-        <div className="eff-salary-highlight">{job.salary || 'Compensation not listed'}</div>
-        <div className="eff-job-meta-grid">
-          <span>{job.experience || 'Experience flexible'}</span>
-          <span>{job.jobType}</span>
-          <span>{formatPostedDate(job.createdAt)}</span>
-          {daysLeft !== null && <span className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft}d left`}</span>}
+        <div className="eff-job-row-signals">
+          <strong>{job.salary || 'Compensation not listed'}</strong>
+          <span className={`eff-quality-chip ${fit.quality.tone}`}>{fit.score}% Match</span>
+          <small>{formatPostedDate(job.createdAt)}</small>
+          {daysLeft !== null && <small className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft}d left`}</small>}
         </div>
-        <div className="eff-resume-fit">
-          <strong>Resume Fit</strong>
-          <span>{fit.resumeInsight}</span>
-          <div><i style={{ width: `${Math.max(18, profileStrength)}%` }} /></div>
-        </div>
-      </div>
-      <div className="eff-job-skills">
-        {job.requirements.slice(0, 6).map((skill) => <span key={skill}>{skill}</span>)}
-        {additionalSkills > 0 && <span className="eff-skill-more">+{additionalSkills} More</span>}
-      </div>
-      <div className="eff-ai-chip-row">
-        <span className={`eff-quality-chip ${fit.quality.tone}`}>{fit.quality.label}</span>
-        <span>{fit.score}% Match</span>
-        <span>{fit.missingSkills.length} Skills Missing</span>
       </div>
       <div className="eff-job-actions">
-        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save Job'}</button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} disabled={applied}>{applied ? 'Applied' : 'Quick Apply'}</button>
-        <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onViewDetails(); }}>View Details</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
+        <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}>View Details</button>
       </div>
     </motion.article>
   );
@@ -1487,6 +1508,91 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
 
 function CompanyBadge({ company }: { company: string }) {
   return <span className="eff-company-badge">{company.slice(0, 2).toUpperCase()}</span>;
+}
+
+function JobPreviewPane({ selectedJob, selectedFit, similarJobs, saved, applied, onApply, onSave, onOpenDetails, onSelectSimilar }: {
+  selectedJob: Job | null;
+  selectedFit: JobFitAnalysis | null;
+  similarJobs: Job[];
+  saved: boolean;
+  applied: boolean;
+  onApply?: () => void;
+  onSave?: () => void;
+  onOpenDetails: () => void;
+  onSelectSimilar: (id: string) => void;
+}) {
+  if (!selectedJob || !selectedFit) {
+    return (
+      <aside className="eff-intel eff-preview-empty" aria-label="Job preview">
+        <PanelRightOpen className="h-6 w-6" />
+        <strong>Select a job to preview</strong>
+        <span>Use the center list to compare salary, skills, fit, and deadlines without leaving search.</span>
+      </aside>
+    );
+  }
+
+  const daysLeft = getDaysLeft(selectedJob.deadline);
+
+  return (
+    <aside className="eff-intel eff-preview-pane" aria-label="Selected job preview">
+      <header className="eff-preview-head">
+        <CompanyBadge company={selectedJob.companyName} />
+        <div>
+          <span>{selectedJob.companyName}</span>
+          <h3>{selectedJob.title}</h3>
+          <p>{selectedJob.location} - {selectedJob.jobType} - {selectedJob.experience}</p>
+        </div>
+      </header>
+
+      <div className="eff-preview-score-row">
+        <div className="eff-match-ring is-large">
+          <span>{selectedFit.score}%</span>
+          <i style={{ '--match': `${selectedFit.score}%` } as React.CSSProperties} />
+        </div>
+        <div>
+          <strong>{selectedFit.quality.label}</strong>
+          <span>{selectedFit.resumeInsight}</span>
+        </div>
+      </div>
+
+      <div className="eff-preview-facts">
+        <span>{selectedJob.salary || 'Compensation not listed'}</span>
+        <span>{formatPostedDate(selectedJob.createdAt)}</span>
+        {daysLeft !== null && <span>{daysLeft <= 0 ? 'Closing today' : `${daysLeft} days left`}</span>}
+      </div>
+
+      <section className="eff-preview-section">
+        <strong>Required skills</strong>
+        <div className="eff-job-skills">
+          {selectedJob.requirements.slice(0, 8).map((skill) => <span key={skill}>{skill}</span>)}
+        </div>
+      </section>
+
+      <section className="eff-preview-section">
+        <strong>Fit summary</strong>
+        <p>{selectedFit.resumeFitSummary}</p>
+        <small>{selectedFit.missingSkills.length ? `Missing: ${selectedFit.missingSkills.slice(0, 4).join(', ')}` : 'No required skill gaps detected.'}</small>
+      </section>
+
+      <section className="eff-preview-section">
+        <strong>Similar roles</strong>
+        <div className="eff-similar-list">
+          {similarJobs.length ? similarJobs.map((job) => (
+            <button key={job.id} type="button" onClick={() => onSelectSimilar(job.id)}>
+              <span>{job.title}</span>
+              <small>{job.companyName}</small>
+            </button>
+          )) : <small>No similar roles in this result set.</small>}
+        </div>
+      </section>
+
+      <div className="eff-sticky-apply">
+        <button type="button" onClick={onSave} className={saved ? 'is-saved' : ''}>{saved ? 'Saved' : 'Save'}</button>
+        <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
+      </div>
+      <button type="button" className="eff-preview-details" onClick={onOpenDetails}>Open full details</button>
+    </aside>
+  );
 }
 
 function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applied, onClose, onApply, onSave, onShare, onReport, onSelectSimilar }: {
@@ -2469,8 +2575,8 @@ function ApplyModal({
   return (
     <AnimatePresence>
       {selectedJob && (
-        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-          <motion.div ref={modalRef} className="eff-modal" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" tabIndex={-1} initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="eff-apply-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+          <motion.div ref={modalRef} className="eff-modal eff-apply-drawer" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" tabIndex={-1} initial={{ opacity: 0, x: 48 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 32 }} transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }} onClick={(e) => e.stopPropagation()}>
             <div className="eff-modal-head">
               <div>
                 <p>Premium Apply</p>

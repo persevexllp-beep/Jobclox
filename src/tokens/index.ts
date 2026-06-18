@@ -112,7 +112,7 @@ export const colors = {
   // Light Mode Palette
   light: {
     background: {
-      canvas: '#f8fafc',     // Slate 50
+      canvas: '#FAFBFC',     // Persevex canvas
       surface: '#ffffff',    // White
       elevated: '#f1f5f9',   // Slate 100
       glass: 'rgba(255, 255, 255, 0.85)', // Glass Surface
@@ -160,6 +160,30 @@ export const colors = {
     orb2: 'radial-gradient(circle, rgba(34, 211, 238, 0.3) 0%, transparent 70%)',
     orb3: 'radial-gradient(circle, rgba(91, 33, 182, 0.35) 0%, transparent 70%)',
     orb4: 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%)',
+  },
+} as const;
+
+export const persevexProductTokens = {
+  color: {
+    background: '#FAFBFC',
+    surface: '#FFFFFF',
+    primary: '#2563EB',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    text: '#0F172A',
+    muted: '#64748B',
+  },
+  spacing: [4, 8, 12, 16, 24, 32, 48],
+  radius: {
+    card: '18px',
+    button: '12px',
+    input: '12px',
+  },
+  motion: {
+    fast: '150ms',
+    base: '200ms',
+    slow: '250ms',
   },
 } as const;
 
@@ -400,16 +424,16 @@ export const zIndex = {
 
 export const transitions = {
   // Standard transitions
-  standard: 'all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1)',
-  fast: 'all 0.15s cubic-bezier(0.645, 0.045, 0.355, 1)',
-  slow: 'all 0.6s cubic-bezier(0.645, 0.045, 0.355, 1)',
+  standard: 'all 0.2s ease',
+  fast: 'all 0.15s ease',
+  slow: 'all 0.25s ease',
 
   // Property-specific transitions
-  transform: 'transform 0.3s cubic-bezier(0.645, 0.045, 0.355, 1)',
-  opacity: 'opacity 0.3s cubic-bezier(0.645, 0.045, 0.355, 1)',
-  color: 'color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1)',
-  shadow: 'box-shadow 0.3s cubic-bezier(0.645, 0.045, 0.355, 1)',
-  border: 'border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1)',
+  transform: 'transform 0.2s ease',
+  opacity: 'opacity 0.2s ease',
+  color: 'color 0.15s ease',
+  shadow: 'box-shadow 0.2s ease',
+  border: 'border-color 0.15s ease',
 } as const;
 
 // ============================================================================
@@ -417,25 +441,24 @@ export const transitions = {
 // ============================================================================
 
 export const glassmorphism = {
-  // Glass Surface
+  // Legacy-compatible premium surfaces. Keep the export name for older imports,
+  // but avoid blur-heavy glass in the current product direction.
   surface: {
-    backdropBlur: '16px',
-    background: 'rgba(15, 23, 42, 0.75)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backdropBlur: '0',
+    background: '#FFFFFF',
+    border: '1px solid rgba(15, 23, 42, 0.08)',
   },
 
-  // Light Glass
   light: {
-    backdropBlur: '16px',
-    background: 'rgba(255, 255, 255, 0.85)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    backdropBlur: '0',
+    background: '#FFFFFF',
+    border: '1px solid rgba(15, 23, 42, 0.08)',
   },
 
-  // Heavy Glass
   heavy: {
-    backdropBlur: '24px',
-    background: 'rgba(15, 23, 42, 0.85)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    backdropBlur: '0',
+    background: '#FFFFFF',
+    border: '1px solid rgba(15, 23, 42, 0.1)',
   },
 } as const;
 

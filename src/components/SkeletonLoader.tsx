@@ -6,14 +6,72 @@
 import React from 'react';
 
 interface SkeletonLoaderProps {
-  type?: 'analytics' | 'jobGrid' | 'table' | 'profile';
+  type?: 'analytics' | 'jobGrid' | 'table' | 'profile' | 'metrics' | 'candidateCards' | 'pipeline';
   count?: number;
 }
 
 export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: SkeletonLoaderProps) {
-  // Base pulsing class that handles light and dark background styles beautifully
   const pulseBg = 'bg-slate-200/80 dark:bg-slate-700/40 animate-pulse rounded-xl';
   const pulseText = 'bg-slate-200/60 dark:bg-slate-700/35 animate-pulse rounded-md';
+  const surface = 'bg-white border border-slate-200 rounded-2xl shadow-sm dark:bg-slate-900 dark:border-slate-800';
+
+  if (type === 'metrics') {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in">
+        {Array.from({ length: count }).map((_, idx) => (
+          <div key={idx} className={`${surface} p-4 space-y-3`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className={`${pulseText} h-3 w-24`} />
+              <div className={`${pulseBg} h-8 w-8 rounded-xl`} />
+            </div>
+            <div className={`${pulseBg} h-8 w-16`} />
+            <div className={`${pulseText} h-3 w-28`} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'candidateCards') {
+    return (
+      <div className="grid gap-3 animate-fade-in">
+        {Array.from({ length: count }).map((_, idx) => (
+          <div key={idx} className={`${surface} p-4 space-y-3`}>
+            <div className="flex items-start gap-3">
+              <div className={`${pulseBg} h-11 w-11 rounded-2xl`} />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className={`${pulseBg} h-4 w-2/3`} />
+                <div className={`${pulseText} h-3 w-4/5`} />
+              </div>
+              <div className={`${pulseBg} h-8 w-14 rounded-xl`} />
+            </div>
+            <div className="flex gap-2">
+              <div className={`${pulseText} h-6 w-20 rounded-full`} />
+              <div className={`${pulseText} h-6 w-24 rounded-full`} />
+              <div className={`${pulseText} h-6 w-16 rounded-full`} />
+            </div>
+            <div className={`${pulseBg} h-10 w-full`} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'pipeline') {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 animate-fade-in">
+        {Array.from({ length: 5 }).map((_, idx) => (
+          <section key={idx} className={`${surface} p-3 space-y-3 min-h-[320px]`}>
+            <div className="flex items-center justify-between">
+              <div className={`${pulseBg} h-4 w-20`} />
+              <div className={`${pulseText} h-6 w-8 rounded-full`} />
+            </div>
+            <SkeletonLoader type="candidateCards" count={Math.max(1, Math.min(2, count))} />
+          </section>
+        ))}
+      </div>
+    );
+  }
 
   if (type === 'analytics') {
     return (
@@ -21,7 +79,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
         {/* Metric Cards Skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-3 dark:bg-slate-900 dark:border-slate-800">
+            <div key={idx} className={`${surface} p-5 space-y-3`}>
               <div className="flex justify-between items-center">
                 <div className={`${pulseText} h-4 w-20`} />
                 <div className={`${pulseBg} h-8 w-8 rounded-full`} />
@@ -36,7 +94,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
 
         {/* Charts Section Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 bg-white border border-slate-150 rounded-2xl p-5 shadow-xs dark:bg-slate-900 dark:border-slate-800 space-y-4">
+          <div className={`lg:col-span-8 ${surface} p-5 space-y-4`}>
             <div className="flex justify-between items-center">
               <div className="space-y-1.5">
                 <div className={`${pulseBg} h-5 w-32`} />
@@ -46,7 +104,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
             </div>
             <div className={`${pulseBg} h-64 w-full rounded-2xl`} />
           </div>
-          <div className="lg:col-span-4 bg-white border border-slate-150 rounded-2xl p-5 shadow-xs dark:bg-slate-900 dark:border-slate-800 space-y-4 flex flex-col justify-between">
+          <div className={`lg:col-span-4 ${surface} p-5 space-y-4 flex flex-col justify-between`}>
             <div className="space-y-1.5">
               <div className={`${pulseBg} h-5 w-24`} />
               <div className={`${pulseText} h-3.5 w-36`} />
@@ -68,7 +126,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
     return (
       <div className="space-y-6 animate-fade-in">
         {/* Search & Filter Header Skeleton */}
-        <div className="bg-white border border-slate-150 rounded-2xl p-4 sm:p-5 shadow-xs dark:bg-slate-900 dark:border-slate-800">
+        <div className={`${surface} p-4 sm:p-5`}>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
             <div className="md:col-span-6">
               <div className={`${pulseBg} h-10 w-full`} />
@@ -85,7 +143,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
         {/* List Grid Item Cards Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
           {Array.from({ length: count }).map((_, idx) => (
-            <div key={idx} className="bg-white border border-slate-150 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between h-[250px] dark:bg-slate-900 dark:border-slate-800">
+            <div key={idx} className={`${surface} p-5 sm:p-6 flex flex-col justify-between h-[250px]`}>
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-2 flex-1">
@@ -131,7 +189,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
 
   if (type === 'table') {
     return (
-      <div className="bg-white border border-slate-150 rounded-2xl shadow-xs overflow-hidden dark:bg-slate-900 dark:border-slate-800 animate-fade-in">
+      <div className={`${surface} overflow-hidden animate-fade-in`}>
         {/* Table Filter Top Bar */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className={`${pulseBg} h-8 w-40`} />
@@ -180,7 +238,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
 
   if (type === 'profile') {
     return (
-      <div className="bg-white border border-slate-150 rounded-2xl p-6 sm:p-8 shadow-xs dark:bg-slate-900 dark:border-slate-800 space-y-6 animate-fade-in">
+      <div className={`${surface} p-6 sm:p-8 space-y-6 animate-fade-in`}>
         <div className="border-b border-slate-100 dark:border-slate-800 pb-4 space-y-1.5">
           <div className={`${pulseBg} h-4 w-24`} />
           <div className={`${pulseBg} h-6 w-48`} />

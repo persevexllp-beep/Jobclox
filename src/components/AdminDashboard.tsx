@@ -284,7 +284,9 @@ function AdminJobManagementPanel(props: {
             <tbody className="divide-y divide-slate-100 text-slate-800">
               {props.jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-slate-400">No jobs match the current filters.</td>
+                  <td colSpan={10} className="p-6">
+                    <AdminEmptyState icon={Bookmark} title="No jobs match these filters" body="Clear one or more filters, or create a new platform job to seed the marketplace." />
+                  </td>
                 </tr>
               ) : props.jobs.map((job) => {
                 const appCount = props.applications.filter((app) => app.jobId === job.id).length;
@@ -342,6 +344,17 @@ function AdminJobMetric({ label, value }: { label: string; value: React.ReactNod
       <span className="block text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">{label}</span>
       <strong className="mt-1 block text-lg font-display text-slate-950">{value}</strong>
     </article>
+  );
+}
+
+function AdminEmptyState({ icon: Icon, title, body, action }: { icon: React.ElementType; title: string; body: string; action?: React.ReactNode }) {
+  return (
+    <section className="admin-empty-state">
+      <Icon className="h-7 w-7" />
+      <strong>{title}</strong>
+      <span>{body}</span>
+      {action}
+    </section>
   );
 }
 
@@ -984,6 +997,12 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
       {loading ? (
         activeTab === 'analytics' ? (
           <SkeletonLoader type="analytics" />
+        ) : activeTab === 'screening' ? (
+          <SkeletonLoader type="candidateCards" count={4} />
+        ) : activeTab === 'users' || activeTab === 'companies' ? (
+          <SkeletonLoader type="table" count={6} />
+        ) : activeTab === 'jobs' ? (
+          <SkeletonLoader type="metrics" count={4} />
         ) : (
           <SkeletonLoader type="table" count={5} />
         )
@@ -1075,7 +1094,13 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {companies.map(c => {
+                  {companies.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-6">
+                        <AdminEmptyState icon={ShieldCheck} title="No company records yet" body="Recruiter company profiles will appear here after registration or admin-created job assignment." />
+                      </td>
+                    </tr>
+                  ) : companies.map(c => {
                     const count = jobs.filter(j => j.companyId === c.id).length;
                     return (
                       <tr key={c.id}>
@@ -1115,9 +1140,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
 
           <div className="grid grid-cols-1 gap-4">
             {companies.filter(c => c.verificationStatus === 'pending').length === 0 ? (
-              <div className="bg-white border border-slate-150 rounded-2xl p-12 text-center text-slate-400 text-sm">
-                KYC Verification queue is completely clear. All active client partners are audited.
-              </div>
+              <AdminEmptyState icon={ShieldCheck} title="KYC queue is clear" body="All active client partners are currently audited. New pending companies will appear here for verification." />
             ) : (
               companies.filter(c => c.verificationStatus === 'pending').map(c => (
                 <div key={c.id} className="bg-white border border-slate-150 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
@@ -1364,9 +1387,11 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
 
             <div className="grid grid-cols-1 gap-6">
               {visibleApps.length === 0 ? (
-                <div className="bg-white border border-slate-150 rounded-2xl p-12 text-center text-slate-400 text-sm">
-                  {screenSearch ? 'No scanning results matches your search filter parameters.' : 'Candidates screening desk is currently clear. No pending review files.'}
-                </div>
+                <AdminEmptyState
+                  icon={FileText}
+                  title={screenSearch ? 'No candidates match this search' : 'Screening desk is clear'}
+                  body={screenSearch ? 'Try searching by a broader candidate name, role, email, or skill.' : 'New candidate applications that need admin review will appear here automatically.'}
+                />
               ) : (
                 visibleApps.map(app => {
                   const badg = getRatingBadge(app.score);
@@ -1598,7 +1623,13 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {users.map(u => (
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-6">
+                        <AdminEmptyState icon={Users} title="No user accounts loaded" body="Registered candidate, recruiter, and admin accounts will appear here once the user API returns records." />
+                      </td>
+                    </tr>
+                  ) : users.map(u => (
                     <tr key={u.id} className="hover:bg-slate-50/40">
                       <td className="p-3.5 pl-6 font-semibold">
                         <div className="flex items-center gap-3">

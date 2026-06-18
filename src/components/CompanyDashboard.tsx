@@ -441,7 +441,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
       </nav>
 
       {loading ? (
-        <SkeletonLoader type={activeTab === 'pipeline' || activeTab === 'jobs' ? 'table' : 'profile'} count={4} />
+        <SkeletonLoader type={activeTab === 'pipeline' ? 'pipeline' : activeTab === 'jobs' ? 'table' : activeTab === 'command' || activeTab === 'analytics' ? 'metrics' : 'profile'} count={4} />
       ) : (
         <>
           {activeTab === 'command' && (
