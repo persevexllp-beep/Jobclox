@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
@@ -46,6 +48,7 @@ import SkeletonLoader from './SkeletonLoader';
 import { formatEmailAlertPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
+import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 interface CandidateDashboardProps {
   currentUser: User;
@@ -171,6 +174,7 @@ function serializeResumeHistory(options: ResumeOption[]) {
 }
 
 export default function CandidateDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CandidateDashboardProps) {
+  useRenderTracker('CandidateDashboard');
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('jobs');
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -218,8 +222,9 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [activeEmailId, setActiveEmailId] = useState<string | null>(null);
   const [activeApplicationId, setActiveApplicationId] = useState<string | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('basics');
-  const [careerPreference, setCareerPreference] = useState(() => localStorage.getItem(`persevex_pref_${currentUser.id}`) || '');
+  const [careerPreference, setCareerPreference] = useState('');
   const [resumeHistory, setResumeHistory] = useState<ResumeOption[]>(() => loadResumeHistory(currentUser.id));
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const resumeHistoryRef = useRef('');
   const resumeHistoryKey = useMemo(() => getResumeLibraryKey(currentUser.id), [currentUser.id]);
 
@@ -288,6 +293,11 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     const nextHistory = loadResumeHistory(currentUser.id);
     resumeHistoryRef.current = serializeResumeHistory(nextHistory);
     setResumeHistory(nextHistory);
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setCareerPreference(window.localStorage.getItem(`persevex_pref_${currentUser.id}`) || '');
   }, [currentUser.id]);
 
   useEffect(() => {
@@ -372,7 +382,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   };
 
   const filteredJobs = useMemo(() => jobs.filter((job) => {
-    const term = searchTerm.toLowerCase();
+    const term = deferredSearchTerm.trim().toLowerCase();
     const textMatch = job.title.toLowerCase().includes(term)
       || job.description.toLowerCase().includes(term)
       || job.companyName.toLowerCase().includes(term)
@@ -384,7 +394,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     const skillMatch = filterSkill === 'all'
       || [...job.requirements, ...(job.preferredSkills || [])].some((skill) => skill.toLowerCase() === filterSkill.toLowerCase());
     return textMatch && typeMatch && locMatch && skillMatch && matchesExperience(job.experience) && matchesSalary(job.salary);
-  }), [jobs, searchTerm, filterType, filterLoc, filterSkill, filterExperience, filterSalary]);
+  }), [deferredSearchTerm, filterExperience, filterLoc, filterSalary, filterSkill, filterType, jobs]);
 
   const profileStrength = useMemo(() => {
     let score = 0;
@@ -706,7 +716,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   }, [apiFetch, showToast]);
 
   return (
-    <div className="career-flow-os efficiency-os relative overflow-hidden">
+    <React.Profiler id="CandidateDashboard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('CandidateDashboard', phase, actualDuration)}>
+      <div className="career-flow-os efficiency-os relative overflow-hidden">
       <CareerFlowBackground particleCount={16} />
       <CareerFlowStream intensity="subtle" />
 
@@ -786,7 +797,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
               />
             )}
 
-            {!showOnboarding && <AnimatePresence mode="wait">
+            {!showOnboarding && <AnimatePresence mode="wait" initial={false}>
               {activeMode === 'jobs' && (
                 <motion.section
                   key="jobs"
@@ -1044,7 +1055,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
           setActiveMode('applications');
         }}
       />
-    </div>
+      </div>
+    </React.Profiler>
   );
 }
 
@@ -1450,6 +1462,7 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   onViewDetails: () => void;
   onOpenDetails: () => void;
 }) {
+  useRenderTracker('JobCard');
   const daysLeft = getDaysLeft(job.deadline);
   const workMode = getWorkMode(job.location);
   const recent = isRecentlyPosted(job.createdAt);
@@ -1457,11 +1470,9 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   const compactMeta = [job.location, job.jobType, job.experience].filter(Boolean).join(' • ');
   void profileStrength;
   return (
-    <motion.article
+    <React.Profiler id="JobCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('JobCard', phase, actualDuration)}>
+      <article
       className={`eff-job-card ${selected ? 'is-selected' : ''}`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.15) }}
       onClick={onViewDetails}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -1502,7 +1513,8 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
         <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}>View Details</button>
       </div>
-    </motion.article>
+      </article>
+    </React.Profiler>
   );
 }
 
@@ -2109,8 +2121,10 @@ function ApplicationMini({ app, expanded, onToggle, large }: {
   onToggle: () => void;
   large?: boolean;
 }) {
+  useRenderTracker('ApplicationCard');
   return (
-    <article className={`eff-application ${large ? 'large' : ''}`}>
+    <React.Profiler id="ApplicationCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('ApplicationCard', phase, actualDuration)}>
+      <article className={`eff-application ${large ? 'large' : ''}`}>
       <button type="button" onClick={onToggle}>
         <span className="eff-app-score">{app.score}%</span>
         <span>
@@ -2135,7 +2149,8 @@ function ApplicationMini({ app, expanded, onToggle, large }: {
           </motion.div>
         )}
       </AnimatePresence>
-    </article>
+      </article>
+    </React.Profiler>
   );
 }
 

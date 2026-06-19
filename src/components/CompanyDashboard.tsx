@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   BarChart3,
@@ -40,6 +42,7 @@ import { Application, Company, Job, User } from '../types';
 import SkeletonLoader from './SkeletonLoader';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
+import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 interface CompanyDashboardProps {
   currentUser: User;
@@ -80,6 +83,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export default function CompanyDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CompanyDashboardProps) {
+  useRenderTracker('CompanyDashboard');
   const uploadResetTimerRef = useRef<number | null>(null);
   const [activeTab, setActiveTab] = useState<RecruiterTab>('command');
   const [loading, setLoading] = useState(true);
@@ -113,6 +117,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
   const [jobSearch, setJobSearch] = useState('');
   const [jobStatusFilter, setJobStatusFilter] = useState('all');
   const [jobSort, setJobSort] = useState<JobSort>('recent');
+  const deferredJobSearch = useDeferredValue(jobSearch);
 
   const [companyName, setCompanyName] = useState('');
   const [website, setWebsite] = useState('');
@@ -396,7 +401,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
   }, [applications, jobs]);
 
   const filteredJobs = useMemo(() => {
-    const term = jobSearch.toLowerCase();
+    const term = deferredJobSearch.trim().toLowerCase();
     return [...jobs]
       .filter((job) => {
         const textMatch = job.title.toLowerCase().includes(term)
@@ -411,10 +416,11 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
         if (jobSort === 'applications') return (applicationCountByJobId.get(b.id) || 0) - (applicationCountByJobId.get(a.id) || 0);
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [applicationCountByJobId, jobSearch, jobSort, jobStatusFilter, jobs]);
+  }, [applicationCountByJobId, deferredJobSearch, jobSort, jobStatusFilter, jobs]);
 
   return (
-    <div className="platform-page recruiter-os mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
+    <React.Profiler id="CompanyDashboard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('CompanyDashboard', phase, actualDuration)}>
+      <div className="platform-page recruiter-os mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
       {company && company.verificationStatus !== 'approved' && (
         <VerificationBanner status={company.verificationStatus} onUpdate={() => setActiveTab('profile')} />
       )}
@@ -545,7 +551,8 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
           onUpdate={updateApplicationStatus}
         />
       )}
-    </div>
+      </div>
+    </React.Profiler>
   );
 }
 
@@ -883,8 +890,10 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
   onReview: () => void;
   onMove: (status: Application['status']) => void;
 }) {
+  useRenderTracker('ApplicationCard');
   return (
-    <article className="rec-applicant-card" draggable>
+    <React.Profiler id="ApplicationCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('ApplicationCard', phase, actualDuration)}>
+      <article className="rec-applicant-card" draggable>
       <div className="rec-applicant-top">
         <span className="rec-score">{app.score}%</span>
         <div className="flex items-center gap-3">
@@ -905,7 +914,8 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
         <button type="button" onClick={() => onMove('interviewing')}>Interview</button>
         <button type="button" onClick={() => onMove('selected')}>Offer</button>
       </div>
-    </article>
+      </article>
+    </React.Profiler>
   );
 }
 

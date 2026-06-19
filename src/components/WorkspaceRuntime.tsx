@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation';
 import type { AppNotification, User, UserRole } from '@/src/types';
 import Navbar from '@/src/components/Navbar';
 import BrandLogo from '@/src/components/BrandLogo';
+import PerfOverlay from '@/src/components/PerfOverlay';
 import ToastViewport, { type ToastItem, type ToastTone } from '@/src/components/ToastViewport';
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
 import { clearStoredSession, persistStoredSession, readStoredSession } from '@/src/lib/sessionClient';
+import { initializeTheme, toggleTheme } from '@/src/lib/theme';
+import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 type DashboardComponentProps = {
   currentUser: User;
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
   showToast: (tone: ToastTone, title: string, message?: string) => void;
   onCurrentUserUpdate: (updates: Partial<User>) => void;
-  theme?: 'light' | 'dark';
 };
 
 type WorkspaceRuntimeProps = {
@@ -34,6 +36,15 @@ function sortNotifications(notifications: AppNotification[]): AppNotification[] 
   return [...notifications].sort(
     (a, b) => new Date(getNotificationTimestamp(b)).getTime() - new Date(getNotificationTimestamp(a)).getTime(),
   );
+}
+
+function getNotificationsSnapshot(notifications: AppNotification[]) {
+  return {
+    count: notifications.length,
+    unreadCount: notifications.reduce((count, notification) => count + (notification.isRead ? 0 : 1), 0),
+    ids: notifications.map((notification) => notification.id).join('|'),
+    timestamps: notifications.map((notification) => getNotificationTimestamp(notification)).join('|'),
+  };
 }
 
 function areNotificationsEquivalent(current: AppNotification[], next: AppNotification[]): boolean {
@@ -58,6 +69,7 @@ function areNotificationsEquivalent(current: AppNotification[], next: AppNotific
 }
 
 export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceRuntimeProps) {
+  useRenderTracker('WorkspaceRuntime');
   const router = useRouter();
   const MemoDashboard = useMemo(() => React.memo(Dashboard), [Dashboard]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -66,8 +78,6 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
   const [apiError, setApiError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [themeReady, setThemeReady] = useState(false);
   const notificationsSnapshotRef = useRef<{ count: number; unreadCount: number; ids: string; timestamps: string }>({
     count: 0,
     unreadCount: 0,
@@ -123,29 +133,12 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
   }, [authToken]);
 
   const handleToggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    toggleTheme();
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem('persevex_theme');
-    if (saved === 'dark' || saved === 'light') {
-      setTheme(saved);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    }
-    setThemeReady(true);
+    initializeTheme();
   }, []);
-
-  useEffect(() => {
-    if (!themeReady) return;
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    window.localStorage.setItem('persevex_theme', theme);
-  }, [theme, themeReady]);
 
   const apiFetch = useCallback(async (url: string, options: RequestInit = {}, silent = false) => {
     const storedSession = readStoredSession();
@@ -195,13 +188,7 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
       const data = await apiFetch('/api/notifications', signal ? { signal } : {}, true);
       if (data?.notifications) {
         const sorted = sortNotifications(data.notifications);
-        const unreadCount = sorted.reduce((count, notification) => count + (notification.isRead ? 0 : 1), 0);
-        const nextSnapshot = {
-          count: sorted.length,
-          unreadCount,
-          ids: sorted.map((notification) => notification.id).join('|'),
-          timestamps: sorted.map((notification) => getNotificationTimestamp(notification)).join('|'),
-        };
+        const nextSnapshot = getNotificationsSnapshot(sorted);
         const previousSnapshot = notificationsSnapshotRef.current;
         const snapshotChanged = previousSnapshot.count !== nextSnapshot.count
           || previousSnapshot.unreadCount !== nextSnapshot.unreadCount
@@ -315,35 +302,50 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
       await apiFetch(`/api/notifications/${id}/read`, {
         method: 'POST',
       }, true);
-      void fetchNotifications();
+      setNotifications((current) => {
+        const next = current.map((notification) => (
+          notification.id === id ? { ...notification, isRead: true } : notification
+        ));
+        notificationsSnapshotRef.current = getNotificationsSnapshot(next);
+        return next;
+      });
     } catch (err: any) {
       showToast('error', 'Notification update failed', err.message || 'Could not mark notification as read.');
     }
-  }, [apiFetch, fetchNotifications, showToast]);
+  }, [apiFetch, showToast]);
 
   const handleMarkAllNotificationsRead = useCallback(async () => {
     try {
       await apiFetch('/api/notifications/read-all', {
         method: 'POST',
       }, true);
-      void fetchNotifications();
+      setNotifications((current) => {
+        const next = current.map((notification) => (
+          notification.isRead ? notification : { ...notification, isRead: true }
+        ));
+        notificationsSnapshotRef.current = getNotificationsSnapshot(next);
+        return next;
+      });
       showToast('success', 'Notifications updated', 'All notifications were marked as read.');
     } catch (err: any) {
       showToast('error', 'Notification update failed', err.message || 'Could not mark all notifications as read.');
     }
-  }, [apiFetch, fetchNotifications, showToast]);
+  }, [apiFetch, showToast]);
 
   const handleDeleteNotification = useCallback(async (id: string) => {
     try {
       await apiFetch(`/api/notifications/${id}`, {
         method: 'DELETE',
       }, true);
-      setNotifications((current) => current.filter((notification) => notification.id !== id));
-      void fetchNotifications();
+      setNotifications((current) => {
+        const next = current.filter((notification) => notification.id !== id);
+        notificationsSnapshotRef.current = getNotificationsSnapshot(next);
+        return next;
+      });
     } catch (err: any) {
       showToast('error', 'Notification delete failed', err.message || 'Could not delete notification.');
     }
-  }, [apiFetch, fetchNotifications, showToast]);
+  }, [apiFetch, showToast]);
 
   const handleClearAllNotifications = useCallback(async () => {
     try {
@@ -368,24 +370,27 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
     apiFetch: (url: string, options?: RequestInit) => apiFetch(url, options),
     showToast,
     onCurrentUserUpdate: patchCurrentUser,
-    theme,
-  }), [apiFetch, currentUser, patchCurrentUser, showToast, theme]);
+  }), [apiFetch, currentUser, patchCurrentUser, showToast]);
 
   if (checkingSession || !currentUser) {
     return (
-      <main className="pvx-boot-screen">
-        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
-        <div className="pvx-boot-card" role="status" aria-live="polite">
-          <BrandLogo subline="Hiring & Placement Engine" />
-          <p>Loading verified jobs and placement routes</p>
-        </div>
-      </main>
+      <React.Profiler id="WorkspaceRuntime" onRender={(_id, phase, actualDuration) => trackProfilerCommit('WorkspaceRuntime', phase, actualDuration)}>
+        <main className="pvx-boot-screen">
+          <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+          <div className="pvx-boot-card" role="status" aria-live="polite">
+            <BrandLogo subline="Hiring & Placement Engine" />
+            <p>Loading verified jobs and placement routes</p>
+          </div>
+          <PerfOverlay />
+        </main>
+      </React.Profiler>
     );
   }
 
   return (
-    <div className="pvx-app-shell">
-      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+    <React.Profiler id="WorkspaceRuntime" onRender={(_id, phase, actualDuration) => trackProfilerCommit('WorkspaceRuntime', phase, actualDuration)}>
+      <div className="pvx-app-shell">
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
 
       {apiError && (
         <div className="pvx-error-banner" role="alert">
@@ -404,7 +409,6 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         onDeleteNotification={handleDeleteNotification}
         onClearAllNotifications={handleClearAllNotifications}
-        theme={theme}
         onToggleTheme={handleToggleTheme}
         showToast={showToast}
       />
@@ -415,12 +419,14 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
         </div>
       </main>
 
-      <footer className="pvx-footer">
+        <footer className="pvx-footer">
         <div>
           <BrandLogo subline="Jobs • Internships • Placement" />
           <span>&copy; {new Date().getFullYear()} Persevex</span>
         </div>
-      </footer>
-    </div>
+        </footer>
+        <PerfOverlay />
+      </div>
+    </React.Profiler>
   );
 }

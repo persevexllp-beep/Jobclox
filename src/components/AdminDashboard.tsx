@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { User, Company, Job, EmailAlert, Application } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell } from 'recharts';
 import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye } from 'lucide-react';
@@ -11,11 +13,12 @@ import SkeletonLoader from './SkeletonLoader';
 import { formatEmailAlertPreview, sanitizeEmailHtml } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
+import { useTheme } from '@/src/lib/theme';
+import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 interface AdminDashboardProps {
   currentUser: User;
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
-  theme?: 'light' | 'dark';
   showToast: (tone: ToastTone, title: string, message?: string) => void;
   onCurrentUserUpdate: (updates: Partial<User>) => void;
 }
@@ -454,7 +457,9 @@ const emptyAdminJobForm: AdminJobFormState = {
   priority: false,
 };
 
-export default function AdminDashboard({ currentUser, apiFetch, theme, showToast, onCurrentUserUpdate }: AdminDashboardProps) {
+export default function AdminDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: AdminDashboardProps) {
+  useRenderTracker('AdminDashboard');
+  const theme = useTheme();
   const [activeTab, setActiveTab] = useState<'analytics' | 'companies' | 'jobs' | 'screening' | 'users' | 'emails'>('analytics');
   const [loading, setLoading] = useState(true);
   
@@ -481,6 +486,8 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
   const [jobCompanyFilter, setJobCompanyFilter] = useState('all');
   const [jobTypeFilter, setJobTypeFilter] = useState('all');
   const [jobPromotionFilter, setJobPromotionFilter] = useState('all');
+  const deferredJobSearch = useDeferredValue(jobSearch);
+  const deferredScreenSearch = useDeferredValue(screenSearch);
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [jobForm, setJobForm] = useState<AdminJobFormState>(emptyAdminJobForm);
   const [savingJob, setSavingJob] = useState(false);
@@ -713,7 +720,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
   }, [applications, jobs]);
 
   const filteredAdminJobs = useMemo(() => {
-    const query = jobSearch.trim().toLowerCase();
+    const query = deferredJobSearch.trim().toLowerCase();
     return jobs.filter((job) => {
       const matchesQuery = !query || [
         job.title,
@@ -732,7 +739,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
         || (jobPromotionFilter === 'priority' && job.priority);
       return matchesQuery && matchesStatus && matchesCompany && matchesType && matchesPromotion;
     });
-  }, [jobCompanyFilter, jobPromotionFilter, jobSearch, jobStatusFilter, jobTypeFilter, jobs]);
+  }, [deferredJobSearch, jobCompanyFilter, jobPromotionFilter, jobStatusFilter, jobTypeFilter, jobs]);
 
   const setJobFormField = <K extends keyof AdminJobFormState>(key: K, value: AdminJobFormState[K]) => {
     setJobForm((current) => ({ ...current, [key]: value }));
@@ -898,7 +905,8 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
   };
 
   return (
-    <div className="platform-page admin-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <React.Profiler id="AdminDashboard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('AdminDashboard', phase, actualDuration)}>
+      <div className="platform-page admin-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       
       {/* Quick stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
@@ -1251,9 +1259,9 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
       {/* SCREENING DESK TAB */}
 
       {activeTab === 'screening' && (() => {
+        const searchLower = deferredScreenSearch.toLowerCase().trim();
         const visibleApps = applications.filter(a => {
           const matchesStatus = ['applied', 'under_review', 'shortlisted'].includes(a.status);
-          const searchLower = screenSearch.toLowerCase().trim();
           if (!searchLower) return matchesStatus;
           return matchesStatus && (
             a.candidateName.toLowerCase().includes(searchLower) ||
@@ -1828,6 +1836,7 @@ export default function AdminDashboard({ currentUser, apiFetch, theme, showToast
       )}
         </>
       )}
-    </div>
+      </div>
+    </React.Profiler>
   );
 }

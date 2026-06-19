@@ -35,6 +35,8 @@ export default function UserAvatar({
           src={src}
           alt={alt || `${name} avatar`}
           className={`pvx-avatar-image ${imageClassName}`.trim()}
+          loading="lazy"
+          decoding="async"
           onError={() => setImageFailed(true)}
         />
       ) : initials ? (

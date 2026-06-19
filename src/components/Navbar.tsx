@@ -10,6 +10,8 @@ import BrandLogo from './BrandLogo';
 import { formatNotificationPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
+import { useTheme } from '@/src/lib/theme';
+import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -19,7 +21,6 @@ interface NavbarProps {
   onMarkAllNotificationsRead: () => void;
   onDeleteNotification: (id: string) => void;
   onClearAllNotifications: () => void;
-  theme: 'light' | 'dark';
   onToggleTheme: () => void;
   showToast: (tone: ToastTone, title: string, message?: string) => void;
 }
@@ -38,10 +39,11 @@ function Navbar({
   onMarkAllNotificationsRead,
   onDeleteNotification,
   onClearAllNotifications,
-  theme,
   onToggleTheme,
   showToast,
 }: NavbarProps) {
+  useRenderTracker('Navbar');
+  const theme = useTheme();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const unreadNotifs = notifications.filter((n) => !n.isRead);
   const role = currentUser ? roleLabels[currentUser.role] : null;
@@ -53,11 +55,12 @@ function Navbar({
   };
 
   return (
-    <header className="pvx-header">
-      <div className="pvx-header-inner">
-        <div className="pvx-logo">
-          <BrandLogo subline="Hiring & Placement Engine" />
-        </div>
+    <React.Profiler id="Navbar" onRender={(_id, phase, actualDuration) => trackProfilerCommit('Navbar', phase, actualDuration)}>
+      <header className="pvx-header">
+        <div className="pvx-header-inner">
+          <div className="pvx-logo">
+            <BrandLogo subline="Hiring & Placement Engine" />
+          </div>
 
         <div className="pvx-header-actions">
           <button
@@ -167,8 +170,9 @@ function Navbar({
             </>
           )}
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+    </React.Profiler>
   );
 }
 
