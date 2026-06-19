@@ -15,6 +15,33 @@
 // ============================================================================
 
 export const colors = {
+  persevex: {
+    light: {
+      background: '#F8FAFC',
+      surface: '#FFFFFF',
+      surfaceSecondary: '#F1F5F9',
+      textPrimary: '#0F172A',
+      textSecondary: '#475569',
+      textMuted: '#64748B',
+      border: '#E2E8F0',
+      accent: '#2563EB',
+      success: '#16A34A',
+      warning: '#EA580C',
+    },
+    dark: {
+      background: '#020617',
+      surface: '#0F172A',
+      surfaceSecondary: '#1E293B',
+      textPrimary: '#F8FAFC',
+      textSecondary: '#CBD5E1',
+      textMuted: '#94A3B8',
+      border: '#334155',
+      accent: '#3B82F6',
+      success: '#22C55E',
+      warning: '#F97316',
+    },
+  },
+
   // Career Flow OS — Primary Palette
   careerFlow: {
     indigo: {
@@ -82,67 +109,67 @@ export const colors = {
 
   // Semantic Colors
   semantic: {
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
-    info: '#3b82f6',
+    success: '#16A34A',
+    warning: '#EA580C',
+    error: '#DC2626',
+    info: '#2563EB',
   },
 
   // Dark Mode Palette
   dark: {
     background: {
-      deep: '#030712',      // Deep Space
-      twilight: '#0f172a',  // Twilight
-      midnight: '#1e293b',  // Midnight
-      surface: 'rgba(15, 23, 42, 0.75)', // Glass Surface
+      deep: '#020617',
+      twilight: '#0F172A',
+      midnight: '#1E293B',
+      surface: '#0F172A',
     },
     text: {
-      primary: '#f1f5f9',   // Slate 100
-      secondary: '#cbd5e1', // Slate 300
-      tertiary: '#94a3b8',  // Slate 400
-      muted: '#64748b',     // Slate 500
+      primary: '#F8FAFC',
+      secondary: '#CBD5E1',
+      tertiary: '#94A3B8',
+      muted: '#94A3B8',
     },
     border: {
-      subtle: 'rgba(255, 255, 255, 0.06)',
-      default: 'rgba(255, 255, 255, 0.08)',
-      strong: 'rgba(255, 255, 255, 0.12)',
+      subtle: '#334155',
+      default: '#334155',
+      strong: '#475569',
     },
   },
 
   // Light Mode Palette
   light: {
     background: {
-      canvas: '#FAFBFC',     // Persevex canvas
-      surface: '#ffffff',    // White
-      elevated: '#f1f5f9',   // Slate 100
-      glass: 'rgba(255, 255, 255, 0.85)', // Glass Surface
+      canvas: '#F8FAFC',
+      surface: '#FFFFFF',
+      elevated: '#F1F5F9',
+      glass: '#FFFFFF',
     },
     text: {
-      primary: '#0f172a',   // Slate 900
-      secondary: '#334155', // Slate 700
-      tertiary: '#64748b',  // Slate 500
-      muted: '#94a3b8',     // Slate 400
+      primary: '#0F172A',
+      secondary: '#475569',
+      tertiary: '#64748B',
+      muted: '#64748B',
     },
     border: {
-      subtle: '#e2e8f0',
-      default: '#cbd5e1',
-      strong: '#94a3b8',
+      subtle: '#E2E8F0',
+      default: '#E2E8F0',
+      strong: '#CBD5E1',
     },
   },
 
   // Gradients
   gradients: {
     // Career Flow OS Signature Gradient
-    careerFlow: 'linear-gradient(135deg, #6366f1 0%, #5b21b6 35%, #22d3ee 70%, #10b981 100%)',
-    careerFlowSoft: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(91, 33, 182, 0.12) 35%, rgba(34, 211, 238, 0.1) 70%, rgba(16, 185, 129, 0.12) 100%)',
+    careerFlow: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+    careerFlowSoft: 'linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0.04) 100%)',
 
     // Career Flow Gradient (legacy)
-    primary: 'linear-gradient(135deg, #6366f1 0%, #3b82f6 40%, #22d3ee 70%, #10b981 100%)',
+    primary: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
     
     // Semantic Gradients
-    success: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    warning: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-    error: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    success: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)',
+    warning: 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
+    error: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
     info: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     
     // Glass Gradients
@@ -165,14 +192,23 @@ export const colors = {
 
 export const persevexProductTokens = {
   color: {
-    background: '#FAFBFC',
+    background: '#F8FAFC',
     surface: '#FFFFFF',
     primary: '#2563EB',
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444',
+    success: '#16A34A',
+    warning: '#EA580C',
+    danger: '#DC2626',
     text: '#0F172A',
     muted: '#64748B',
+    surfaceSecondary: '#F1F5F9',
+    border: '#E2E8F0',
+    darkBackground: '#020617',
+    darkSurface: '#0F172A',
+    darkSurfaceSecondary: '#1E293B',
+    darkText: '#F8FAFC',
+    darkTextSecondary: '#CBD5E1',
+    darkMuted: '#94A3B8',
+    darkBorder: '#334155',
   },
   spacing: [4, 8, 12, 16, 24, 32, 48],
   radius: {

@@ -1467,7 +1467,7 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   const workMode = getWorkMode(job.location);
   const recent = isRecentlyPosted(job.createdAt);
   const additionalSkills = Math.max(0, job.requirements.length - 4);
-  const compactMeta = [job.location, job.jobType, job.experience].filter(Boolean).join(' • ');
+  const compactMeta = [job.location, job.jobType, job.experience].filter(Boolean).join(' / ');
   void profileStrength;
   return (
     <React.Profiler id="JobCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('JobCard', phase, actualDuration)}>
@@ -1509,8 +1509,8 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         </div>
       </div>
       <div className="eff-job-actions">
-        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={`eff-save-job ${saved ? 'is-saved' : ''}`}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
         <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}>View Details</button>
       </div>
       </article>
@@ -1599,8 +1599,8 @@ function JobPreviewPane({ selectedJob, selectedFit, similarJobs, saved, applied,
       </section>
 
       <div className="eff-sticky-apply">
-        <button type="button" onClick={onSave} className={saved ? 'is-saved' : ''}>{saved ? 'Saved' : 'Save'}</button>
-        <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
+        <button type="button" onClick={onSave} className={`eff-save-job ${saved ? 'is-saved' : ''}`}>{saved ? 'Saved' : 'Save'}</button>
+        <button type="button" onClick={onApply} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
       </div>
       <button type="button" className="eff-preview-details" onClick={onOpenDetails}>Open full details</button>
     </aside>

@@ -901,6 +901,7 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
           <div>
             <strong>{app.candidateName}</strong>
             <small>{app.jobTitle}</small>
+            <p className="rec-candidate-email">{app.candidateEmail}</p>
           </div>
         </div>
         <StatusBadge status={app.status} />

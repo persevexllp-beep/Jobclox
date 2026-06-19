@@ -8807,3 +8807,508 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================
+   PREMIUM UI REFINEMENT - 2026-06-19
+   ========================================== */
+:root {
+  --pvx-canvas: #F8FAFC;
+  --pvx-surface: #FFFFFF;
+  --pvx-surface-secondary: #F1F5F9;
+  --pvx-text: #0F172A;
+  --pvx-text-secondary: #475569;
+  --pvx-muted: #64748B;
+  --pvx-panel: rgba(255, 255, 255, 0.92);
+  --pvx-panel-strong: #FFFFFF;
+  --pvx-border: #E2E8F0;
+  --pvx-hairline: #E2E8F0;
+  --pvx-blue: #2563EB;
+  --pvx-accent: #2563EB;
+  --pvx-green: #16A34A;
+  --pvx-warning: #EA580C;
+  --pvx-danger: #DC2626;
+  --pvx-gradient: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  --pvx-soft-gradient: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.04));
+  --pvx-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  --pvx-shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --pvx-shadow-lift: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+html.dark {
+  --pvx-canvas: #020617;
+  --pvx-surface: #0F172A;
+  --pvx-surface-secondary: #1E293B;
+  --pvx-text: #F8FAFC;
+  --pvx-text-secondary: #CBD5E1;
+  --pvx-muted: #94A3B8;
+  --pvx-panel: rgba(15, 23, 42, 0.94);
+  --pvx-panel-strong: #0F172A;
+  --pvx-border: #334155;
+  --pvx-hairline: #334155;
+  --pvx-blue: #3B82F6;
+  --pvx-accent: #3B82F6;
+  --pvx-green: #22C55E;
+  --pvx-warning: #F97316;
+  --pvx-danger: #F87171;
+  --pvx-gradient: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  --pvx-soft-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0.06));
+  --pvx-shadow: 0 16px 40px rgba(2, 6, 23, 0.4);
+  --pvx-shadow-soft: 0 10px 28px rgba(2, 6, 23, 0.32);
+  --pvx-shadow-lift: 0 22px 48px rgba(2, 6, 23, 0.45);
+}
+
+html,
+body,
+.platform-page,
+.career-flow-os,
+.recruiter-os {
+  background: var(--pvx-canvas) !important;
+  color: var(--pvx-text) !important;
+}
+
+.pvx-header,
+.eff-snapshot,
+.eff-profile-summary,
+.eff-profile-form,
+.eff-filter-sidebar,
+.eff-opportunities,
+.eff-preview-pane,
+.eff-preview-empty,
+.eff-full-panel,
+.rec-header,
+.rec-panel,
+.rec-metric-card,
+.rec-pipeline-column,
+.rec-applicant-card,
+.rec-analytics-card,
+.rec-review-modal,
+.pvx-notification-menu,
+.admin-page .bg-white,
+.admin-page .bg-slate-940 {
+  background: var(--pvx-panel-strong) !important;
+  border-color: var(--pvx-border) !important;
+  box-shadow: var(--pvx-shadow-soft) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.pvx-header {
+  background: color-mix(in srgb, var(--pvx-surface) 88%, transparent) !important;
+  border-bottom-color: var(--pvx-border) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+.pvx-icon-button,
+.pvx-logout,
+.pvx-role-pill {
+  background: var(--pvx-surface-secondary) !important;
+  border-color: var(--pvx-border) !important;
+  color: var(--pvx-text) !important;
+  box-shadow: none !important;
+}
+
+.pvx-icon-button:hover,
+.pvx-logout:hover,
+.pvx-role-pill:hover {
+  border-color: color-mix(in srgb, var(--pvx-blue) 28%, var(--pvx-border)) !important;
+  background: color-mix(in srgb, var(--pvx-surface-secondary) 84%, var(--pvx-surface)) !important;
+}
+
+.pvx-icon-button em {
+  background: var(--pvx-blue) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 0 2px var(--pvx-panel-strong) !important;
+}
+
+.pvx-user-lockup span,
+.pvx-notification-list strong,
+.pvx-notification-head span,
+.admin-page h3,
+.admin-page h4 {
+  color: var(--pvx-text) !important;
+}
+
+.pvx-user-lockup small,
+.pvx-notification-list p,
+.pvx-notification-list small,
+.pvx-notification-empty {
+  color: var(--pvx-text-secondary) !important;
+}
+
+.eff-nav button,
+.admin-page .flex.flex-wrap.border-b > button {
+  color: var(--pvx-text-secondary) !important;
+}
+
+.eff-nav button[aria-pressed="true"],
+.admin-page .flex.flex-wrap.border-b > button[class*="border-emerald-600"] {
+  color: var(--pvx-text) !important;
+}
+
+.eff-nav-active {
+  background: var(--pvx-surface-secondary) !important;
+  border: 1px solid var(--pvx-border) !important;
+  box-shadow: none !important;
+}
+
+.eff-filter-sidebar,
+.eff-profile-summary,
+.eff-profile-form,
+.rec-panel,
+.rec-header,
+.rec-metric-card,
+.rec-pipeline-column,
+.admin-page .bg-white,
+.admin-page .bg-slate-940 {
+  border-radius: 20px !important;
+}
+
+.eff-filter-sidebar {
+  gap: 16px !important;
+  padding: 18px !important;
+}
+
+.eff-filter-field span,
+.eff-section-head span,
+.rec-header span,
+.rec-section-header span,
+.rec-field span,
+.admin-page thead tr,
+.admin-page .text-slate-400,
+.admin-page .text-slate-500,
+.admin-page .text-slate-550,
+.admin-page .text-slate-600,
+.admin-page .text-slate-650,
+.admin-page .text-slate-705 {
+  color: var(--pvx-text-secondary) !important;
+}
+
+.eff-search,
+.eff-filter-field select,
+.eff-profile-form input,
+.eff-profile-form textarea,
+.eff-profile-form .relative.flex-1 input,
+.rec-field input,
+.rec-field textarea,
+.rec-toolbar select,
+.rec-toolbar input,
+.rec-applicant-card textarea,
+.rec-review-actions input,
+.admin-page input,
+.admin-page textarea,
+.admin-page select {
+  background: var(--pvx-surface-secondary) !important;
+  color: var(--pvx-text) !important;
+  border-color: var(--pvx-border) !important;
+}
+
+.eff-profile-form input[data-readonly="true"],
+.eff-profile-form input[readonly] {
+  font-weight: 600 !important;
+}
+
+.eff-profile-summary strong,
+.eff-job-card-head strong,
+.eff-job-row-signals strong,
+.eff-preview-head h3,
+.rec-header h1,
+.rec-section-header h2,
+.rec-applicant-card strong,
+.rec-score,
+.admin-page .text-slate-800,
+.admin-page .text-slate-850,
+.admin-page .text-slate-900,
+.admin-page .text-slate-950 {
+  color: var(--pvx-text) !important;
+}
+
+.eff-profile-summary p,
+.eff-profile-summary span,
+.eff-profile-photo small,
+.eff-recommendations small,
+.eff-job-row-copy > small,
+.eff-job-location-row span,
+.eff-preview-head span,
+.eff-preview-head p,
+.eff-preview-section p,
+.eff-preview-section small,
+.eff-preview-facts span,
+.rec-applicant-card small,
+.rec-candidate-email,
+.rec-profile-status span,
+.rec-preview-stat span,
+.rec-job-preview span,
+.rec-skill-block span,
+.rec-analytics-card span,
+.admin-page p,
+.admin-page td,
+.admin-page span {
+  color: var(--pvx-text-secondary) !important;
+}
+
+.eff-job-card {
+  background: var(--pvx-surface) !important;
+  border: 1px solid var(--pvx-border) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition:
+    transform var(--pvx-motion-base) ease,
+    border-color var(--pvx-motion-fast) ease,
+    box-shadow var(--pvx-motion-base) ease,
+    background var(--pvx-motion-fast) ease !important;
+}
+
+.eff-job-card:hover,
+.eff-job-card.is-selected,
+.eff-job-card:focus-visible {
+  transform: translateY(-4px) !important;
+  border-color: color-mix(in srgb, var(--pvx-blue) 34%, var(--pvx-border)) !important;
+  box-shadow: var(--pvx-shadow-lift) !important;
+  background: var(--pvx-surface) !important;
+}
+
+.eff-job-card-head {
+  align-items: flex-start !important;
+  gap: 10px !important;
+}
+
+.eff-job-card-head strong {
+  font-size: 1.08rem !important;
+  line-height: 1.28 !important;
+  letter-spacing: -0.015em;
+}
+
+.eff-work-mode {
+  background: var(--pvx-surface-secondary) !important;
+  color: var(--pvx-text-secondary) !important;
+  border: 1px solid var(--pvx-border) !important;
+}
+
+.eff-job-row-signals {
+  gap: 6px !important;
+}
+
+.eff-job-row-signals strong {
+  font-family: var(--font-metric) !important;
+  font-size: 1.02rem !important;
+}
+
+.eff-job-row-signals small {
+  color: var(--pvx-text-secondary) !important;
+}
+
+.eff-job-skills span,
+.rec-skill-tags span,
+.rec-skill-block span {
+  background: var(--pvx-surface-secondary) !important;
+  color: var(--pvx-text-secondary) !important;
+  border: 1px solid var(--pvx-border) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+}
+
+.eff-skill-more {
+  color: var(--pvx-blue) !important;
+}
+
+.eff-quality-chip.excellent {
+  background: rgba(22, 163, 74, 0.12) !important;
+  color: #166534 !important;
+  border: 1px solid rgba(22, 163, 74, 0.18) !important;
+}
+
+.eff-quality-chip.very-strong,
+.eff-quality-chip.good {
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: #1D4ED8 !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+}
+
+.eff-quality-chip.partial {
+  background: rgba(234, 88, 12, 0.12) !important;
+  color: #C2410C !important;
+  border: 1px solid rgba(234, 88, 12, 0.18) !important;
+}
+
+.eff-quality-chip.weak,
+.eff-quality-chip.low {
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: #B91C1C !important;
+  border: 1px solid rgba(220, 38, 38, 0.18) !important;
+}
+
+html.dark .eff-quality-chip.excellent {
+  color: #86EFAC !important;
+}
+
+html.dark .eff-quality-chip.very-strong,
+html.dark .eff-quality-chip.good {
+  color: #BFDBFE !important;
+}
+
+html.dark .eff-quality-chip.partial {
+  color: #FDBA74 !important;
+}
+
+html.dark .eff-quality-chip.weak,
+html.dark .eff-quality-chip.low {
+  color: #FCA5A5 !important;
+}
+
+.eff-save-job,
+.eff-view-details,
+.eff-ghost-action,
+.eff-photo-actions .eff-action.subtle,
+.eff-preview-details,
+.rec-card-actions button:not(:first-child),
+.rec-review-actions button,
+.admin-page button[class*="bg-white"],
+.admin-page button[class*="bg-slate-100"],
+.admin-page button[class*="border"] {
+  background: var(--pvx-surface-secondary) !important;
+  color: var(--pvx-text) !important;
+  border: 1px solid var(--pvx-border) !important;
+  box-shadow: none !important;
+}
+
+.eff-apply-job,
+.eff-action,
+.eff-photo-actions .eff-action:not(.subtle),
+.rec-card-actions button:first-child,
+.rec-section-header button,
+.rec-profile-grid > button,
+.admin-page button[class*="bg-slate-900"],
+.admin-page button[class*="bg-emerald-600"],
+.admin-page label[class*="bg-slate-900"] {
+  background: var(--pvx-gradient) !important;
+  color: #FFFFFF !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18) !important;
+}
+
+.rec-applicant-card,
+.rec-pipeline-column,
+.rec-analytics-card {
+  background: var(--pvx-surface) !important;
+}
+
+.rec-pipeline-column header,
+.rec-review-modal header,
+.admin-page thead tr,
+.admin-page .border-b.border-slate-100,
+.admin-page .border-b.border-slate-100.bg-slate-50\/70 {
+  background: var(--pvx-surface-secondary) !important;
+  border-color: var(--pvx-border) !important;
+}
+
+.rec-applicant-card {
+  border-radius: 18px !important;
+  padding: 16px !important;
+}
+
+.rec-candidate-email {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.rec-score {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: var(--pvx-blue) !important;
+  border: 1px solid rgba(37, 99, 235, 0.16) !important;
+}
+
+.rec-tabs button,
+.rec-wizard-progress button,
+.rec-toolbar button,
+.rec-job-preview,
+.rec-preview-stat,
+.rec-profile-status,
+.rec-upload label {
+  background: var(--pvx-surface-secondary) !important;
+  border-color: var(--pvx-border) !important;
+  color: var(--pvx-text) !important;
+}
+
+.rec-tabs button[aria-pressed="true"],
+.rec-wizard-progress button.is-active {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: var(--pvx-blue) !important;
+  border-color: rgba(37, 99, 235, 0.2) !important;
+}
+
+.admin-page table,
+.admin-page .overflow-x-auto.divide-y.divide-slate-100,
+.admin-page .overflow-hidden {
+  border-color: var(--pvx-border) !important;
+}
+
+.admin-page tbody tr:hover,
+.admin-page tr.hover\:bg-slate-50\/40:hover,
+.admin-page tr.hover\:bg-slate-50\/50:hover {
+  background: color-mix(in srgb, var(--pvx-surface-secondary) 78%, var(--pvx-surface)) !important;
+}
+
+.admin-page .bg-emerald-50,
+.admin-page .bg-emerald-100,
+.admin-page .bg-emerald-50\/50 {
+  background: rgba(22, 163, 74, 0.12) !important;
+}
+
+.admin-page .text-emerald-600,
+.admin-page .text-emerald-700,
+.admin-page .text-emerald-800 {
+  color: #166534 !important;
+}
+
+.admin-page .bg-amber-50,
+.admin-page .bg-yellow-50,
+.admin-page .bg-yellow-100 {
+  background: rgba(234, 88, 12, 0.12) !important;
+}
+
+.admin-page .text-amber-600,
+.admin-page .text-amber-800,
+.admin-page .text-yellow-905 {
+  color: #C2410C !important;
+}
+
+.admin-page .bg-red-50 {
+  background: rgba(220, 38, 38, 0.1) !important;
+}
+
+.admin-page .text-red-700,
+.admin-page .text-red-750,
+.admin-page .text-red-850 {
+  color: #B91C1C !important;
+}
+
+html.dark .pvx-header,
+html.dark .pvx-icon-button,
+html.dark .pvx-logout,
+html.dark .pvx-role-pill,
+html.dark .eff-save-job,
+html.dark .eff-view-details,
+html.dark .eff-ghost-action,
+html.dark .rec-card-actions button:not(:first-child),
+html.dark .rec-tabs button,
+html.dark .rec-wizard-progress button,
+html.dark .rec-toolbar button,
+html.dark .rec-job-preview,
+html.dark .rec-preview-stat,
+html.dark .rec-profile-status {
+  background: var(--pvx-surface-secondary) !important;
+}
+
+@media (max-width: 980px) {
+  .eff-filter-sidebar,
+  .eff-profile-summary,
+  .eff-profile-form,
+  .rec-panel,
+  .rec-header,
+  .rec-pipeline-column {
+    border-radius: 18px !important;
+  }
+}
