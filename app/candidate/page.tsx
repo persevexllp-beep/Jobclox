@@ -1,3 +1,5 @@
+'use client';
+
 import WorkspaceRuntime from '@/src/components/WorkspaceRuntime';
 import CandidateDashboard from '@/src/components/CandidateDashboard';
 

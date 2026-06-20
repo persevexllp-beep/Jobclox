@@ -22,16 +22,6 @@ export function middleware(request: NextRequest) {
   const rootUrl = new URL('/', request.url);
   const roleRedirect = getRoleRedirectPath(roleCookie);
 
-  if (pathname === '/') {
-    if (!sessionCookie) {
-      return NextResponse.redirect(loginUrl);
-    }
-    if (roleRedirect) {
-      return NextResponse.redirect(new URL(roleRedirect, request.url));
-    }
-    return NextResponse.next();
-  }
-
   if (pathname === '/login') {
     if (sessionCookie) {
       if (roleRedirect) {

@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useMemo, useState } from 'react';
 import {
   Award,
   Bookmark,
@@ -29,7 +28,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { Application, CandidateProfile, Job, User } from '../types';
-import { ProgressRing } from './motion';
 
 interface CareerEcosystemProps {
   currentUser: User;
@@ -79,11 +77,10 @@ export default function CareerEcosystem({
   const selectedRoadmap = roadmapCatalog.find((roadmap) => roadmap.id === activeRoadmap) || roadmapCatalog[0];
   const internships = useMemo(() => jobs.filter((job) => job.jobType === 'Internship').slice(0, 4), [jobs]);
   const careerScore = getCareerScore(profileStrength, profileSkills, resumeText, applications);
-  const displayedCareerScore = useCountUp(careerScore);
   const nextStep = getNextCareerStep(profileSkills, resumeText, applications);
 
   return (
-    <motion.section className="eco-os" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+    <section className="eco-os">
       <header className="eco-hero">
         <div>
           <span>Placement Support</span>
@@ -92,8 +89,8 @@ export default function CareerEcosystem({
           <small className="eco-intelligence-line">{nextStep}</small>
         </div>
         <div className="eco-score-card">
-          <ProgressRing progress={careerScore} size={112} strokeWidth={9} label="Career Score" />
-          <strong>{displayedCareerScore}/100</strong>
+          <StaticProgress value={careerScore} label="Career Score" large />
+          <strong>{careerScore}/100</strong>
           <small>Profile, skills, resume, activity, and outcomes</small>
         </div>
       </header>
@@ -126,7 +123,7 @@ export default function CareerEcosystem({
         onSaveOpportunity={onSaveOpportunity}
         onShareOpportunity={onShareOpportunity}
       />
-    </motion.section>
+    </section>
   );
 }
 
@@ -157,7 +154,7 @@ function LearningHub({ jobs, applications, profileSkills, resumeText }: { jobs: 
               <strong>{item.title}</strong>
               <span>{item.detail}</span>
             </div>
-            <ProgressRing progress={item.progress} size={58} strokeWidth={6} />
+            <StaticProgress value={item.progress} />
           </article>
         ))}
       </div>
@@ -187,7 +184,7 @@ function TrainingAccelerator({ profileStrength, profileSkills, resumeText, appli
       <div className="eco-training-timeline">
         {actions.map((action) => (
           <article key={action.title} className="eco-training-card">
-            <ProgressRing progress={action.percent} size={66} strokeWidth={7} />
+            <StaticProgress value={action.percent} />
             <div>
               <strong>{action.title}</strong>
               <span>{action.detail}</span>
@@ -470,6 +467,15 @@ function Achievement({ icon: Icon, label, value }: { icon: React.ElementType; la
   );
 }
 
+function StaticProgress({ value, label, large = false }: { value: number; label?: string; large?: boolean }) {
+  return (
+    <div className={`candidate-static-progress${large ? ' is-large' : ''}`} aria-label={`${label || 'Progress'}: ${value}%`}>
+      <strong>{value}%</strong>
+      {label && <small>{label}</small>}
+    </div>
+  );
+}
+
 function getCareerScore(profileStrength: number, profileSkills: string[], resumeText: string, applications: Application[]) {
   let score = Math.round(profileStrength * 0.36);
   score += Math.min(20, profileSkills.length * 4);
@@ -487,24 +493,3 @@ function getNextCareerStep(profileSkills: string[], resumeText: string, applicat
   return 'Next best step: prepare interview evidence from your strongest projects and matched skills.';
 }
 
-function useCountUp(target: number) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    let frame = 0;
-    const duration = 650;
-    const startedAt = performance.now();
-
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - startedAt) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(target * eased));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target]);
-
-  return value;
-}

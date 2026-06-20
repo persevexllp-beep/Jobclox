@@ -1,13 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import "tailwindcss";
+@import "./styles/tokens.css";
+@import "./styles/design-system.css";
+@import "./styles/transformation.css";
+@import "./styles/landing.css";
+@import "./styles/premium-visuals.css";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-metric: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora, "Sora"), ui-sans-serif, system-ui, sans-serif;
+  --font-metric: var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
 
-  /* Career Flow OS */
+  /* Semantic color utilities */
+  --color-canvas: var(--pvx-bg-canvas);
+  --color-surface: var(--pvx-bg-surface);
+  --color-elevated: var(--pvx-bg-elevated);
+  --color-muted: var(--pvx-bg-muted);
+  --color-border: var(--pvx-border-default);
+  --color-text: var(--pvx-text-primary);
+  --color-text-secondary: var(--pvx-text-secondary);
+  --color-text-muted: var(--pvx-text-muted);
+  --color-accent: var(--pvx-accent);
+  --color-success: var(--pvx-success);
+  --color-warning: var(--pvx-warning);
+  --color-danger: var(--pvx-danger);
+
+  /* Career Flow OS (legacy) */
   --color-flow-indigo: #6366f1;
   --color-flow-violet: #5b21b6;
   --color-flow-cyan: #22d3ee;
@@ -7771,6 +7789,481 @@ body {
   }
 }
 
+/* Candidate landing workspace: dense, visible-first dashboard layout. */
+.career-flow-os.efficiency-os > main {
+  padding-top: 4px !important;
+}
+
+.career-flow-os .eff-header {
+  min-height: 0 !important;
+  gap: 10px !important;
+  margin-bottom: 6px !important;
+  padding: 6px 8px !important;
+}
+
+.career-flow-os .eff-header .pvx-page-header {
+  flex: 1 1 auto;
+  gap: 4px;
+  margin-bottom: 0;
+}
+
+.career-flow-os .eff-header .pvx-page-header-copy {
+  gap: 1px;
+}
+
+.career-flow-os .eff-header .pvx-page-header-eyebrow {
+  font-size: 9px;
+}
+
+.career-flow-os .eff-header .pvx-page-header-title {
+  font-size: clamp(19px, 1.65vw, 25px);
+  line-height: 1.08;
+}
+
+.career-flow-os .eff-header .pvx-page-header-description {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.career-flow-os .eff-header .pvx-tab-nav {
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 3px;
+}
+
+.career-flow-os .eff-header .pvx-tab-nav-item {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.candidate-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.candidate-overview-card,
+.candidate-rail-card {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid var(--pvx-border);
+  border-radius: 14px;
+  background: var(--pvx-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+.candidate-overview-card {
+  min-height: 112px;
+  padding: 10px 12px;
+}
+
+.candidate-widget-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.candidate-widget-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--pvx-text-secondary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.candidate-widget-head > span svg {
+  flex: 0 0 auto;
+  color: var(--pvx-blue);
+}
+
+.candidate-widget-head > strong {
+  color: var(--pvx-text);
+  font-family: var(--font-metric);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.candidate-widget-head button,
+.candidate-overview-card > button,
+.candidate-rail-card > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: var(--pvx-blue);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.candidate-overview-card p,
+.candidate-rail-card p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--pvx-text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.candidate-widget-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--pvx-surface-secondary);
+}
+
+.candidate-widget-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pvx-gradient);
+}
+
+.candidate-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.candidate-summary-grid span {
+  display: grid;
+  gap: 1px;
+  color: var(--pvx-text-secondary);
+  font-size: 9px;
+}
+
+.candidate-summary-grid strong {
+  color: var(--pvx-text);
+  font-family: var(--font-metric);
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.candidate-match-row {
+  display: grid;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 6px;
+}
+
+.candidate-match-row span,
+.candidate-skill-line {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.candidate-match-row small,
+.candidate-skill-line small {
+  color: var(--pvx-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.candidate-match-row strong,
+.candidate-skill-line span {
+  overflow: hidden;
+  color: var(--pvx-text);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.career-flow-os .eff-workspace {
+  grid-template-columns: minmax(220px, 23fr) minmax(480px, 52fr) minmax(260px, 25fr) !important;
+  gap: 10px !important;
+  margin-top: 0 !important;
+}
+
+.career-flow-os .eff-filter-sidebar {
+  width: auto !important;
+}
+
+.career-flow-os .eff-opportunities {
+  min-height: 0 !important;
+  padding: 9px !important;
+}
+
+.career-flow-os .eff-opportunities > .eff-section-head {
+  margin: 5px 0 7px !important;
+}
+
+.career-flow-os .eff-job-grid,
+.career-flow-os .eff-job-grid-discovery {
+  gap: 6px !important;
+}
+
+.career-flow-os .eff-job-card {
+  min-height: 84px !important;
+  gap: 7px !important;
+  border-radius: 11px !important;
+  padding: 7px 9px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+.career-flow-os .eff-job-card:hover,
+.career-flow-os .eff-job-card.is-selected,
+.career-flow-os .eff-job-card:focus-visible {
+  transform: translateY(-1px) !important;
+}
+
+.career-flow-os .eff-job-row-main {
+  grid-template-columns: 38px minmax(0, 1fr) minmax(104px, 122px) !important;
+  gap: 7px !important;
+}
+
+.career-flow-os .eff-company-badge {
+  width: 38px !important;
+  height: 38px !important;
+}
+
+.career-flow-os .eff-job-card-head strong {
+  font-size: 15px !important;
+}
+
+.career-flow-os .eff-job-row-copy > small,
+.career-flow-os .eff-job-location-row span {
+  font-size: 11px !important;
+}
+
+.career-flow-os .eff-job-skills span:nth-child(n + 3) {
+  display: none !important;
+}
+
+.career-flow-os .eff-job-actions {
+  grid-template-columns: 62px 66px !important;
+  width: 134px !important;
+}
+
+.career-flow-os .eff-job-actions button {
+  min-height: 29px !important;
+  font-size: 11px !important;
+}
+
+.candidate-insights-rail {
+  position: sticky;
+  top: 74px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-height: calc(100dvh - 90px);
+  overflow: auto;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+.candidate-rail-heading {
+  display: grid;
+  gap: 1px;
+  padding: 0 2px 2px;
+}
+
+.candidate-rail-heading span {
+  color: var(--pvx-blue);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.candidate-rail-heading strong {
+  color: var(--pvx-text);
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.candidate-rail-card {
+  padding: 11px;
+}
+
+.candidate-rail-card ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidate-rail-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--pvx-text-secondary);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.candidate-rail-card li svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--pvx-success);
+}
+
+.candidate-recommended-role {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.candidate-recommended-role > span {
+  display: grid;
+  min-width: 0;
+}
+
+.candidate-recommended-role strong,
+.candidate-recommended-role small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-recommended-role strong {
+  color: var(--pvx-text);
+  font-size: 13px;
+}
+
+.candidate-recommended-role small {
+  color: var(--pvx-text-secondary);
+  font-size: 10px;
+}
+
+.candidate-rail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.candidate-rail-tags span {
+  border: 1px solid var(--pvx-border);
+  border-radius: 999px;
+  background: var(--pvx-surface-secondary);
+  padding: 3px 6px;
+  color: var(--pvx-text-secondary);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.candidate-rail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 5px;
+}
+
+.candidate-rail-actions button {
+  min-height: 30px;
+  border: 1px solid var(--pvx-border);
+  border-radius: 8px;
+  background: var(--pvx-surface-secondary);
+  color: var(--pvx-text);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.candidate-rail-actions button:nth-child(2) {
+  border-color: var(--pvx-blue);
+  background: var(--pvx-blue);
+  color: #fff;
+}
+
+@media (max-width: 1180px) {
+  .candidate-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .career-flow-os .eff-workspace {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .candidate-insights-rail {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: none;
+    overflow: visible;
+  }
+
+  .candidate-rail-heading {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .career-flow-os.efficiency-os > main {
+    padding-top: 0 !important;
+  }
+
+  .career-flow-os .eff-header {
+    position: static;
+    align-items: stretch !important;
+    gap: 6px !important;
+    padding: 5px !important;
+  }
+
+  .career-flow-os .eff-header .pvx-page-header-description {
+    display: none;
+  }
+
+  .career-flow-os .eff-header .pvx-tab-nav {
+    overflow-x: auto;
+  }
+
+  .candidate-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .candidate-overview-card {
+    min-height: 104px;
+    padding: 8px;
+  }
+
+  .candidate-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .candidate-insights-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .career-flow-os .eff-filter-toolbar-shell {
+    position: sticky;
+    top: 4px;
+    z-index: 20;
+    display: block !important;
+  }
+
+  .career-flow-os .eff-job-actions {
+    position: sticky;
+    bottom: 0;
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    padding-top: 5px !important;
+    background: var(--pvx-surface);
+  }
+
+  .career-flow-os .eff-job-row-signals {
+    grid-template-columns: auto auto !important;
+  }
+}
+
 @media (max-width: 760px) {
   html,
   body {
@@ -8500,15 +8993,6 @@ body {
   grid-column: 1 / -1 !important;
   background: #FFFFFF !important;
   color: var(--pvx-muted) !important;
-}
-
-.career-flow-os .eff-match-panel,
-.career-flow-os .eff-match-ring,
-.career-flow-os .eff-resume-fit,
-.career-flow-os .eff-ai-chip-row,
-.career-flow-os .eff-job-metrics,
-.career-flow-os .eff-salary-highlight {
-  display: none !important;
 }
 
 .career-flow-os .eff-preview-pane {
@@ -9311,4 +9795,317 @@ html.dark .rec-profile-status {
   .rec-pipeline-column {
     border-radius: 18px !important;
   }
+}
+
+/* Final candidate density lock: keep later legacy overrides from reopening whitespace. */
+.career-flow-os.efficiency-os > main {
+  padding-top: 4px !important;
+}
+
+.career-flow-os .eff-header {
+  min-height: 0 !important;
+  gap: 10px !important;
+  margin-bottom: 6px !important;
+  padding: 6px 8px !important;
+}
+
+.career-flow-os .eff-header .pvx-page-header {
+  margin-bottom: 0 !important;
+}
+
+.career-flow-os .eff-workspace {
+  grid-template-columns: minmax(220px, 23fr) minmax(480px, 52fr) minmax(260px, 25fr) !important;
+  gap: 10px !important;
+  margin-top: 0 !important;
+}
+
+.career-flow-os .eff-filter-sidebar {
+  width: auto !important;
+}
+
+.career-flow-os .eff-opportunities {
+  min-height: 0 !important;
+  padding: 9px !important;
+}
+
+.career-flow-os .eff-job-grid,
+.career-flow-os .eff-job-grid-discovery {
+  gap: 6px !important;
+}
+
+.career-flow-os .eff-job-card {
+  min-height: 84px !important;
+  gap: 7px !important;
+  border-radius: 11px !important;
+  padding: 7px 9px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+.career-flow-os .eff-job-card:hover,
+.career-flow-os .eff-job-card.is-selected,
+.career-flow-os .eff-job-card:focus-visible {
+  transform: translateY(-1px) !important;
+}
+
+.career-flow-os .eff-job-row-main {
+  grid-template-columns: 38px minmax(0, 1fr) minmax(104px, 122px) !important;
+  gap: 7px !important;
+}
+
+.career-flow-os .eff-job-actions {
+  grid-template-columns: 62px 66px !important;
+  width: 134px !important;
+}
+
+@media (max-width: 1180px) {
+  .career-flow-os .eff-workspace {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .career-flow-os .eff-header {
+    position: static !important;
+    align-items: stretch !important;
+  }
+
+  .career-flow-os .eff-filter-toolbar-shell {
+    position: sticky !important;
+    top: 4px !important;
+    z-index: 20 !important;
+    display: block !important;
+  }
+
+  .career-flow-os .eff-job-card {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+
+  .career-flow-os .eff-job-row-main {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+  }
+
+  .career-flow-os .eff-job-actions {
+    position: sticky !important;
+    bottom: 0 !important;
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+  }
+}
+
+/* Candidate hover-removal audit: information is static and visible by default. */
+.career-flow-os .eff-match,
+.career-flow-os .eff-match-panel,
+.career-flow-os .eff-match-ring,
+.career-flow-os .eff-salary-highlight,
+.career-flow-os .eff-job-actions,
+.career-flow-os .eff-sticky-apply,
+.career-flow-os .eff-recommendations,
+.career-flow-os .eff-profile-sections,
+.career-flow-os .eff-resume-intel,
+.career-flow-os .eff-alert-list,
+.career-flow-os .eff-saved-card,
+.career-flow-os .candidate-overview-card,
+.career-flow-os .candidate-rail-card,
+.career-flow-os .eco-learning-module,
+.career-flow-os .eco-training-card,
+.career-flow-os .eco-internship-card,
+.career-flow-os .eco-feed-item,
+.career-flow-os .eco-roadmap-node {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.career-flow-os .eff-match-panel {
+  display: flex !important;
+}
+
+.career-flow-os .eff-match-ring {
+  display: grid !important;
+}
+
+.career-flow-os .eff-salary-highlight {
+  display: block !important;
+}
+
+.career-flow-os .eff-job-card,
+.career-flow-os .eff-saved-card,
+.career-flow-os .candidate-overview-card,
+.career-flow-os .candidate-rail-card,
+.career-flow-os .eco-learning-module,
+.career-flow-os .eco-training-card,
+.career-flow-os .eco-internship-card,
+.career-flow-os .eco-feed-item,
+.career-flow-os .eco-roadmap-node,
+.career-flow-os button {
+  will-change: auto !important;
+  transition-property: border-color, box-shadow !important;
+}
+
+.career-flow-os *:hover {
+  animation: none !important;
+  scale: none !important;
+  translate: none !important;
+  transform: none !important;
+}
+
+.career-flow-os .eff-job-card:hover,
+.career-flow-os .eff-saved-card:hover,
+.career-flow-os .candidate-overview-card:hover,
+.career-flow-os .candidate-rail-card:hover,
+.career-flow-os .eco-learning-module:hover,
+.career-flow-os .eco-training-card:hover,
+.career-flow-os .eco-internship-card:hover,
+.career-flow-os .eco-feed-item:hover,
+.career-flow-os .eco-roadmap-node:hover {
+  border-color: color-mix(in srgb, var(--pvx-blue) 24%, var(--pvx-border)) !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.07) !important;
+}
+
+.career-flow-os .eff-job-card:hover .eff-match,
+.career-flow-os .eff-job-card:hover .eff-job-skills span {
+  animation: none !important;
+  transform: none !important;
+}
+
+.career-flow-os .eff-job-actions .eff-view-details {
+  display: flex !important;
+  grid-column: 1 / -1 !important;
+}
+
+.career-flow-os .eff-job-skills span,
+.career-flow-os .eff-job-row-signals small:not(.urgent) {
+  display: inline-flex !important;
+}
+
+.career-flow-os .eff-preview-score-row .eff-match-ring {
+  display: grid !important;
+}
+
+.career-flow-os .pvx-tab-nav-item:not(.is-active):hover {
+  border-color: color-mix(in srgb, var(--pvx-blue) 20%, var(--pvx-border)) !important;
+  background: transparent !important;
+  color: var(--pvx-text-secondary) !important;
+}
+
+.pvx-header[data-role="candidate"] .pvx-icon-button:hover,
+.pvx-header[data-role="candidate"] .pvx-logout:hover,
+.pvx-header[data-role="candidate"] .pvx-role-pill:hover,
+.pvx-header[data-role="candidate"] .pvx-notification-actions button:hover,
+.pvx-header[data-role="candidate"] .pvx-notification-head button:hover {
+  transform: none !important;
+}
+
+.pvx-header[data-role="candidate"] .pvx-icon-button:hover,
+.pvx-header[data-role="candidate"] .pvx-logout:hover,
+.pvx-header[data-role="candidate"] .pvx-role-pill:hover {
+  background: var(--pvx-surface-secondary) !important;
+  color: var(--pvx-text) !important;
+}
+
+.pvx-header[data-role="candidate"] .pvx-notification-head button:hover {
+  background: transparent !important;
+  color: var(--pvx-accent) !important;
+}
+
+.pvx-header[data-role="candidate"] .pvx-notification-actions button:hover {
+  background: var(--pvx-bg-muted) !important;
+  color: var(--pvx-icon-default) !important;
+}
+
+/* Candidate visibility baseline: rendered content never waits for interaction or effects. */
+.career-flow-os,
+.career-flow-os * {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+  transform: none !important;
+  scale: none !important;
+  translate: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+.career-flow-os::before,
+.career-flow-os::after,
+.career-flow-os *::before,
+.career-flow-os *::after {
+  content: none !important;
+  display: none !important;
+}
+
+.career-flow-os .eff-job-card,
+.career-flow-os .eff-job-row-main,
+.career-flow-os .eff-job-row-copy,
+.career-flow-os .eff-job-row-signals,
+.career-flow-os .eff-job-actions,
+.career-flow-os .eff-job-location-row,
+.career-flow-os .eff-job-skills,
+.career-flow-os .candidate-overview-card,
+.career-flow-os .candidate-insights-rail,
+.career-flow-os .candidate-rail-card,
+.career-flow-os .eff-saved-card,
+.career-flow-os .eff-profile-summary,
+.career-flow-os .eff-profile-form,
+.career-flow-os .eff-recommendations,
+.career-flow-os .eff-full-panel,
+.career-flow-os .eco-panel,
+.career-flow-os .eco-learning-module,
+.career-flow-os .eco-training-card,
+.career-flow-os .eco-internship-card,
+.career-flow-os .eco-feed-item,
+.career-flow-os .eco-roadmap-node {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.career-flow-os .eff-job-card-head strong,
+.career-flow-os .eff-job-row-copy > small,
+.career-flow-os .eff-job-location-row span,
+.career-flow-os .eff-job-row-signals strong,
+.career-flow-os .eff-job-row-signals small,
+.career-flow-os .candidate-recommended-role strong,
+.career-flow-os .candidate-recommended-role small,
+.career-flow-os .candidate-overview-card p,
+.career-flow-os .candidate-rail-card p {
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+.candidate-static-progress {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 58px;
+  min-width: 58px;
+  height: 58px;
+  border: 2px solid var(--pvx-border);
+  border-radius: 999px;
+  background: var(--pvx-surface);
+  color: var(--pvx-text);
+}
+
+.candidate-static-progress.is-large {
+  width: 112px;
+  min-width: 112px;
+  height: 112px;
+}
+
+.candidate-static-progress strong {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.candidate-static-progress small {
+  margin-top: 4px;
+  color: var(--pvx-text-secondary);
+  font-size: 10px;
 }

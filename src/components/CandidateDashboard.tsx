@@ -6,11 +6,12 @@
  */
 
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import type { AppIcon } from '@/src/lib/icons';
 import {
   AlertCircle,
   ArrowUpRight,
   Award,
+  BadgeCheck,
   Bell,
   Bookmark,
   Briefcase,
@@ -24,14 +25,12 @@ import {
   Layers3,
   Mail,
   MapPin,
-  PanelRightOpen,
   Rocket,
   Search,
   Send,
   SlidersHorizontal,
   Star,
   Target,
-  Trophy,
   Trash2,
   Upload,
   UserRound,
@@ -40,15 +39,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { Application, CandidateProfile, EmailAlert, Job, ResumeParserResponse, User } from '../types';
-import { AnimatedButton, CareerFlowBackground, CareerFlowStream, SuccessAnimation } from './motion';
-import type { JourneyStage } from './motion';
 import CareerEcosystem from './CareerEcosystem';
-import BrandLogo from './BrandLogo';
+import { PageHeader, TabNav } from '@/src/components/layout';
 import SkeletonLoader from './SkeletonLoader';
 import { formatEmailAlertPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
-import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 interface CandidateDashboardProps {
   currentUser: User;
@@ -62,8 +58,9 @@ type SalaryFilter = 'all' | 'lt10' | '10-20' | '20plus';
 type ExperienceFilter = 'all' | 'entry' | 'mid' | 'senior';
 type SortMode = 'match' | 'recent' | 'salary';
 type OnboardingStep = 'basics' | 'photo' | 'resume' | 'review' | 'skills' | 'preferences' | 'jobs' | 'apply';
+type JourneyStage = 'training' | 'internship' | 'applications' | 'interviews' | 'placement';
 
-const navItems: Array<{ id: WorkspaceMode; label: string; icon: React.ElementType }> = [
+const navItems: Array<{ id: WorkspaceMode; label: string; icon: AppIcon }> = [
   { id: 'jobs', label: 'Jobs', icon: Briefcase },
   { id: 'saved', label: 'Saved', icon: Bookmark },
   { id: 'applications', label: 'Applications', icon: FileText },
@@ -174,7 +171,7 @@ function serializeResumeHistory(options: ResumeOption[]) {
 }
 
 export default function CandidateDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CandidateDashboardProps) {
-  useRenderTracker('CandidateDashboard');
+  const routeInitializedRef = useRef(false);
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('jobs');
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -271,20 +268,27 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!routeInitializedRef.current) return;
     const url = new URL(window.location.href);
+    url.searchParams.set('view', activeMode);
     if (selectedJobId) {
       url.searchParams.set('job', selectedJobId);
     } else {
       url.searchParams.delete('job');
     }
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
-  }, [selectedJobId]);
+  }, [activeMode, selectedJobId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onPopState = () => {
-      setSelectedJobId(new URLSearchParams(window.location.search).get('job'));
+      const params = new URLSearchParams(window.location.search);
+      const requestedView = params.get('view') as WorkspaceMode | null;
+      if (requestedView && navItems.some((item) => item.id === requestedView)) setActiveMode(requestedView);
+      setSelectedJobId(params.get('job'));
+      routeInitializedRef.current = true;
     };
+    onPopState();
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
@@ -449,6 +453,11 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   ), [rankedJobs, selectedJobPreview]);
   const recommendedOnboardingJobs = useMemo(() => rankedJobs.slice(0, 3), [rankedJobs]);
   const bestMatch = useMemo(() => (rankedJobs.length ? getJobMatch(rankedJobs[0]) : 0), [getJobMatch, rankedJobs]);
+  const averageMatch = useMemo(() => (
+    rankedJobs.length
+      ? Math.round(rankedJobs.reduce((total, job) => total + getJobMatch(job), 0) / rankedJobs.length)
+      : 0
+  ), [getJobMatch, rankedJobs]);
   const hasApplied = useCallback((jobId: string) => appliedJobIdSet.has(jobId), [appliedJobIdSet]);
   const toggleSavedJob = useCallback((jobId: string) => {
     const job = jobById.get(jobId);
@@ -716,35 +725,38 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   }, [apiFetch, showToast]);
 
   return (
-    <React.Profiler id="CandidateDashboard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('CandidateDashboard', phase, actualDuration)}>
-      <div className="career-flow-os efficiency-os relative overflow-hidden">
-      <CareerFlowBackground particleCount={16} />
-      <CareerFlowStream intensity="subtle" />
-
-      <main className="relative z-10 mx-auto w-full max-w-[1500px] px-4 py-4 sm:px-5 lg:px-7">
+    <div className="career-flow-os efficiency-os relative pvx-dashboard-shell pvx-dashboard-shell--candidate">
+      <main className="relative z-10 w-full">
         <header className="eff-header">
-          <button type="button" className="eff-brand" onClick={() => setActiveMode('jobs')}>
-            <BrandLogo subline="Hiring & Placement Engine" />
-          </button>
-
           {showOnboarding ? (
-            <div className="eff-gate-note">Complete onboarding to unlock the full portal.</div>
+            <PageHeader
+              eyebrow="Career Command Center"
+              title="Welcome to Persevex"
+              description="Complete onboarding to unlock your full career workspace."
+            />
           ) : (
-            <nav className="eff-nav" aria-label="Candidate navigation">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = activeMode === item.id;
-                const badge = item.id === 'applications' ? applications.length : item.id === 'saved' ? savedJobs.length : item.id === 'signals' ? emailAlerts.length : 0;
-                return (
-                  <button key={item.id} type="button" onClick={() => setActiveMode(item.id)} aria-pressed={active}>
-                    {active && <motion.span layoutId="eff-nav-active" className="eff-nav-active" />}
-                    <Icon className="relative z-10 h-4 w-4" />
-                    <span className="relative z-10">{item.label}</span>
-                    {badge > 0 && <em className="relative z-10">{badge}</em>}
-                  </button>
-                );
-              })}
-            </nav>
+            <>
+              <PageHeader
+                eyebrow="Career Command Center"
+                title="Your Career Workspace"
+                description="Discover opportunities, track applications, and grow your profile."
+              />
+              <TabNav<WorkspaceMode>
+                items={navItems.map((item) => ({
+                  ...item,
+                  badge: item.id === 'applications'
+                    ? applications.length
+                    : item.id === 'saved'
+                      ? savedJobs.length
+                      : item.id === 'signals'
+                        ? emailAlerts.length
+                        : undefined,
+                }))}
+                activeId={activeMode}
+                onChange={setActiveMode}
+                ariaLabel="Candidate navigation"
+              />
+            </>
           )}
         </header>
 
@@ -752,12 +764,20 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
           <EfficiencyLoading />
         ) : (
           <>
-            {!showOnboarding && (
+            {!showOnboarding && activeMode === 'jobs' && (
               <CareerSnapshot
                 currentUser={currentUser}
                 profileStrength={profileStrength}
                 applications={applications}
+                savedCount={savedJobs.length}
                 bestMatch={bestMatch}
+                averageMatch={averageMatch}
+                topSkill={inlinePreviewFit?.matchedSkills[0] || profileSkills[0] || 'Add skills'}
+                skillGaps={resumeIntelligence?.careerInsights.missingSkills.length
+                  ? resumeIntelligence.careerInsights.missingSkills
+                  : inlinePreviewFit?.missingSkills || []}
+                trendingSkills={allSkills.slice(0, 3)}
+                missingProfileSections={activation.missing}
                 stage={currentJourneyStage}
                 onProfile={() => setActiveMode('profile')}
                 onApplications={() => setActiveMode('applications')}
@@ -797,15 +817,11 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
               />
             )}
 
-            {!showOnboarding && <AnimatePresence mode="wait" initial={false}>
+            {!showOnboarding && <>
               {activeMode === 'jobs' && (
-                <motion.section
+                <section
                   key="jobs"
                   className="eff-workspace"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.22 }}
                 >
                   <FilterSidebar
                     skills={allSkills}
@@ -897,18 +913,20 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                       </div>
                     )}
                   </section>
-                  <JobPreviewPane
+                  <CandidateInsightsRail
                     selectedJob={inlinePreviewJob}
                     selectedFit={inlinePreviewFit}
+                    profileStrength={profileStrength}
+                    missingProfileSections={activation.missing}
+                    trendingSkills={allSkills.slice(0, 3)}
                     saved={inlinePreviewJob ? savedJobIdSet.has(inlinePreviewJob.id) : false}
                     applied={inlinePreviewJob ? hasApplied(inlinePreviewJob.id) : false}
-                    similarJobs={similarJobs}
+                    onProfile={() => setActiveMode('profile')}
                     onApply={inlinePreviewJob ? () => openApply(inlinePreviewJob) : undefined}
                     onSave={inlinePreviewJob ? () => toggleSavedJob(inlinePreviewJob.id) : undefined}
                     onOpenDetails={() => setDetailsDrawerOpen(true)}
-                    onSelectSimilar={(id) => setSelectedJobId(id)}
                   />
-                </motion.section>
+                </section>
               )}
 
               {activeMode === 'applications' && (
@@ -992,7 +1010,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                   setActiveEmailId={setActiveEmailId}
                 />
               )}
-            </AnimatePresence>}
+            </>}
 
             {!showOnboarding && activeMode === 'jobs' && (
               <>
@@ -1056,7 +1074,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
         }}
       />
       </div>
-    </React.Profiler>
   );
 }
 
@@ -1129,7 +1146,7 @@ function OnboardingFunnel({
   const targetRoles = Array.from(new Set(recommendedJobs.map((job) => job.title).filter(Boolean))).slice(0, 6);
 
   return (
-    <motion.section className="onboarding-funnel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+    <section className="onboarding-funnel">
       <aside className="onboarding-progress">
         <span>Activation</span>
         <strong>{activation.score}% ready</strong>
@@ -1138,9 +1155,20 @@ function OnboardingFunnel({
       </aside>
 
       <div className="onboarding-card">
+        <div className="onboarding-stage-meta">
+          <span>Profile setup</span>
+          <strong>Step {currentIndex + 1} of {onboardingSteps.length}</strong>
+        </div>
         <div className="onboarding-steps">
           {onboardingSteps.map((item, index) => (
-            <button key={item.id} type="button" className={item.id === step ? 'is-active' : index < currentIndex ? 'is-done' : ''} onClick={() => setStep(item.id)}>
+            <button
+              key={item.id}
+              type="button"
+              className={item.id === step ? 'is-active' : index < currentIndex ? 'is-done' : ''}
+              onClick={() => setStep(item.id)}
+              aria-current={item.id === step ? 'step' : undefined}
+              aria-label={`Step ${index + 1}: ${item.label}`}
+            >
               {item.label}
             </button>
           ))}
@@ -1183,7 +1211,7 @@ function OnboardingFunnel({
             <h2>Upload your resume</h2>
             <label className="onboarding-upload">
               <Upload className="h-5 w-5" />
-              <strong>{parsingFile ? 'Parsing resume...' : resumeFileName || 'Upload resume PDF'}</strong>
+              <strong className={parsingFile ? 'is-processing' : ''}>{parsingFile ? 'Parsing resume...' : resumeFileName || 'Upload resume PDF'}</strong>
               <span>PDF only. Persevex will extract skills, education, and experience.</span>
               <input type="file" accept=".pdf" className="hidden" onChange={(e) => e.target.files?.[0] && onResumeUpload(e.target.files[0])} />
             </label>
@@ -1264,51 +1292,82 @@ function OnboardingFunnel({
           </div>
         )}
       </div>
-    </motion.section>
+    </section>
   );
 }
 
-function CareerSnapshot({ currentUser, profileStrength, applications, bestMatch, stage, onProfile, onApplications }: {
+function CareerSnapshot({ currentUser, profileStrength, applications, savedCount, bestMatch, averageMatch, topSkill, skillGaps, trendingSkills, missingProfileSections, stage, onProfile, onApplications }: {
   currentUser: User;
   profileStrength: number;
   applications: Application[];
+  savedCount: number;
   bestMatch: number;
+  averageMatch: number;
+  topSkill: string;
+  skillGaps: string[];
+  trendingSkills: string[];
+  missingProfileSections: string[];
   stage: JourneyStage;
   onProfile: () => void;
   onApplications: () => void;
 }) {
   const interviews = applications.filter((app) => app.status === 'interviewing' || app.status === 'forwarded').length;
-  return (
-    <section className="eff-snapshot">
-      <div className="eff-snapshot-intro">
-        <p>Placement engine</p>
-        <h1>{currentUser.name.split(' ')[0]}, start with the best job match.</h1>
-      </div>
-      <SnapshotMetric label="Best Match" value={`${bestMatch}%`} sub="job fit now" icon={Target} />
-      <SnapshotMetric label="Applications" value={applications.length} sub={`${interviews} active interviews`} icon={FileText} onClick={onApplications} />
-      <SnapshotMetric label="Profile" value={`${profileStrength}%`} sub="resume signal" icon={Award} onClick={onProfile} />
-      <SnapshotMetric label="Stage" value={stageLabels[stage]} sub="placement path" icon={Trophy} />
-    </section>
-  );
-}
+  const offers = applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length;
 
-function SnapshotMetric({ label, value, sub, icon: Icon, onClick }: {
-  label: string;
-  value: React.ReactNode;
-  sub: string;
-  icon: React.ElementType;
-  onClick?: () => void;
-}) {
-  const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag className="eff-snapshot-metric" onClick={onClick as any}>
-      <Icon className="h-4 w-4 text-cyan-500" />
-      <span>
-        <small>{label}</small>
-        <strong>{value}</strong>
-        <em>{sub}</em>
-      </span>
-    </Tag>
+    <section className="candidate-overview" aria-label="Career dashboard overview">
+      <article className="candidate-overview-card candidate-profile-card">
+        <div className="candidate-widget-head">
+          <span><Award className="h-4 w-4" /> Profile strength</span>
+          <strong>{profileStrength}%</strong>
+        </div>
+        <div className="candidate-widget-progress" aria-label={`${profileStrength}% profile complete`}>
+          <span style={{ width: `${profileStrength}%` }} />
+        </div>
+        <p>{missingProfileSections.length ? `Next: ${missingProfileSections[0]}` : `${currentUser.name.split(' ')[0]}, your profile is application-ready.`}</p>
+        <button type="button" onClick={onProfile}>Improve profile <ArrowUpRight className="h-3.5 w-3.5" /></button>
+      </article>
+
+      <article className="candidate-overview-card">
+        <div className="candidate-widget-head">
+          <span><FileText className="h-4 w-4" /> Application summary</span>
+          <button type="button" onClick={onApplications}>View all</button>
+        </div>
+        <div className="candidate-summary-grid">
+          <span><strong>{applications.length}</strong>Applied</span>
+          <span><strong>{savedCount}</strong>Saved</span>
+          <span><strong>{interviews}</strong>Interviews</span>
+          <span><strong>{offers}</strong>Offers</span>
+        </div>
+      </article>
+
+      <article className="candidate-overview-card">
+        <div className="candidate-widget-head">
+          <span><Target className="h-4 w-4" /> AI match summary</span>
+          <strong>{averageMatch}% avg</strong>
+        </div>
+        <div className="candidate-match-row">
+          <span><small>Best match</small><strong>{bestMatch}%</strong></span>
+          <span><small>Top skill</small><strong>{topSkill}</strong></span>
+        </div>
+        <p>{skillGaps.length ? `${skillGaps.length} skill gaps: ${skillGaps.slice(0, 2).join(', ')}` : 'No major skill gaps in your top match.'}</p>
+      </article>
+
+      <article className="candidate-overview-card">
+        <div className="candidate-widget-head">
+          <span><Rocket className="h-4 w-4" /> Career insights</span>
+          <strong>{stageLabels[stage]}</strong>
+        </div>
+        <div className="candidate-skill-line">
+          <small>Recommended</small>
+          <span>{(skillGaps.length ? skillGaps : trendingSkills).slice(0, 2).join(' / ') || 'Explore matched roles'}</span>
+        </div>
+        <div className="candidate-skill-line">
+          <small>Trending</small>
+          <span>{trendingSkills.slice(0, 2).join(' / ') || 'Skills update with live jobs'}</span>
+        </div>
+      </article>
+    </section>
   );
 }
 
@@ -1360,15 +1419,8 @@ function JobsFilterToolbar(props: {
           {props.filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </div>
-      <AnimatePresence initial={false}>
-        {props.filtersOpen && (
-          <motion.div
-            className="eff-filter-drawer"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-          >
+      {props.filtersOpen && (
+          <div className="eff-filter-drawer">
             <div className="eff-filter-drawer-grid">
               <FilterSelect label="Search" value={props.searchTerm} onChange={props.setSearchTerm} options={[]} isSearchOnly />
               <FilterSelect label="Skills" value={props.filterSkill} onChange={props.setFilterSkill} options={[['all', 'All skills'], ...props.skills.map((skill) => [skill, skill] as [string, string])]} />
@@ -1379,9 +1431,8 @@ function JobsFilterToolbar(props: {
               <FilterSelect label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Sort by match'], ['recent', 'Newest first'], ['salary', 'Highest salary']]} />
               <button type="button" className="eff-ghost-action eff-reset-filters" onClick={props.onReset}>Reset Filters</button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </div>
   );
 }
@@ -1442,7 +1493,7 @@ function FilterSelect({ label, value, options, onChange, compact, isSearchOnly }
   return (
     <label className={`eff-filter-field${compact ? ' is-compact' : ''}`}>
       {!compact && <span>{label}</span>}
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
     </label>
@@ -1462,7 +1513,6 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   onViewDetails: () => void;
   onOpenDetails: () => void;
 }) {
-  useRenderTracker('JobCard');
   const daysLeft = getDaysLeft(job.deadline);
   const workMode = getWorkMode(job.location);
   const recent = isRecentlyPosted(job.createdAt);
@@ -1470,28 +1520,21 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   const compactMeta = [job.location, job.jobType, job.experience].filter(Boolean).join(' / ');
   void profileStrength;
   return (
-    <React.Profiler id="JobCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('JobCard', phase, actualDuration)}>
-      <article
+    <article
       className={`eff-job-card ${selected ? 'is-selected' : ''}`}
-      onClick={onViewDetails}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onViewDetails();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
+      aria-current={selected ? 'true' : undefined}
     >
       <div className="eff-job-row-main">
         <CompanyBadge company={job.companyName} />
         <div className="eff-job-row-copy">
           <div className="eff-job-card-head">
-            <strong>{job.title}</strong>
+            <button type="button" className="eff-job-title-button" onClick={onViewDetails}>{job.title}</button>
             <span className={`eff-work-mode ${workMode.tone}`}>{workMode.label}</span>
           </div>
-          <small>{job.companyName}</small>
+          <small className="eff-company-line">
+            <span>{job.companyName}</span>
+            <em><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />Verified listing</em>
+          </small>
           <div className="eff-job-location-row eff-job-row-meta">
             <span><MapPin className="h-3.5 w-3.5" />{compactMeta}</span>
             {recent && <em>Recently Posted</em>}
@@ -1513,8 +1556,7 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
         <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}>View Details</button>
       </div>
-      </article>
-    </React.Profiler>
+    </article>
   );
 }
 
@@ -1522,87 +1564,75 @@ function CompanyBadge({ company }: { company: string }) {
   return <span className="eff-company-badge">{company.slice(0, 2).toUpperCase()}</span>;
 }
 
-function JobPreviewPane({ selectedJob, selectedFit, similarJobs, saved, applied, onApply, onSave, onOpenDetails, onSelectSimilar }: {
+function CandidateInsightsRail({ selectedJob, selectedFit, profileStrength, missingProfileSections, trendingSkills, saved, applied, onProfile, onApply, onSave, onOpenDetails }: {
   selectedJob: Job | null;
   selectedFit: JobFitAnalysis | null;
-  similarJobs: Job[];
+  profileStrength: number;
+  missingProfileSections: string[];
+  trendingSkills: string[];
   saved: boolean;
   applied: boolean;
+  onProfile: () => void;
   onApply?: () => void;
   onSave?: () => void;
   onOpenDetails: () => void;
-  onSelectSimilar: (id: string) => void;
 }) {
-  if (!selectedJob || !selectedFit) {
-    return (
-      <aside className="eff-intel eff-preview-empty" aria-label="Job preview">
-        <PanelRightOpen className="h-6 w-6" />
-        <strong>Select a job to preview</strong>
-        <span>Use the center list to compare salary, skills, fit, and deadlines without leaving search.</span>
-      </aside>
-    );
-  }
-
-  const daysLeft = getDaysLeft(selectedJob.deadline);
-
   return (
-    <aside className="eff-intel eff-preview-pane" aria-label="Selected job preview">
-      <header className="eff-preview-head">
-        <CompanyBadge company={selectedJob.companyName} />
-        <div>
-          <span>{selectedJob.companyName}</span>
-          <h3>{selectedJob.title}</h3>
-          <p>{selectedJob.location} - {selectedJob.jobType} - {selectedJob.experience}</p>
-        </div>
-      </header>
-
-      <div className="eff-preview-score-row">
-        <div className="eff-match-ring is-large">
-          <span>{selectedFit.score}%</span>
-          <i style={{ '--match': `${selectedFit.score}%` } as React.CSSProperties} />
-        </div>
-        <div>
-          <strong>{selectedFit.quality.label}</strong>
-          <span>{selectedFit.resumeInsight}</span>
-        </div>
+    <aside className="candidate-insights-rail" aria-label="Career insights and recommendations">
+      <div className="candidate-rail-heading">
+        <span>Career intelligence</span>
+        <strong>Actions for you</strong>
       </div>
 
-      <div className="eff-preview-facts">
-        <span>{selectedJob.salary || 'Compensation not listed'}</span>
-        <span>{formatPostedDate(selectedJob.createdAt)}</span>
-        {daysLeft !== null && <span>{daysLeft <= 0 ? 'Closing today' : `${daysLeft} days left`}</span>}
-      </div>
-
-      <section className="eff-preview-section">
-        <strong>Required skills</strong>
-        <div className="eff-job-skills">
-          {selectedJob.requirements.slice(0, 8).map((skill) => <span key={skill}>{skill}</span>)}
+      <section className="candidate-rail-card candidate-rail-profile">
+        <div className="candidate-widget-head">
+          <span><Award className="h-4 w-4" /> Profile readiness</span>
+          <strong>{profileStrength}%</strong>
         </div>
+        <div className="candidate-widget-progress"><span style={{ width: `${profileStrength}%` }} /></div>
+        <ul>
+          {(missingProfileSections.length ? missingProfileSections.slice(0, 2) : ['Profile is ready for high-intent applications']).map((item) => (
+            <li key={item}><CheckCircle2 className="h-3.5 w-3.5" />{item}</li>
+          ))}
+        </ul>
+        <button type="button" onClick={onProfile}>Open profile <ArrowUpRight className="h-3.5 w-3.5" /></button>
       </section>
 
-      <section className="eff-preview-section">
-        <strong>Fit summary</strong>
-        <p>{selectedFit.resumeFitSummary}</p>
-        <small>{selectedFit.missingSkills.length ? `Missing: ${selectedFit.missingSkills.slice(0, 4).join(', ')}` : 'No required skill gaps detected.'}</small>
-      </section>
-
-      <section className="eff-preview-section">
-        <strong>Similar roles</strong>
-        <div className="eff-similar-list">
-          {similarJobs.length ? similarJobs.map((job) => (
-            <button key={job.id} type="button" onClick={() => onSelectSimilar(job.id)}>
-              <span>{job.title}</span>
-              <small>{job.companyName}</small>
-            </button>
-          )) : <small>No similar roles in this result set.</small>}
+      <section className="candidate-rail-card candidate-rail-recommendation">
+        <div className="candidate-widget-head">
+          <span><Target className="h-4 w-4" /> Top recommendation</span>
+          {selectedFit && <strong>{selectedFit.score}%</strong>}
         </div>
+        {selectedJob && selectedFit ? (
+          <>
+            <div className="candidate-recommended-role">
+              <CompanyBadge company={selectedJob.companyName} />
+              <span><strong>{selectedJob.title}</strong><small>{selectedJob.companyName} / {selectedJob.location}</small></span>
+            </div>
+            <p>{selectedFit.resumeInsight}</p>
+            <div className="candidate-rail-tags">
+              {selectedJob.requirements.slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}
+            </div>
+            <div className="candidate-rail-actions">
+              <button type="button" onClick={onOpenDetails}>Details</button>
+              <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Apply now'}</button>
+              <button type="button" onClick={onSave}>{saved ? 'Saved' : 'Save'}</button>
+            </div>
+          </>
+        ) : (
+          <p>Job recommendations will appear as soon as matching roles are available.</p>
+        )}
       </section>
 
-      <div className="eff-sticky-apply">
-        <button type="button" onClick={onSave} className={`eff-save-job ${saved ? 'is-saved' : ''}`}>{saved ? 'Saved' : 'Save'}</button>
-        <button type="button" onClick={onApply} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
-      </div>
-      <button type="button" className="eff-preview-details" onClick={onOpenDetails}>Open full details</button>
+      <section className="candidate-rail-card">
+        <div className="candidate-widget-head">
+          <span><Rocket className="h-4 w-4" /> Skills to watch</span>
+        </div>
+        <div className="candidate-rail-tags">
+          {(selectedFit?.missingSkills.length ? selectedFit.missingSkills : trendingSkills).slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
+        </div>
+        <p>{selectedFit?.missingSkills.length ? 'Add these skills to improve your strongest job matches.' : 'Your top-role skills are aligned. Keep them current.'}</p>
+      </section>
     </aside>
   );
 }
@@ -1675,19 +1705,14 @@ function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applie
   if (!selectedJob || !selectedFit) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div className="eff-job-drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-        <motion.aside
+      <div className="eff-job-drawer-backdrop" onClick={onClose}>
+        <aside
           ref={modalRef}
           className="eff-job-drawer"
           role="dialog"
           aria-modal="true"
           aria-labelledby="job-drawer-title"
           tabIndex={-1}
-          initial={{ x: 40, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 32, opacity: 0 }}
-          transition={{ duration: 0.22 }}
           onClick={(event) => event.stopPropagation()}
         >
           <header className="eff-drawer-head">
@@ -1790,9 +1815,8 @@ function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applie
             <button type="button" onClick={onReport}><AlertCircle className="h-4 w-4" />Report</button>
             <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Already Applied' : 'Apply Now'}</button>
           </div>
-        </motion.aside>
-      </motion.div>
-    </AnimatePresence>
+        </aside>
+      </div>
   );
 }
 
@@ -1822,10 +1846,10 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
   });
 
   return (
-    <motion.section className="eff-full-panel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+    <section className="eff-full-panel">
       <SectionHeader eyebrow="Saved Jobs" title={`${savedJobs.length} roles on your shortlist`} action={<button type="button" className="eff-action" onClick={onExplore}>Explore jobs</button>} />
       {sorted.length === 0 ? (
-        <EmptyCompact icon={Bookmark} title="No saved jobs yet" body="Save roles from search to compare deadlines, tags, and fit." />
+        <EmptyCompact icon={Bookmark} title="No saved jobs yet" body="Save roles from search to compare deadlines, tags, and fit." actionLabel="Explore recommended jobs" onAction={onExplore} />
       ) : (
         <div className="eff-saved-grid">
           {sorted.map((job) => {
@@ -1854,7 +1878,7 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
           })}
         </div>
       )}
-    </motion.section>
+    </section>
   );
 }
 
@@ -2080,20 +2104,20 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
   }));
 
   return (
-    <motion.section className="eff-full-panel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+    <section className="eff-full-panel">
       <SectionHeader eyebrow="Applications" title="Application tracker" action={<button type="button" className="eff-action" onClick={onExplore}>Find more jobs</button>} />
       {applications.length === 0 ? (
-        <EmptyCompact icon={FileText} title="No applications yet" body="Apply to a job to begin tracking." />
+        <EmptyCompact icon={FileText} title="No applications yet" body="Apply to a strong-match role to begin tracking your progress." actionLabel="Find a role" onAction={onExplore} />
       ) : (
         <>
           <div className="eff-pipeline-summary">
             {stageCounts.map((stage) => (
-              <button key={stage.label} type="button" onClick={() => setStatusFilter(stage.label)} className={statusFilter === stage.label ? 'is-active' : ''}>
+              <button key={stage.label} type="button" onClick={() => setStatusFilter(stage.label)} className={statusFilter === stage.label ? 'is-active' : ''} aria-pressed={statusFilter === stage.label}>
                 <strong>{stage.count}</strong>
                 <span>{stage.label}</span>
               </button>
             ))}
-            <button type="button" onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'is-active' : ''}>
+            <button type="button" onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'is-active' : ''} aria-pressed={statusFilter === 'all'}>
               <strong>{applications.length}</strong>
               <span>All</span>
             </button>
@@ -2111,7 +2135,7 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
           </div>
         </>
       )}
-    </motion.section>
+    </section>
   );
 }
 
@@ -2121,10 +2145,8 @@ function ApplicationMini({ app, expanded, onToggle, large }: {
   onToggle: () => void;
   large?: boolean;
 }) {
-  useRenderTracker('ApplicationCard');
   return (
-    <React.Profiler id="ApplicationCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('ApplicationCard', phase, actualDuration)}>
-      <article className={`eff-application ${large ? 'large' : ''}`}>
+    <article className={`eff-application ${large ? 'large' : ''}`}>
       <button type="button" onClick={onToggle}>
         <span className="eff-app-score">{app.score}%</span>
         <span>
@@ -2133,9 +2155,8 @@ function ApplicationMini({ app, expanded, onToggle, large }: {
         </span>
         <StatusPill status={app.status} />
       </button>
-      <AnimatePresence>
-        {expanded && (
-          <motion.div className="eff-app-detail" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+      {expanded && (
+          <div className="eff-app-detail">
             <Pipeline app={app} />
             <div className="eff-timeline">
               <span><CalendarClock className="h-3.5 w-3.5" /> Applied {new Date(app.appliedAt).toLocaleDateString()}</span>
@@ -2146,11 +2167,9 @@ function ApplicationMini({ app, expanded, onToggle, large }: {
               <SkillSet title="Matched" skills={app.matchedSkills} empty="None" good />
               <SkillSet title="Missing" skills={app.missingSkills} empty="Full match" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      </article>
-    </React.Profiler>
+          </div>
+      )}
+    </article>
   );
 }
 
@@ -2225,7 +2244,7 @@ function ProfileEfficiency(props: {
   ].filter(Boolean) as string[];
 
   return (
-    <motion.section className="eff-profile-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+    <section className="eff-profile-grid">
       <aside className="eff-profile-summary">
         <p>Job readiness</p>
         <strong>{props.profileStrength}%</strong>
@@ -2333,7 +2352,7 @@ function ProfileEfficiency(props: {
           </div>
         </div>
       </form>
-    </motion.section>
+    </section>
   );
 }
 
@@ -2349,7 +2368,7 @@ function SignalCenter({ emailAlerts, activeEmailId, setActiveEmailId }: {
   }, {});
 
   return (
-    <motion.section className="eff-full-panel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+    <section className="eff-full-panel">
       <SectionHeader eyebrow="Notifications" title="Grouped updates and career signals" />
       {emailAlerts.length === 0 ? (
         <EmptyCompact icon={Mail} title="No alerts yet" body="Matched roles and application updates will appear here." />
@@ -2379,7 +2398,7 @@ function SignalCenter({ emailAlerts, activeEmailId, setActiveEmailId }: {
           ))}
         </div>
       )}
-    </motion.section>
+    </section>
   );
 }
 
@@ -2388,7 +2407,7 @@ function FlowInput({ label, value, onChange, placeholder, icon: Icon, readOnly }
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-  icon: React.ElementType;
+  icon: AppIcon;
   readOnly?: boolean;
 }) {
   return (
@@ -2438,7 +2457,7 @@ function StatusPill({ status }: { status: Application['status'] }) {
   return <span className={`eff-status ${tone}`}>{status.replace('_', ' ')}</span>;
 }
 
-function EmptyCompact({ icon: Icon, title, body }: { icon: React.ElementType; title: string; body: string }) {
+function EmptyCompact({ icon: Icon, title, body, actionLabel, onAction }: { icon: AppIcon; title: string; body: string; actionLabel?: string; onAction?: () => void }) {
   const hint = title.includes('jobs')
     ? 'Try widening location or skill filters.'
     : title.includes('saved')
@@ -2452,6 +2471,7 @@ function EmptyCompact({ icon: Icon, title, body }: { icon: React.ElementType; ti
       <strong>{title}</strong>
       <span>{body}</span>
       <small>{hint}</small>
+      {actionLabel && onAction && <button type="button" className="eff-action" onClick={onAction}>{actionLabel}</button>}
     </div>
   );
 }
@@ -2468,12 +2488,7 @@ function JobEmptyState({ onReset }: { onReset: () => void }) {
 }
 
 function EfficiencyLoading() {
-  return (
-    <div className="eff-loading">
-      <span />
-      <strong>Loading jobs and internships</strong>
-    </div>
-  );
+  return <SkeletonLoader type="jobGrid" count={6} />;
 }
 
 function ApplyModal({
@@ -2587,11 +2602,9 @@ function ApplyModal({
     setStep((current) => Math.min(current + 1, steps.length - 1));
   };
 
-  return (
-    <AnimatePresence>
-      {selectedJob && (
-        <motion.div className="eff-apply-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-          <motion.div ref={modalRef} className="eff-modal eff-apply-drawer" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" tabIndex={-1} initial={{ opacity: 0, x: 48 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 32 }} transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }} onClick={(e) => e.stopPropagation()}>
+  return selectedJob ? (
+        <div className="eff-apply-backdrop" onClick={onClose}>
+          <div ref={modalRef} className="eff-modal eff-apply-drawer" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
             <div className="eff-modal-head">
               <div>
                 <p>Premium Apply</p>
@@ -2603,7 +2616,7 @@ function ApplyModal({
 
             {applyResult ? (
               <div className="eff-success">
-                <SuccessAnimation size={72} />
+                <CheckCircle2 className="h-[72px] w-[72px] text-emerald-500" aria-hidden="true" />
                 <h4>{applyResult.score}% alignment</h4>
                 <p>{successMsg}</p>
                 <div className="grid gap-2 text-left text-sm text-slate-600">
@@ -2761,20 +2774,18 @@ function ApplyModal({
                     Back
                   </button>
                   {step < steps.length - 1 ? (
-                    <AnimatedButton type="button" onClick={handleNext} disabled={!canAdvance || applying} className="w-full">
+                    <button type="button" onClick={handleNext} disabled={!canAdvance || applying} className="eff-action w-full">
                       {hasResume ? `Next: ${steps[step + 1]}` : 'Resume required'}
-                    </AnimatedButton>
+                    </button>
                   ) : (
-                    <AnimatedButton type="submit" disabled={applying || !hasResume} className="w-full">
+                    <button type="submit" disabled={applying || !hasResume} className="eff-action w-full">
                       {applying ? 'Submitting application...' : 'Apply now'}
-                    </AnimatedButton>
+                    </button>
                   )}
                 </div>
               </form>
             )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+          </div>
+        </div>
+  ) : null;
 }

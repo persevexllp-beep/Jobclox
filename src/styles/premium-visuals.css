@@ -1,0 +1,1016 @@
+/**
+ * Persevex premium visual layer.
+ * Visual enrichment only: layout, behavior, and product contracts remain unchanged.
+ */
+
+:root {
+  --pvx-violet: #7c3aed;
+  --pvx-cyan: #0891b2;
+  --pvx-rose: #e11d48;
+  --pvx-gold: #d97706;
+  --pvx-ambient-blue: rgba(37, 99, 235, .13);
+  --pvx-ambient-violet: rgba(124, 58, 237, .1);
+  --pvx-ambient-cyan: rgba(8, 145, 178, .09);
+  --pvx-premium-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 14px 38px rgba(15, 23, 42, .075);
+  --pvx-premium-shadow-hover: 0 2px 4px rgba(15, 23, 42, .05), 0 22px 52px rgba(37, 99, 235, .12);
+  --pvx-gradient-brand: linear-gradient(135deg, #2563eb 0%, #4f46e5 52%, #0891b2 100%);
+  --pvx-gradient-brand-soft: linear-gradient(135deg, rgba(37, 99, 235, .11), rgba(124, 58, 237, .075) 55%, rgba(8, 145, 178, .07));
+}
+
+html.dark {
+  --pvx-ambient-blue: rgba(59, 130, 246, .17);
+  --pvx-ambient-violet: rgba(139, 92, 246, .14);
+  --pvx-ambient-cyan: rgba(34, 211, 238, .1);
+  --pvx-premium-shadow: 0 1px 2px rgba(0, 0, 0, .22), 0 18px 46px rgba(0, 0, 0, .3);
+  --pvx-premium-shadow-hover: 0 2px 4px rgba(0, 0, 0, .28), 0 24px 60px rgba(30, 64, 175, .2);
+}
+
+/* Ambient product canvas */
+.pvx-app-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 5% 5%, var(--pvx-ambient-blue), transparent 30rem),
+    radial-gradient(circle at 96% 14%, var(--pvx-ambient-violet), transparent 28rem),
+    radial-gradient(circle at 52% 92%, var(--pvx-ambient-cyan), transparent 34rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--pvx-bg-canvas) 95%, #dbeafe) 0%, var(--pvx-bg-canvas) 42%, color-mix(in srgb, var(--pvx-bg-canvas) 96%, #ede9fe) 100%) !important;
+}
+
+.pvx-app-shell::before,
+.pvx-app-shell::after {
+  position: fixed;
+  z-index: -1;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(80px);
+  content: "";
+  opacity: .28;
+  pointer-events: none;
+}
+
+.pvx-app-shell::before { top: 12%; left: -220px; background: #60a5fa; }
+.pvx-app-shell::after { right: -220px; bottom: 4%; background: #a78bfa; }
+
+.pvx-header {
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--pvx-bg-surface) 88%, #dbeafe), color-mix(in srgb, var(--pvx-bg-surface) 90%, #ede9fe)) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .76), 0 12px 36px rgba(15, 23, 42, .065) !important;
+}
+
+.pvx-brand-logo-mark {
+  border: 1px solid color-mix(in srgb, var(--pvx-accent) 16%, var(--pvx-border-default));
+  box-shadow: 0 10px 26px rgba(37, 99, 235, .13) !important;
+}
+
+.pvx-brand-logo-text strong {
+  background: linear-gradient(120deg, var(--pvx-text-primary), color-mix(in srgb, var(--pvx-accent) 70%, var(--pvx-text-primary)));
+  background-clip: text;
+  color: transparent !important;
+  letter-spacing: -.025em;
+}
+
+/* Typography hierarchy and minimum readable metadata */
+.pvx-page-header-title {
+  background: linear-gradient(115deg, var(--pvx-text-primary) 8%, color-mix(in srgb, var(--pvx-accent) 66%, var(--pvx-text-primary)) 74%, var(--pvx-cyan));
+  background-clip: text;
+  color: transparent !important;
+  font-weight: 720;
+  letter-spacing: -.045em;
+}
+
+.pvx-page-header-eyebrow,
+.eff-section-head > div > span,
+.rec-section-header > div > span {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--pvx-accent) 15%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pvx-accent) 7%, transparent);
+  padding: 4px 8px;
+  color: var(--pvx-accent) !important;
+  font-size: 11.5px !important;
+  letter-spacing: .075em !important;
+}
+
+.pvx-page-header-description,
+.eff-section-head p,
+.rec-section-header p,
+.candidate-overview-card p,
+.candidate-rail-card p,
+.rec-focus-row span,
+.rec-applicant-card small,
+.rec-applicant-card p,
+.eff-job-row-copy > small,
+.eff-job-location-row span,
+.eff-preview-section p,
+.eff-profile-photo small,
+.onboarding-body small,
+.onboarding-body > span {
+  font-size: max(12px, .8125rem) !important;
+  line-height: 1.55 !important;
+}
+
+.landing-preview-heading small,
+.landing-preview-job small,
+.landing-preview-job > span,
+.landing-preview-sidebar > small,
+.landing-preview-sidebar > b,
+.landing-preview-sidebar li,
+.landing-job-top > span,
+.landing-job-skills span,
+.pvx-app-shell .text-\[9px\],
+.pvx-app-shell .text-\[10px\],
+.admin-page .text-\[9px\],
+.admin-page .text-\[10px\] {
+  font-size: 11.5px !important;
+  line-height: 1.45 !important;
+}
+
+.eff-filter-field span,
+.eff-job-row-signals small,
+.rec-field span,
+.rec-toolbar,
+.rec-job-table th,
+.rec-job-table td {
+  font-size: max(12px, .75rem) !important;
+}
+
+.eff-section-head h2,
+.rec-section-header h2 {
+  font-size: clamp(1.15rem, 1.7vw, 1.45rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: -.032em !important;
+}
+
+/* Layered card system */
+.eff-opportunities,
+.eff-filter-sidebar,
+.eff-full-panel,
+.eff-profile-summary,
+.eff-profile-form,
+.candidate-overview-card,
+.candidate-rail-card,
+.rec-panel,
+.rec-metric-card,
+.rec-pipeline-column,
+.rec-applicant-card,
+.rec-analytics-card,
+.onboarding-progress,
+.onboarding-card {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 78%, var(--pvx-accent)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--pvx-bg-surface) 98%, #dbeafe), color-mix(in srgb, var(--pvx-bg-surface) 97%, #ede9fe)) !important;
+  box-shadow: var(--pvx-premium-shadow) !important;
+}
+
+.eff-opportunities,
+.eff-full-panel,
+.rec-panel,
+.onboarding-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.eff-opportunities::before,
+.eff-full-panel::before,
+.rec-panel::before,
+.onboarding-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, .65), rgba(124, 58, 237, .5), transparent);
+  content: "";
+  opacity: .7;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .candidate-overview-card:hover,
+  .candidate-rail-card:hover,
+  .rec-metric-card:hover,
+  .rec-applicant-card:hover,
+  .rec-analytics-card:hover,
+  .eff-saved-card:hover,
+  .eff-application:hover {
+    border-color: color-mix(in srgb, var(--pvx-accent) 32%, var(--pvx-border-default)) !important;
+    box-shadow: var(--pvx-premium-shadow-hover) !important;
+    transform: translateY(-3px);
+  }
+}
+
+/* Candidate dashboard: colorful, dense, and aspirational */
+.candidate-overview-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 150px;
+}
+
+.candidate-overview-card::after,
+.rec-metric-card::after {
+  position: absolute;
+  top: -42px;
+  right: -36px;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  content: "";
+  opacity: .26;
+  pointer-events: none;
+}
+
+.candidate-overview-card:nth-child(1)::after,
+.rec-metric-card:nth-child(1)::after { background: radial-gradient(circle, #60a5fa, transparent 68%); }
+.candidate-overview-card:nth-child(2)::after,
+.rec-metric-card:nth-child(2)::after { background: radial-gradient(circle, #a78bfa, transparent 68%); }
+.candidate-overview-card:nth-child(3)::after,
+.rec-metric-card:nth-child(3)::after { background: radial-gradient(circle, #2dd4bf, transparent 68%); }
+.candidate-overview-card:nth-child(4)::after,
+.rec-metric-card:nth-child(4)::after { background: radial-gradient(circle, #fbbf24, transparent 68%); }
+
+.candidate-widget-head svg,
+.candidate-rail-heading svg {
+  color: var(--pvx-accent);
+  filter: drop-shadow(0 4px 8px rgba(37, 99, 235, .22));
+}
+
+.candidate-widget-progress,
+.eff-completion-bar {
+  overflow: hidden;
+  background: color-mix(in srgb, var(--pvx-bg-muted) 88%, #dbeafe) !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .07);
+}
+
+.candidate-widget-progress span,
+.eff-completion-bar span {
+  background: var(--pvx-gradient-brand) !important;
+  box-shadow: 0 0 18px rgba(37, 99, 235, .38);
+}
+
+.eff-job-card {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--pvx-border-default) 84%, #93c5fd) !important;
+  background:
+    radial-gradient(circle at 96% 8%, rgba(59, 130, 246, .08), transparent 26%),
+    linear-gradient(145deg, var(--pvx-bg-surface), color-mix(in srgb, var(--pvx-bg-surface) 96%, #dbeafe)) !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .055) !important;
+}
+
+.eff-job-card::before {
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 3px;
+  border-radius: 0 99px 99px 0;
+  background: linear-gradient(180deg, #3b82f6, #7c3aed, #06b6d4);
+  content: "";
+  opacity: .72;
+}
+
+.eff-job-card.is-selected {
+  border-color: color-mix(in srgb, var(--pvx-accent) 42%, var(--pvx-border-default)) !important;
+  background:
+    radial-gradient(circle at 94% 4%, rgba(124, 58, 237, .12), transparent 28%),
+    color-mix(in srgb, var(--pvx-bg-surface) 96%, #dbeafe) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pvx-accent) 10%, transparent), var(--pvx-premium-shadow) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .eff-job-card:hover {
+    border-color: color-mix(in srgb, var(--pvx-accent) 34%, var(--pvx-border-default)) !important;
+    box-shadow: var(--pvx-premium-shadow-hover) !important;
+    transform: translateY(-3px) !important;
+  }
+}
+
+.eff-company-badge {
+  border: 1px solid color-mix(in srgb, var(--pvx-accent) 18%, var(--pvx-border-default)) !important;
+  background: linear-gradient(145deg, #eff6ff, #ede9fe) !important;
+  color: #3730a3 !important;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, .13);
+}
+
+.eff-quality-chip {
+  border: 1px solid currentColor !important;
+  background: color-mix(in srgb, currentColor 8%, var(--pvx-bg-surface)) !important;
+  font-weight: 800 !important;
+}
+
+.candidate-rail-recommendation {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, .14), transparent 38%),
+    linear-gradient(145deg, color-mix(in srgb, var(--pvx-bg-surface) 96%, #dbeafe), color-mix(in srgb, var(--pvx-bg-surface) 96%, #ede9fe)) !important;
+}
+
+.eff-saved-card,
+.eff-application {
+  position: relative;
+  border-color: color-mix(in srgb, var(--pvx-border-default) 82%, #93c5fd) !important;
+  background:
+    linear-gradient(145deg, var(--pvx-bg-surface), color-mix(in srgb, var(--pvx-bg-surface) 97%, #dbeafe)) !important;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, .055) !important;
+}
+
+.eff-pipeline-summary button.is-active,
+.eff-resume-steps button.is-active {
+  border-color: color-mix(in srgb, var(--pvx-accent) 35%, var(--pvx-border-default)) !important;
+  background: var(--pvx-gradient-brand-soft) !important;
+  color: var(--pvx-accent) !important;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, .12);
+}
+
+/* Recruiter hiring OS */
+.rec-metric-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 126px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, .12), transparent 34%),
+    linear-gradient(145deg, var(--pvx-bg-surface), color-mix(in srgb, var(--pvx-bg-surface) 96%, #dbeafe)) !important;
+}
+
+.rec-metric-card > div:first-child svg {
+  box-sizing: content-box;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pvx-accent) 10%, transparent);
+  padding: 8px;
+  color: var(--pvx-accent);
+  filter: drop-shadow(0 6px 10px rgba(37, 99, 235, .18));
+}
+
+.rec-metric-card > strong {
+  background: linear-gradient(110deg, var(--pvx-text-primary), var(--pvx-accent));
+  background-clip: text;
+  color: transparent !important;
+  font-size: clamp(1.7rem, 2.6vw, 2.25rem) !important;
+  letter-spacing: -.045em;
+}
+
+.rec-command-grid .rec-panel:first-child {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, .1), transparent 34%),
+    var(--pvx-bg-surface) !important;
+}
+
+.rec-command-grid .rec-panel:last-child {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, .11), transparent 36%),
+    var(--pvx-bg-surface) !important;
+}
+
+.rec-focus-row {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 84%, #bfdbfe) !important;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 97%, #dbeafe) !important;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, .035);
+}
+
+.rec-focus-row > svg {
+  box-sizing: content-box;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--pvx-accent) 9%, transparent);
+  padding: 7px;
+  color: var(--pvx-accent);
+}
+
+.rec-pipeline-column:nth-child(1) header { background: linear-gradient(135deg, rgba(59, 130, 246, .12), rgba(59, 130, 246, .04)) !important; }
+.rec-pipeline-column:nth-child(2) header { background: linear-gradient(135deg, rgba(124, 58, 237, .12), rgba(124, 58, 237, .04)) !important; }
+.rec-pipeline-column:nth-child(3) header { background: linear-gradient(135deg, rgba(8, 145, 178, .12), rgba(8, 145, 178, .04)) !important; }
+.rec-pipeline-column:nth-child(4) header { background: linear-gradient(135deg, rgba(217, 119, 6, .13), rgba(217, 119, 6, .04)) !important; }
+.rec-pipeline-column:nth-child(5) header { background: linear-gradient(135deg, rgba(22, 163, 74, .13), rgba(22, 163, 74, .04)) !important; }
+
+.rec-applicant-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, .07), transparent 28%),
+    var(--pvx-bg-surface) !important;
+}
+
+.rec-score {
+  border: 1px solid color-mix(in srgb, var(--pvx-accent) 20%, transparent);
+  background: var(--pvx-gradient-brand-soft) !important;
+  color: var(--pvx-accent) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, .11);
+}
+
+.rec-analytics-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, .1), transparent 34%),
+    linear-gradient(145deg, var(--pvx-bg-surface), color-mix(in srgb, var(--pvx-bg-surface) 97%, #ede9fe)) !important;
+}
+
+.rec-bars span {
+  background: linear-gradient(180deg, #60a5fa, #4f46e5 55%, #7c3aed) !important;
+  box-shadow: 0 0 16px rgba(79, 70, 229, .16);
+}
+
+/* Onboarding and authentication */
+.onboarding-progress {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, .16), transparent 34%),
+    linear-gradient(155deg, color-mix(in srgb, var(--pvx-bg-surface) 92%, #dbeafe), color-mix(in srgb, var(--pvx-bg-surface) 96%, #ede9fe)) !important;
+}
+
+.onboarding-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, .09), transparent 30%),
+    var(--pvx-bg-surface) !important;
+}
+
+.onboarding-steps button.is-active {
+  background: var(--pvx-gradient-brand) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, .2) !important;
+}
+
+.onboarding-choice-grid button.is-active,
+.onboarding-jobs button:hover {
+  border-color: color-mix(in srgb, var(--pvx-accent) 38%, var(--pvx-border-default)) !important;
+  background: var(--pvx-gradient-brand-soft) !important;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, .11);
+}
+
+.auth-product-shell {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(59, 130, 246, .18), transparent 30rem),
+    radial-gradient(circle at 88% 18%, rgba(124, 58, 237, .16), transparent 28rem),
+    radial-gradient(circle at 50% 100%, rgba(8, 145, 178, .12), transparent 32rem),
+    linear-gradient(145deg, #f8fbff, #f8fafc 44%, #faf7ff) !important;
+}
+
+.auth-card {
+  border-color: rgba(255, 255, 255, .92) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .88), rgba(248, 250, 252, .72)) !important;
+  box-shadow: 0 32px 90px rgba(30, 64, 175, .16), 0 10px 32px rgba(15, 23, 42, .08) !important;
+}
+
+.auth-hero-panel h1 {
+  background: linear-gradient(112deg, #0f172a 12%, #1d4ed8 58%, #7c3aed 92%);
+  background-clip: text;
+  color: transparent !important;
+  letter-spacing: -.052em;
+}
+
+.auth-journey > div {
+  border-color: rgba(255, 255, 255, .88) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .8), rgba(239, 246, 255, .65)) !important;
+  box-shadow: 0 14px 36px rgba(30, 64, 175, .08) !important;
+}
+
+html.dark .auth-product-shell {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(59, 130, 246, .2), transparent 30rem),
+    radial-gradient(circle at 88% 18%, rgba(139, 92, 246, .17), transparent 28rem),
+    radial-gradient(circle at 50% 100%, rgba(34, 211, 238, .1), transparent 32rem),
+    linear-gradient(145deg, #020617, #0f172a 48%, #111827) !important;
+}
+
+html.dark .auth-card {
+  border-color: rgba(148, 163, 184, .16) !important;
+  background: linear-gradient(145deg, rgba(15, 23, 42, .9), rgba(30, 41, 59, .76)) !important;
+  box-shadow: 0 34px 100px rgba(0, 0, 0, .42), inset 0 1px rgba(255, 255, 255, .04) !important;
+}
+
+html.dark .auth-hero-panel h1 {
+  background: linear-gradient(112deg, #f8fafc 10%, #93c5fd 58%, #c4b5fd 92%);
+  background-clip: text;
+}
+
+html.dark .auth-journey > div {
+  border-color: rgba(148, 163, 184, .14) !important;
+  background: linear-gradient(145deg, rgba(15, 23, 42, .8), rgba(30, 41, 59, .7)) !important;
+}
+
+/* Landing storytelling */
+.landing-shell {
+  background:
+    radial-gradient(circle at 8% 3%, rgba(59, 130, 246, .2), transparent 34rem),
+    radial-gradient(circle at 90% 14%, rgba(124, 58, 237, .17), transparent 32rem),
+    radial-gradient(circle at 48% 62%, rgba(6, 182, 212, .1), transparent 38rem),
+    linear-gradient(180deg, #fafdff 0%, #f8fafc 46%, #faf7ff 100%) !important;
+}
+
+.landing-hero::before {
+  position: absolute;
+  inset: 8% auto auto 42%;
+  width: 420px;
+  height: 420px;
+  border: 1px solid rgba(59, 130, 246, .08);
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 32px, rgba(59, 130, 246, .035) 33px 34px);
+  content: "";
+  mask-image: linear-gradient(to bottom, #000, transparent 72%);
+  pointer-events: none;
+}
+
+.landing-hero-copy h1 {
+  text-shadow: 0 18px 44px rgba(37, 99, 235, .07);
+}
+
+.landing-product-preview {
+  border-color: rgba(255, 255, 255, .95) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, .1), transparent 34%),
+    rgba(255, 255, 255, .88) !important;
+  box-shadow: 0 40px 120px rgba(30, 64, 175, .2), 0 12px 34px rgba(15, 23, 42, .09) !important;
+}
+
+.landing-preview-job,
+.landing-job-card,
+.landing-category-grid article,
+.landing-step-list article {
+  border-color: color-mix(in srgb, #dbeafe 74%, #c4b5fd) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, .08), transparent 30%),
+    linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(248, 250, 252, .86)) !important;
+  box-shadow: 0 12px 34px rgba(30, 64, 175, .075) !important;
+}
+
+.landing-trust-strip {
+  background: linear-gradient(90deg, rgba(239, 246, 255, .74), rgba(245, 243, 255, .7), rgba(236, 254, 255, .65)) !important;
+}
+
+.landing-section-tinted {
+  background:
+    radial-gradient(circle at 12% 20%, rgba(59, 130, 246, .11), transparent 26rem),
+    radial-gradient(circle at 88% 84%, rgba(124, 58, 237, .1), transparent 24rem),
+    linear-gradient(180deg, rgba(239, 246, 255, .58), rgba(250, 247, 255, .56)) !important;
+}
+
+.landing-employer-panel {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(96, 165, 250, .25), transparent 30%),
+    radial-gradient(circle at 0% 100%, rgba(124, 58, 237, .22), transparent 34%),
+    linear-gradient(145deg, #0f172a, #172554 48%, #312e81) !important;
+  box-shadow: 0 40px 110px rgba(30, 41, 59, .3), inset 0 1px rgba(255, 255, 255, .1) !important;
+}
+
+/* Deliberate, short staggered entrances */
+@media (prefers-reduced-motion: no-preference) {
+  .candidate-overview-card,
+  .eff-job-grid > .eff-job-card,
+  .rec-metrics > .rec-metric-card,
+  .rec-kanban > .rec-pipeline-column,
+  .landing-job-grid > *,
+  .landing-category-grid > *,
+  .landing-step-list > * {
+    animation: pvx-rich-enter 420ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  :is(.candidate-overview-card, .eff-job-grid > .eff-job-card, .rec-metrics > .rec-metric-card, .rec-kanban > .rec-pipeline-column, .landing-job-grid > *, .landing-category-grid > *, .landing-step-list > *):nth-child(2) { animation-delay: 45ms; }
+  :is(.candidate-overview-card, .eff-job-grid > .eff-job-card, .rec-metrics > .rec-metric-card, .rec-kanban > .rec-pipeline-column, .landing-job-grid > *, .landing-category-grid > *, .landing-step-list > *):nth-child(3) { animation-delay: 90ms; }
+  :is(.candidate-overview-card, .eff-job-grid > .eff-job-card, .rec-metrics > .rec-metric-card, .rec-kanban > .rec-pipeline-column, .landing-job-grid > *, .landing-category-grid > *, .landing-step-list > *):nth-child(4) { animation-delay: 135ms; }
+  :is(.candidate-overview-card, .eff-job-grid > .eff-job-card, .rec-metrics > .rec-metric-card, .rec-kanban > .rec-pipeline-column, .landing-job-grid > *, .landing-category-grid > *, .landing-step-list > *):nth-child(n+5) { animation-delay: 170ms; }
+
+  .landing-product-preview { animation: pvx-preview-enter 700ms cubic-bezier(.22, 1, .36, 1) 80ms both; }
+}
+
+@keyframes pvx-rich-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pvx-preview-enter {
+  from { opacity: 0; transform: perspective(1200px) rotateY(-4deg) rotateX(2deg) translateY(18px) scale(.985); }
+  to { opacity: 1; transform: perspective(1200px) rotateY(-2deg) rotateX(1deg) translateY(0) scale(1); }
+}
+
+@media (max-width: 760px) {
+  .pvx-app-shell::before,
+  .pvx-app-shell::after { width: 220px; height: 220px; filter: blur(58px); opacity: .2; }
+  .candidate-overview-card { min-height: 132px; }
+  .rec-metric-card { min-height: 112px; }
+  .landing-hero::before { right: -180px; left: auto; width: 300px; height: 300px; }
+  .landing-product-preview { box-shadow: 0 26px 70px rgba(30, 64, 175, .17) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candidate-overview-card,
+  .candidate-rail-card,
+  .rec-metric-card,
+  .rec-applicant-card,
+  .rec-analytics-card,
+  .eff-saved-card,
+  .eff-application,
+  .eff-job-card,
+  .landing-product-preview {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── Classic SaaS composition correction ── */
+.pvx-app-shell {
+  background:
+    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--pvx-accent) 8%, transparent), transparent 30rem),
+    radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--pvx-violet) 6%, transparent), transparent 28rem),
+    var(--pvx-bg-canvas) !important;
+}
+
+.pvx-app-shell::before,
+.pvx-app-shell::after {
+  opacity: .14;
+}
+
+.pvx-header {
+  background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent) !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--pvx-border-default) 82%, transparent), 0 8px 28px rgba(15, 23, 42, .045) !important;
+}
+
+.pvx-page-header-title,
+.pvx-brand-logo-text strong {
+  background: none !important;
+  color: var(--pvx-text-primary) !important;
+  text-shadow: none;
+}
+
+.pvx-page-header-eyebrow,
+.eff-section-head > div > span,
+.rec-section-header > div > span {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.pvx-dashboard-shell {
+  --pvx-group-gap: 18px;
+}
+
+.eff-header,
+.pvx-dashboard-shell > .pvx-page-header {
+  margin-bottom: var(--pvx-group-gap);
+}
+
+.candidate-overview {
+  gap: 10px !important;
+  margin-bottom: var(--pvx-group-gap) !important;
+}
+
+.candidate-overview-card {
+  min-height: 132px;
+  padding: 16px !important;
+}
+
+.candidate-overview-card::after,
+.rec-metric-card::after {
+  opacity: .14;
+}
+
+.candidate-overview-card:nth-child(1)::after,
+.rec-metric-card:nth-child(1)::after,
+.candidate-overview-card:nth-child(2)::after,
+.rec-metric-card:nth-child(2)::after,
+.candidate-overview-card:nth-child(3)::after,
+.rec-metric-card:nth-child(3)::after,
+.candidate-overview-card:nth-child(4)::after,
+.rec-metric-card:nth-child(4)::after {
+  background: radial-gradient(circle, color-mix(in srgb, var(--pvx-accent) 52%, transparent), transparent 68%);
+}
+
+.eff-workspace {
+  gap: 14px !important;
+}
+
+.eff-filter-sidebar {
+  gap: 10px !important;
+  padding: 12px !important;
+  border-color: color-mix(in srgb, var(--pvx-border-default) 88%, transparent) !important;
+  background: color-mix(in srgb, var(--pvx-bg-muted) 74%, var(--pvx-bg-surface)) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035) !important;
+}
+
+.eff-filter-sidebar .eff-section-head {
+  margin-bottom: 2px !important;
+}
+
+.eff-filter-sidebar .eff-section-head > div > span {
+  display: none;
+}
+
+.eff-filter-sidebar .eff-section-head h2 {
+  font-size: 1rem !important;
+  letter-spacing: -.018em !important;
+}
+
+.eff-filter-field {
+  gap: 5px !important;
+}
+
+.eff-filter-field span {
+  color: var(--pvx-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+.eff-filter-field select,
+.eff-filter-sidebar .eff-search {
+  min-height: 40px !important;
+  background: var(--pvx-bg-surface) !important;
+}
+
+.eff-opportunities {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 72%, var(--pvx-accent)) !important;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 98%, var(--pvx-accent)) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035), 0 12px 34px rgba(15, 23, 42, .065) !important;
+}
+
+.eff-opportunities::before,
+.eff-full-panel::before,
+.rec-panel::before,
+.onboarding-card::before {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--pvx-accent) 58%, transparent), transparent);
+  opacity: .5;
+}
+
+.candidate-insights-rail {
+  gap: 10px !important;
+}
+
+.candidate-rail-card {
+  padding: 14px !important;
+  border-color: color-mix(in srgb, var(--pvx-border-default) 86%, transparent) !important;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 97%, var(--pvx-bg-muted)) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .04) !important;
+}
+
+.candidate-rail-recommendation {
+  border-color: color-mix(in srgb, var(--pvx-accent) 18%, var(--pvx-border-default)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--pvx-bg-surface) 96%, var(--pvx-accent)), var(--pvx-bg-surface)) !important;
+}
+
+.eff-job-grid,
+.eff-job-grid-discovery {
+  gap: 9px !important;
+}
+
+.eff-job-card {
+  min-height: 94px !important;
+  border-color: color-mix(in srgb, var(--pvx-border-default) 80%, var(--pvx-accent)) !important;
+  background: var(--pvx-bg-surface) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035), 0 5px 16px rgba(15, 23, 42, .045) !important;
+}
+
+.eff-job-card::before {
+  inset-block: 14px;
+  width: 2px;
+  background: var(--pvx-accent);
+  opacity: .58;
+}
+
+.eff-job-card.is-selected {
+  background: color-mix(in srgb, var(--pvx-bg-surface) 96%, var(--pvx-accent)) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pvx-accent) 9%, transparent), 0 8px 22px rgba(15, 23, 42, .065) !important;
+}
+
+.eff-company-line {
+  display: flex !important;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.eff-company-line > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eff-company-line > em {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  color: var(--pvx-accent);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.eff-company-line > em svg {
+  fill: color-mix(in srgb, var(--pvx-accent) 12%, transparent);
+}
+
+.eff-job-row-signals {
+  border-left: 1px solid var(--pvx-border-subtle);
+  padding-left: 12px;
+}
+
+.eff-job-row-signals > strong {
+  color: var(--pvx-text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.eff-quality-chip {
+  min-width: 82px;
+  justify-content: center;
+  border-color: color-mix(in srgb, var(--pvx-accent) 24%, var(--pvx-border-default)) !important;
+  background: color-mix(in srgb, var(--pvx-accent) 8%, var(--pvx-bg-surface)) !important;
+  color: color-mix(in srgb, var(--pvx-accent) 88%, var(--pvx-text-primary)) !important;
+  box-shadow: none !important;
+}
+
+.eff-saved-card,
+.eff-application {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 84%, transparent) !important;
+  background: var(--pvx-bg-surface) !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, .045) !important;
+}
+
+.rec-metrics {
+  gap: 10px !important;
+}
+
+.rec-metric-card {
+  min-height: 114px;
+  padding: 16px !important;
+  background: var(--pvx-bg-surface) !important;
+}
+
+.rec-metric-card > strong {
+  background: none;
+  color: var(--pvx-text-primary) !important;
+  font-size: clamp(1.65rem, 2.3vw, 2rem) !important;
+}
+
+.rec-command-grid {
+  gap: 14px !important;
+}
+
+.rec-command-grid .rec-panel:first-child,
+.rec-command-grid .rec-panel:last-child,
+.rec-analytics-card,
+.rec-applicant-card {
+  background: var(--pvx-bg-surface) !important;
+}
+
+.rec-pipeline-column {
+  background: color-mix(in srgb, var(--pvx-bg-muted) 54%, var(--pvx-bg-surface)) !important;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, .045) !important;
+}
+
+.rec-pipeline-column header {
+  border-bottom: 1px solid var(--pvx-border-subtle) !important;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 94%, var(--pvx-accent)) !important;
+}
+
+.rec-applicant-card {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 84%, transparent) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .05) !important;
+}
+
+.rec-bars span {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pvx-accent) 68%, #60a5fa), var(--pvx-accent)) !important;
+  box-shadow: none;
+}
+
+/* Explicit dark surface hierarchy: canvas → group → card */
+html.dark .pvx-app-shell {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(59, 130, 246, .11), transparent 30rem),
+    radial-gradient(circle at 92% 18%, rgba(99, 102, 241, .08), transparent 28rem),
+    #020617 !important;
+}
+
+html.dark .pvx-header {
+  border-bottom-color: #263449 !important;
+  background: rgba(8, 15, 30, .9) !important;
+  box-shadow: 0 1px 0 rgba(148, 163, 184, .08), 0 12px 34px rgba(0, 0, 0, .24) !important;
+}
+
+html.dark .eff-opportunities,
+html.dark .eff-full-panel,
+html.dark .eff-profile-form,
+html.dark .rec-panel,
+html.dark .onboarding-card {
+  border-color: #2b3a50 !important;
+  background: linear-gradient(145deg, #0f172a, #111c31) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .24), 0 18px 44px rgba(0, 0, 0, .22) !important;
+}
+
+html.dark .eff-filter-sidebar,
+html.dark .candidate-insights-rail,
+html.dark .rec-pipeline-column,
+html.dark .eff-profile-summary,
+html.dark .onboarding-progress {
+  border-color: #26364b !important;
+  background: linear-gradient(145deg, #0b1324, #101a2d) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .22) !important;
+}
+
+html.dark .candidate-overview-card,
+html.dark .candidate-rail-card,
+html.dark .rec-metric-card,
+html.dark .rec-applicant-card,
+html.dark .rec-analytics-card,
+html.dark .eff-saved-card,
+html.dark .eff-application,
+html.dark .career-flow-os .eff-job-card {
+  border-color: #2b3a50 !important;
+  background: linear-gradient(145deg, #111c31, #0f192b) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .22) !important;
+}
+
+html.dark .career-flow-os .eff-job-card.is-selected {
+  border-color: rgba(96, 165, 250, .46) !important;
+  background: linear-gradient(145deg, #13223a, #111d32) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, .1), 0 10px 28px rgba(0, 0, 0, .28) !important;
+}
+
+html.dark .eff-filter-field select,
+html.dark .eff-filter-sidebar .eff-search,
+html.dark .rec-toolbar input,
+html.dark .rec-toolbar select,
+html.dark .rec-field input,
+html.dark .rec-field textarea,
+html.dark .rec-applicant-card textarea {
+  border-color: #33445b !important;
+  background: #111c31 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .eff-company-badge {
+  border-color: #334b72 !important;
+  background: linear-gradient(145deg, #172554, #1e293b) !important;
+  color: #bfdbfe !important;
+  box-shadow: none;
+}
+
+html.dark .eff-job-row-signals {
+  border-left-color: #29384d;
+}
+
+html.dark .eff-quality-chip,
+html.dark .rec-score {
+  border-color: rgba(96, 165, 250, .28) !important;
+  background: rgba(59, 130, 246, .11) !important;
+  color: #bfdbfe !important;
+}
+
+html.dark .pvx-tab-nav {
+  border-color: #2b3a50;
+  background: #0b1324;
+}
+
+html.dark .pvx-tab-nav-item.is-active {
+  border-color: #34445a;
+  background: #172033;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .22);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .eff-job-card:hover,
+  .candidate-overview-card:hover,
+  .candidate-rail-card:hover,
+  .rec-metric-card:hover,
+  .rec-applicant-card:hover,
+  .rec-analytics-card:hover,
+  .eff-saved-card:hover,
+  .eff-application:hover {
+    transform: translateY(-2px) !important;
+  }
+
+  html.dark .career-flow-os .eff-job-card:hover,
+  html.dark .candidate-overview-card:hover,
+  html.dark .candidate-rail-card:hover,
+  html.dark .rec-metric-card:hover,
+  html.dark .rec-applicant-card:hover {
+    border-color: #3b506c !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .28) !important;
+  }
+}
+
+/* One restrained entrance per content region; no card-by-card cascade. */
+@media (prefers-reduced-motion: no-preference) {
+  .eff-workspace,
+  .eff-full-panel,
+  .eff-profile-grid,
+  .eco-os,
+  .rec-command-grid,
+  .rec-panel,
+  .rec-analytics-grid {
+    animation: pvx-region-enter 260ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .eff-job-grid > .eff-job-card,
+  .rec-kanban > .rec-pipeline-column,
+  .candidate-overview-card,
+  .rec-metrics > .rec-metric-card {
+    animation: none;
+  }
+}
+
+@keyframes pvx-region-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .candidate-overview-card { min-height: 118px; }
+  .eff-job-row-signals { border-left: 0; padding-left: 0; }
+  .eff-company-line > em { font-size: 11px; }
+  .rec-metric-card { min-height: 106px; }
+}

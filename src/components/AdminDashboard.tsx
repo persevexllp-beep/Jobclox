@@ -6,15 +6,17 @@
  */
 
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import type { AppIcon } from '@/src/lib/icons';
 import { User, Company, Job, EmailAlert, Application } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell } from 'recharts';
-import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye } from 'lucide-react';
+import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye, BarChart3, Building2, UserCog } from 'lucide-react';
 import SkeletonLoader from './SkeletonLoader';
 import { formatEmailAlertPreview, sanitizeEmailHtml } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
 import { useTheme } from '@/src/lib/theme';
-import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
+import { PageHeader, TabNav } from '@/src/components/layout';
+import { MetricCard, Button } from '@/src/components/ui';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -350,7 +352,7 @@ function AdminJobMetric({ label, value }: { label: string; value: React.ReactNod
   );
 }
 
-function AdminEmptyState({ icon: Icon, title, body, action }: { icon: React.ElementType; title: string; body: string; action?: React.ReactNode }) {
+function AdminEmptyState({ icon: Icon, title, body, action }: { icon: AppIcon; title: string; body: string; action?: React.ReactNode }) {
   return (
     <section className="admin-empty-state">
       <Icon className="h-7 w-7" />
@@ -458,7 +460,6 @@ const emptyAdminJobForm: AdminJobFormState = {
 };
 
 export default function AdminDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: AdminDashboardProps) {
-  useRenderTracker('AdminDashboard');
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState<'analytics' | 'companies' | 'jobs' | 'screening' | 'users' | 'emails'>('analytics');
   const [loading, setLoading] = useState(true);
@@ -904,101 +905,75 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
     return { label: 'Weak', classes: 'bg-red-50 text-red-700 border-red-150' };
   };
 
+  const pendingVerifications = metrics?.pendingVerifications ?? companies.filter(c => c.verificationStatus === 'pending').length;
+  const pendingJobs = metrics?.pendingJobs ?? jobs.filter(j => j.status === 'submitted').length;
+  const screeningCount = applications.filter(a => a.status === 'applied' || a.status === 'under_review').length;
+
+  const adminTabs = [
+    { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
+    { id: 'companies' as const, label: 'KYC Verifications', icon: Building2, badge: pendingVerifications },
+    { id: 'jobs' as const, label: 'Jobs & Moderation', icon: FileText, badge: pendingJobs },
+    { id: 'screening' as const, label: 'Screening Desk', icon: Users, badge: screeningCount },
+    { id: 'users' as const, label: 'User Accounts', icon: UserCog },
+    { id: 'emails' as const, label: 'Email Audit', icon: Mail, badge: emailAlerts.length },
+  ];
+
   return (
-    <React.Profiler id="AdminDashboard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('AdminDashboard', phase, actualDuration)}>
-      <div className="platform-page admin-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="platform-page admin-page pvx-dashboard-shell pvx-dashboard-shell--admin">
       
-      {/* Quick stats grid */}
+      <PageHeader
+        eyebrow="Platform Operations"
+        title="Operations Center"
+        description="Executive summaries, verification queues, job moderation, and system health at a glance."
+        badge="Admin"
+      />
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
-          <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">Total Partners</span>
-          <span className="font-display font-extrabold text-2xl text-slate-800 block mt-1">
-            {metrics?.totalCompanies ?? companies.length} Firms
-          </span>
-        </div>
-        <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
-          <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">KYC Verification Queue</span>
-          <span className="font-display font-extrabold text-2xl text-yellow-750 text-amber-600 block mt-1">
-            {metrics?.pendingVerifications ?? companies.filter(c => c.verificationStatus === 'pending').length} Files
-          </span>
-        </div>
-        <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
-          <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">Job Approvals Wait</span>
-          <span className="font-display font-extrabold text-2xl text-blue-600 block mt-1">
-            {metrics?.pendingJobs ?? jobs.filter(j => j.status === 'submitted').length} Postings
-          </span>
-        </div>
-        <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-center">
-          <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase block">Total Applicants</span>
-          <span className="font-display font-extrabold text-2xl text-slate-800 block mt-1">
-            {metrics?.totalApplications ?? applications.length} Candidates
-          </span>
-        </div>
-        <div className="bg-white border border-emerald-500/20 bg-emerald-50/15 rounded-2xl p-4 shadow-xs text-center">
-          <span className="text-[10px] text-emerald-800 font-mono tracking-widest uppercase block">Approved Handshakes</span>
-          <span className="font-display font-extrabold text-2xl text-emerald-700 block mt-1">
-            {metrics?.forwardedApplications ?? applications.filter(a => a.status === 'forwarded').length} Handed
-          </span>
-        </div>
+        <MetricCard
+          label="Total Partners"
+          value={`${metrics?.totalCompanies ?? companies.length}`}
+          trend="Registered companies"
+          icon={Building2}
+        />
+        <MetricCard
+          label="KYC Queue"
+          value={pendingVerifications}
+          trend="Pending verification"
+          icon={ShieldCheck}
+          variant="warning"
+        />
+        <MetricCard
+          label="Job Approvals"
+          value={pendingJobs}
+          trend="Awaiting review"
+          icon={FileText}
+          variant="accent"
+        />
+        <MetricCard
+          label="Total Applicants"
+          value={metrics?.totalApplications ?? applications.length}
+          trend="Platform-wide"
+          icon={Users}
+        />
+        <MetricCard
+          label="Handshakes"
+          value={metrics?.forwardedApplications ?? applications.filter(a => a.status === 'forwarded').length}
+          trend="Forwarded to recruiters"
+          icon={Check}
+          variant="success"
+        />
       </div>
 
-      {/* Tabs panels list */}
-      <div className="flex flex-wrap border-b border-slate-200 mb-6 gap-2">
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`pb-3 px-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'analytics' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
-          }`}
-        >
-          Analytics & Metrics
-        </button>
-        <button
-          id="tab-companies"
-          onClick={() => setActiveTab('companies')}
-          className={`pb-3 px-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'companies' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
-          }`}
-        >
-          KYC Verifications ({companies.filter(c => c.verificationStatus === 'pending').length})
-        </button>
-        <button
-          id="tab-jobs"
-          onClick={() => setActiveTab('jobs')}
-          className={`pb-3 px-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'jobs' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
-          }`}
-        >
-          Jobs & Moderation ({jobs.filter(j => j.status === 'submitted').length})
-        </button>
-        <button
-          id="tab-screening"
-          onClick={() => setActiveTab('screening')}
-          className={`pb-3 px-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'screening' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
-          }`}
-        >
-          Screening Desk ({applications.filter(a => a.status === 'applied' || a.status === 'under_review').length})
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`pb-3 px-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'users' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
-          }`}
-        >
-          User Accounts
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('emails');
-            setActiveEmailId(null);
-          }}
-          className={`pb-3 px-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
-            activeTab === 'emails' ? 'border-emerald-600 text-slate-900 font-bold' : 'border-transparent text-slate-400 hover:text-slate-650'
-          }`}
-        >
-          Email Audit Log ({emailAlerts.length})
-        </button>
-      </div>
+      <TabNav<'analytics' | 'companies' | 'jobs' | 'screening' | 'users' | 'emails'>
+        items={adminTabs}
+        activeId={activeTab}
+        onChange={(id) => {
+          setActiveTab(id);
+          if (id === 'emails') setActiveEmailId(null);
+        }}
+        ariaLabel="Admin workspace navigation"
+        className="mb-6"
+      />
 
       {/* CORE MODULAR RENDERING Tab viewports */}
 
@@ -1837,6 +1812,5 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
         </>
       )}
       </div>
-    </React.Profiler>
   );
 }

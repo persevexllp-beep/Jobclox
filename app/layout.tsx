@@ -1,11 +1,25 @@
 import type { Metadata } from 'next';
+import { Inter, Sora } from 'next/font/google';
 import './globals.css';
 import { THEME_STORAGE_KEY } from '@/src/lib/theme-constants';
 import MotionProvider from '@/src/components/motion/MotionProvider';
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const sora = Sora({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-sora',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'Persevex Job Portal',
-  description: 'Next.js migration shell for the Persevex hiring and placement platform.',
+  title: 'Persevex — Hiring & Placement Engine',
+  description: 'Premium hiring intelligence platform for candidates, recruiters, and platform operators.',
 };
 
 export default function RootLayout({
@@ -14,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${sora.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -22,7 +36,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
+      <body className={inter.className}>
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

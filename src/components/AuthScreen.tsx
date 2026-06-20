@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -52,6 +53,14 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
     if (loginSuccessTimerRef.current !== null) {
       window.clearTimeout(loginSuccessTimerRef.current);
     }
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedMode = params.get('mode');
+    const requestedRole = params.get('role');
+    if (requestedMode === 'register' || requestedMode === 'forgot') setMode(requestedMode);
+    if (requestedRole === 'candidate' || requestedRole === 'company') setRole(requestedRole);
   }, []);
 
   const resetFeedback = () => {
@@ -122,6 +131,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
 
   return (
     <div className="auth-product-shell">
+      <a className="pvx-skip-link" href="#auth-form">Skip to sign in</a>
       <CareerFlowBackground particleCount={14} />
       <main className="auth-product-grid">
         <motion.section
@@ -131,7 +141,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
           transition={{ duration: 0.4 }}
         >
           <div className="auth-brand-lockup">
-            <BrandLogo subline="Hiring & Placement Engine" />
+            <Link href="/" aria-label="Back to Persevex home"><BrandLogo subline="Hiring & Placement Engine" /></Link>
           </div>
 
           <div>
@@ -172,27 +182,27 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
             </button>
           </div>
 
-          {error && <div className="auth-alert danger">{error}</div>}
-          {success && <div className="auth-alert success">{success}</div>}
+          {error && <div className="auth-alert danger" role="alert">{error}</div>}
+          {success && <div className="auth-alert success" role="status">{success}</div>}
 
-          <form onSubmit={handleSubmit} className="auth-form">
+          <form id="auth-form" onSubmit={handleSubmit} className="auth-form">
             {mode === 'register' && (
-              <AuthField icon={UserIcon} label="Full name" value={name} onChange={setName} placeholder="Your name" />
+              <AuthField icon={UserIcon} label="Full name" value={name} onChange={setName} placeholder="Your name" autoComplete="name" />
             )}
 
-            <AuthField icon={Mail} label="Email" type="email" value={email} onChange={setEmail} placeholder="Email address" />
+            <AuthField icon={Mail} label="Email" type="email" value={email} onChange={setEmail} placeholder="Email address" autoComplete="email" inputMode="email" />
 
             {mode !== 'forgot' && (
-              <AuthField icon={Lock} label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" />
+              <AuthField icon={Lock} label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} />
             )}
 
             {mode === 'register' && (
-              <div className="auth-role-grid">
-                <button type="button" className={role === 'candidate' ? 'active' : ''} onClick={() => setRole('candidate')}>
+              <div className="auth-role-grid" role="group" aria-label="Choose account type">
+                <button type="button" aria-pressed={role === 'candidate'} className={role === 'candidate' ? 'active' : ''} onClick={() => setRole('candidate')}>
                   <UserIcon className="h-4 w-4" />
                   Candidate
                 </button>
-                <button type="button" className={role === 'company' ? 'active' : ''} onClick={() => setRole('company')}>
+                <button type="button" aria-pressed={role === 'company'} className={role === 'company' ? 'active' : ''} onClick={() => setRole('company')}>
                   <Building2 className="h-4 w-4" />
                   Employer
                 </button>
@@ -205,7 +215,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
               </button>
             )}
 
-            <button type="submit" className="auth-submit" disabled={loading}>
+            <button type="submit" className="auth-submit" disabled={loading} aria-busy={loading || undefined}>
               {loading ? 'Processing...' : mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Send recovery instructions' : 'Enter workspace'}
               <ArrowRight className="h-4 w-4" />
             </button>
@@ -228,20 +238,22 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
   );
 }
 
-function AuthField({ icon: Icon, label, value, onChange, placeholder, type = 'text' }: {
+function AuthField({ icon: Icon, label, value, onChange, placeholder, type = 'text', autoComplete, inputMode }: {
   icon: React.ElementType;
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   type?: string;
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
 }) {
   return (
     <label className="auth-field">
       <span>{label}</span>
       <div>
         <Icon className="h-4 w-4 text-cyan-500" />
-        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete={autoComplete} inputMode={inputMode} required />
       </div>
     </label>
   );

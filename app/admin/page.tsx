@@ -1,3 +1,5 @@
+'use client';
+
 import WorkspaceRuntime from '@/src/components/WorkspaceRuntime';
 import AdminDashboard from '@/src/components/AdminDashboard';
 

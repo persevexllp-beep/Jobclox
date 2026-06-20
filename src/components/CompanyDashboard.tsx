@@ -6,6 +6,7 @@
  */
 
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import type { AppIcon } from '@/src/lib/icons';
 import {
   AlertCircle,
   BarChart3,
@@ -42,7 +43,7 @@ import { Application, Company, Job, User } from '../types';
 import SkeletonLoader from './SkeletonLoader';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
-import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
+import { PageHeader, TabNav } from '@/src/components/layout';
 
 interface CompanyDashboardProps {
   currentUser: User;
@@ -55,7 +56,7 @@ type RecruiterTab = 'command' | 'post_job' | 'jobs' | 'pipeline' | 'profile' | '
 type WizardStep = 0 | 1 | 2 | 3 | 4;
 type JobSort = 'recent' | 'status' | 'applications';
 
-const recruiterTabs: Array<{ id: RecruiterTab; label: string; icon: React.ElementType }> = [
+const recruiterTabs: Array<{ id: RecruiterTab; label: string; icon: AppIcon }> = [
   { id: 'command', label: 'Command', icon: BriefcaseBusiness },
   { id: 'post_job', label: 'Post Job', icon: PlusCircle },
   { id: 'jobs', label: 'Manage Jobs', icon: SlidersHorizontal },
@@ -83,8 +84,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export default function CompanyDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CompanyDashboardProps) {
-  useRenderTracker('CompanyDashboard');
   const uploadResetTimerRef = useRef<number | null>(null);
+  const routeInitializedRef = useRef(false);
   const [activeTab, setActiveTab] = useState<RecruiterTab>('command');
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
@@ -138,6 +139,24 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
   useEffect(() => {
     fetchCompanyData();
   }, [currentUser.id]);
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const requestedView = new URLSearchParams(window.location.search).get('view') as RecruiterTab | null;
+      if (requestedView && recruiterTabs.some((item) => item.id === requestedView)) setActiveTab(requestedView);
+      routeInitializedRef.current = true;
+    };
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
+  }, []);
+
+  useEffect(() => {
+    if (!routeInitializedRef.current) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', activeTab);
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [activeTab]);
 
   useEffect(() => () => {
     if (uploadResetTimerRef.current !== null) {
@@ -419,32 +438,34 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
   }, [applicationCountByJobId, deferredJobSearch, jobSort, jobStatusFilter, jobs]);
 
   return (
-    <React.Profiler id="CompanyDashboard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('CompanyDashboard', phase, actualDuration)}>
-      <div className="platform-page recruiter-os mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
+    <div className="platform-page recruiter-os pvx-dashboard-shell pvx-dashboard-shell--recruiter">
       {company && company.verificationStatus !== 'approved' && (
         <VerificationBanner status={company.verificationStatus} onUpdate={() => setActiveTab('profile')} />
       )}
 
-      <RecruiterHeader company={company} currentUser={currentUser} />
+      <PageHeader
+        eyebrow="Hiring Operating System"
+        title={company?.companyName || 'Recruiter Workspace'}
+        description="Manage jobs, review candidates, and track hiring performance."
+        badge={company?.verificationStatus === 'approved' ? 'Verified' : 'Pending KYC'}
+      />
 
-      <section className="rec-metrics">
-        <RecruiterMetricCard title="Active Jobs" value={metrics.activeJobs} trend={`${jobs.filter((job) => job.status === 'submitted').length} pending approval`} icon={BriefcaseBusiness} />
-        <RecruiterMetricCard title="Applications" value={metrics.applications} trend={`${applications.filter((app) => app.status === 'under_review').length} in review`} icon={FileText} />
-        <RecruiterMetricCard title="Interviews" value={metrics.interviews} trend={`${applications.filter((app) => Boolean(app.interviewDate)).length} scheduled`} icon={Calendar} />
-        <RecruiterMetricCard title="Hires" value={metrics.hires} trend={`${applications.filter((app) => app.status === 'selected').length} selected`} icon={UserCheck} />
-      </section>
+      {(activeTab === 'command' || activeTab === 'analytics') && (
+        <section className="rec-metrics" aria-label="Hiring performance overview">
+          <RecruiterMetricCard title="Active Jobs" value={metrics.activeJobs} trend={`${jobs.filter((job) => job.status === 'submitted').length} pending approval`} icon={BriefcaseBusiness} />
+          <RecruiterMetricCard title="Applications" value={metrics.applications} trend={`${applications.filter((app) => app.status === 'under_review').length} in review`} icon={FileText} />
+          <RecruiterMetricCard title="Interviews" value={metrics.interviews} trend={`${applications.filter((app) => Boolean(app.interviewDate)).length} scheduled`} icon={Calendar} />
+          <RecruiterMetricCard title="Hires" value={metrics.hires} trend={`${applications.filter((app) => app.status === 'selected').length} selected`} icon={UserCheck} />
+        </section>
+      )}
 
-      <nav className="rec-tabs" aria-label="Recruiter workspace">
-        {recruiterTabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-pressed={activeTab === tab.id}>
-              <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <TabNav<RecruiterTab>
+        items={recruiterTabs}
+        activeId={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Recruiter workspace"
+        className="mb-6"
+      />
 
       {loading ? (
         <SkeletonLoader type={activeTab === 'pipeline' ? 'pipeline' : activeTab === 'jobs' ? 'table' : activeTab === 'command' || activeTab === 'analytics' ? 'metrics' : 'profile'} count={4} />
@@ -498,6 +519,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
               setSearch={setJobSearch}
               setStatusFilter={setJobStatusFilter}
               setSort={setJobSort}
+              onPost={() => setActiveTab('post_job')}
             />
           )}
 
@@ -552,7 +574,6 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
         />
       )}
       </div>
-    </React.Profiler>
   );
 }
 
@@ -588,7 +609,7 @@ function RecruiterHeader({ company, currentUser }: { company: Company | null; cu
   );
 }
 
-function RecruiterMetricCard({ title, value, trend, icon: Icon }: { title: string; value: React.ReactNode; trend: string; icon: React.ElementType }) {
+function RecruiterMetricCard({ title, value, trend, icon: Icon }: { title: string; value: React.ReactNode; trend: string; icon: AppIcon }) {
   return (
     <article className="rec-metric-card">
       <div>
@@ -632,7 +653,7 @@ function SectionHeader({ eyebrow, title, action }: { eyebrow: string; title: str
   );
 }
 
-function FocusRow({ icon: Icon, title, body }: { icon: React.ElementType; title: string; body: string }) {
+function FocusRow({ icon: Icon, title, body }: { icon: AppIcon; title: string; body: string }) {
   return (
     <article className="rec-focus-row">
       <Icon className="h-4 w-4" />
@@ -750,7 +771,7 @@ function PostJobWizard(props: {
           {props.wizardStep < 4 ? (
             <button type="button" onClick={nextStep}>Continue</button>
           ) : (
-            <button type="submit" disabled={props.postingJob || (props.company && props.company.verificationStatus !== 'approved')}>
+            <button type="submit" disabled={props.postingJob || (props.company && props.company.verificationStatus !== 'approved')} aria-busy={props.postingJob || undefined}>
               {props.postingJob ? 'Submitting...' : 'Publish to moderation'}
             </button>
           )}
@@ -769,6 +790,7 @@ function ManageJobs(props: {
   setSearch: (value: string) => void;
   setStatusFilter: (value: string) => void;
   setSort: (value: JobSort) => void;
+  onPost: () => void;
 }) {
   return (
     <section className="rec-panel">
@@ -792,13 +814,13 @@ function ManageJobs(props: {
           <option value="applications">Applications</option>
         </select>
       </div>
-      <JobTable jobs={props.jobs} applicationCountByJobId={props.applicationCountByJobId} />
+      <JobTable jobs={props.jobs} applicationCountByJobId={props.applicationCountByJobId} onPost={props.onPost} />
     </section>
   );
 }
 
-function JobTable({ jobs, applicationCountByJobId }: { jobs: Job[]; applicationCountByJobId: Map<string, number> }) {
-  if (jobs.length === 0) return <EmptyState icon={BriefcaseBusiness} title="No jobs match the current filters" body="Adjust filters or post a new opening." />;
+function JobTable({ jobs, applicationCountByJobId, onPost }: { jobs: Job[]; applicationCountByJobId: Map<string, number>; onPost: () => void }) {
+  if (jobs.length === 0) return <EmptyState icon={BriefcaseBusiness} title="No jobs match the current filters" body="Adjust filters or create a new opening for your hiring team." actionLabel="Post a job" onAction={onPost} />;
   return (
     <div className="rec-table-wrap">
       <table className="rec-job-table">
@@ -825,10 +847,10 @@ function JobTable({ jobs, applicationCountByJobId }: { jobs: Job[]; applicationC
               <td>{job.deadline || 'Open'}</td>
               <td>
                 <div className="rec-row-actions">
-                  <button type="button" title="Edit"><Edit3 className="h-4 w-4" /></button>
-                  <button type="button" title="Duplicate"><Copy className="h-4 w-4" /></button>
-                  <button type="button" title="Pause"><PauseCircle className="h-4 w-4" /></button>
-                  <button type="button" title="Close"><XCircle className="h-4 w-4" /></button>
+                  <button type="button" title="Edit" aria-label={`Edit ${job.title}`}><Edit3 className="h-4 w-4" /></button>
+                  <button type="button" title="Duplicate" aria-label={`Duplicate ${job.title}`}><Copy className="h-4 w-4" /></button>
+                  <button type="button" title="Pause" aria-label={`Pause ${job.title}`}><PauseCircle className="h-4 w-4" /></button>
+                  <button type="button" title="Close" aria-label={`Close ${job.title}`}><XCircle className="h-4 w-4" /></button>
                 </div>
               </td>
             </tr>
@@ -890,10 +912,8 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
   onReview: () => void;
   onMove: (status: Application['status']) => void;
 }) {
-  useRenderTracker('ApplicationCard');
   return (
-    <React.Profiler id="ApplicationCard" onRender={(_id, phase, actualDuration) => trackProfilerCommit('ApplicationCard', phase, actualDuration)}>
-      <article className="rec-applicant-card" draggable>
+    <article className="rec-applicant-card">
       <div className="rec-applicant-top">
         <span className="rec-score">{app.score}%</span>
         <div className="flex items-center gap-3">
@@ -909,14 +929,16 @@ function ApplicantCard({ app, note, setNote, onReview, onMove }: {
       <div className="rec-skill-tags">
         {app.matchedSkills.slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}
       </div>
-      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Candidate notes..." rows={2} />
+      <label className="rec-notes-field">
+        <span>Candidate notes</span>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add private hiring notes" rows={2} />
+      </label>
       <div className="rec-card-actions">
         <button type="button" onClick={onReview}>Review</button>
         <button type="button" onClick={() => onMove('interviewing')}>Interview</button>
         <button type="button" onClick={() => onMove('selected')}>Offer</button>
       </div>
-      </article>
-    </React.Profiler>
+    </article>
   );
 }
 
@@ -1007,7 +1029,7 @@ function CompanyProfilePanel(props: {
           <ShieldCheck className="h-5 w-5" />
           <span>Status: {props.company?.verificationStatus || 'pending'}</span>
         </div>
-        <button type="submit" disabled={props.savingProfile}>{props.savingProfile ? 'Saving...' : 'Save company profile'}</button>
+        <button type="submit" disabled={props.savingProfile} aria-busy={props.savingProfile || undefined}>{props.savingProfile ? 'Saving...' : 'Save company profile'}</button>
       </form>
     </section>
   );
@@ -1041,7 +1063,7 @@ function RecruiterAnalytics({ jobs, applications }: { jobs: Job[]; applications:
   );
 }
 
-function AnalyticsCard({ title, icon: Icon, value, bars, empty }: { title: string; icon: React.ElementType; value: React.ReactNode; bars: number[]; empty: string }) {
+function AnalyticsCard({ title, icon: Icon, value, bars, empty }: { title: string; icon: AppIcon; value: React.ReactNode; bars: number[]; empty: string }) {
   const max = Math.max(...bars, 1);
   const hasData = bars.some((bar) => bar > 0);
   return (
@@ -1192,7 +1214,7 @@ function AlertBox({ tone, message }: { tone: 'success' | 'danger'; message: stri
   return <div className={`rec-alert ${tone}`}>{message}</div>;
 }
 
-function PreviewStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
+function PreviewStat({ icon: Icon, label, value }: { icon: AppIcon; label: string; value: React.ReactNode }) {
   return (
     <div className="rec-preview-stat">
       <Icon className="h-4 w-4" />
@@ -1248,7 +1270,7 @@ function MiniFunnel({ applications }: { applications: Application[] }) {
   );
 }
 
-function EmptyState({ icon: Icon, title, body }: { icon: React.ElementType; title: string; body: string }) {
+function EmptyState({ icon: Icon, title, body, actionLabel, onAction }: { icon: AppIcon; title: string; body: string; actionLabel?: string; onAction?: () => void }) {
   const hint = title.includes('jobs')
     ? 'Clear filters or publish a new role when ready.'
     : 'Review forwarded profiles as soon as they arrive to keep momentum.';
@@ -1257,6 +1279,7 @@ function EmptyState({ icon: Icon, title, body }: { icon: React.ElementType; titl
       <Icon className="h-8 w-8" />
       <strong>{title}</strong>
       <span>{body}</span>
+      {actionLabel && onAction && <button type="button" className="eff-action" onClick={onAction}>{actionLabel}</button>}
       <small>{hint}</small>
     </section>
   );

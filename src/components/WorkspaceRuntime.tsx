@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation';
 import type { AppNotification, User, UserRole } from '@/src/types';
 import Navbar from '@/src/components/Navbar';
 import BrandLogo from '@/src/components/BrandLogo';
-import PerfOverlay from '@/src/components/PerfOverlay';
 import ToastViewport, { type ToastItem, type ToastTone } from '@/src/components/ToastViewport';
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
 import { clearStoredSession, persistStoredSession, readStoredSession } from '@/src/lib/sessionClient';
 import { initializeTheme, toggleTheme } from '@/src/lib/theme';
-import { trackProfilerCommit, useRenderTracker } from '@/src/lib/perfMonitor';
 
 type DashboardComponentProps = {
   currentUser: User;
@@ -69,7 +67,6 @@ function areNotificationsEquivalent(current: AppNotification[], next: AppNotific
 }
 
 export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceRuntimeProps) {
-  useRenderTracker('WorkspaceRuntime');
   const router = useRouter();
   const MemoDashboard = useMemo(() => React.memo(Dashboard), [Dashboard]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -374,23 +371,19 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
 
   if (checkingSession || !currentUser) {
     return (
-      <React.Profiler id="WorkspaceRuntime" onRender={(_id, phase, actualDuration) => trackProfilerCommit('WorkspaceRuntime', phase, actualDuration)}>
-        <main className="pvx-boot-screen">
-          <ToastViewport toasts={toasts} onDismiss={dismissToast} />
-          <div className="pvx-boot-card" role="status" aria-live="polite">
-            <BrandLogo subline="Hiring & Placement Engine" />
-            <p>Loading verified jobs and placement routes</p>
-          </div>
-          <PerfOverlay />
-        </main>
-      </React.Profiler>
+      <main className="pvx-boot-screen">
+        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+        <div className="pvx-boot-card" role="status" aria-live="polite">
+          <BrandLogo subline="Hiring & Placement Engine" />
+          <p>Loading verified jobs and placement routes</p>
+        </div>
+      </main>
     );
   }
 
   return (
-    <React.Profiler id="WorkspaceRuntime" onRender={(_id, phase, actualDuration) => trackProfilerCommit('WorkspaceRuntime', phase, actualDuration)}>
-      <div className="pvx-app-shell">
-        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+    <div className="pvx-app-shell">
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
 
       {apiError && (
         <div className="pvx-error-banner" role="alert">
@@ -419,14 +412,12 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
         </div>
       </main>
 
-        <footer className="pvx-footer">
+      <footer className="pvx-footer">
         <div>
           <BrandLogo subline="Jobs • Internships • Placement" />
           <span>&copy; {new Date().getFullYear()} Persevex</span>
         </div>
-        </footer>
-        <PerfOverlay />
-      </div>
-    </React.Profiler>
+      </footer>
+    </div>
   );
 }

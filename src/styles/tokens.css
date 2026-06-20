@@ -1,0 +1,231 @@
+/**
+ * Persevex Design System — Semantic Tokens
+ * Single source of truth for all visual properties.
+ * NO hardcoded colors in components — use these tokens only.
+ */
+
+:root {
+  /* ── Backgrounds ── */
+  --pvx-bg-canvas: #F8FAFC;
+  --pvx-bg-surface: #FFFFFF;
+  --pvx-bg-elevated: #FFFFFF;
+  --pvx-bg-muted: #F1F5F9;
+  --pvx-bg-subtle: #F8FAFC;
+  --pvx-bg-overlay: rgba(15, 23, 42, 0.4);
+
+  /* Legacy aliases (backward compat) */
+  --pvx-canvas: var(--pvx-bg-canvas);
+  --pvx-surface: var(--pvx-bg-surface);
+  --pvx-surface-secondary: var(--pvx-bg-muted);
+  --pvx-panel: var(--pvx-bg-surface);
+  --pvx-panel-strong: var(--pvx-bg-surface);
+
+  /* ── Borders ── */
+  --pvx-border-default: #E2E8F0;
+  --pvx-border-subtle: #F1F5F9;
+  --pvx-border-strong: #CBD5E1;
+  --pvx-border-focus: #2563EB;
+  --pvx-border: var(--pvx-border-default);
+  --pvx-hairline: var(--pvx-border-default);
+
+  /* ── Text ── */
+  --pvx-text-primary: #0F172A;
+  --pvx-text-secondary: #475569;
+  --pvx-text-muted: #64748B;
+  --pvx-text-inverse: #FFFFFF;
+  --pvx-text: var(--pvx-text-primary);
+  --pvx-muted: var(--pvx-text-muted);
+
+  /* ── Icons ── */
+  --pvx-icon-default: #475569;
+  --pvx-icon-muted: #64748B;
+  --pvx-icon-accent: #2563EB;
+
+  /* ── Accent & States ── */
+  --pvx-accent: #2563EB;
+  --pvx-accent-hover: #1D4ED8;
+  --pvx-accent-subtle: rgba(37, 99, 235, 0.08);
+  --pvx-accent-muted: rgba(37, 99, 235, 0.12);
+  --pvx-success: #16A34A;
+  --pvx-success-subtle: rgba(22, 163, 74, 0.1);
+  --pvx-warning: #EA580C;
+  --pvx-warning-subtle: rgba(234, 88, 12, 0.1);
+  --pvx-danger: #DC2626;
+  --pvx-danger-subtle: rgba(220, 38, 38, 0.1);
+  --pvx-blue: var(--pvx-accent);
+  --pvx-green: var(--pvx-success);
+
+  /* ── Buttons ── */
+  --pvx-btn-primary-bg: #2563EB;
+  --pvx-btn-primary-hover: #1D4ED8;
+  --pvx-btn-primary-text: #FFFFFF;
+  --pvx-btn-secondary-bg: var(--pvx-bg-muted);
+  --pvx-btn-secondary-hover: #E2E8F0;
+  --pvx-btn-secondary-text: var(--pvx-text-primary);
+  --pvx-btn-ghost-hover: var(--pvx-bg-muted);
+  --pvx-btn-danger-bg: #DC2626;
+  --pvx-btn-danger-hover: #B91C1C;
+
+  /* ── Inputs ── */
+  --pvx-input-bg: var(--pvx-bg-muted);
+  --pvx-input-border: var(--pvx-border-default);
+  --pvx-input-focus-ring: rgba(37, 99, 235, 0.2);
+
+  /* ── Cards & Navigation ── */
+  --pvx-card-bg: var(--pvx-bg-surface);
+  --pvx-card-border: var(--pvx-border-default);
+  --pvx-nav-bg: rgba(255, 255, 255, 0.85);
+  --pvx-nav-border: var(--pvx-border-default);
+  --pvx-nav-active-bg: var(--pvx-bg-muted);
+  --pvx-nav-active-text: var(--pvx-text-primary);
+
+  /* ── Badges ── */
+  --pvx-badge-neutral-bg: var(--pvx-bg-muted);
+  --pvx-badge-neutral-text: var(--pvx-text-secondary);
+  --pvx-badge-accent-bg: var(--pvx-accent-subtle);
+  --pvx-badge-accent-text: #1D4ED8;
+  --pvx-badge-success-bg: var(--pvx-success-subtle);
+  --pvx-badge-success-text: #15803D;
+  --pvx-badge-warning-bg: var(--pvx-warning-subtle);
+  --pvx-badge-warning-text: #C2410C;
+  --pvx-badge-danger-bg: var(--pvx-danger-subtle);
+  --pvx-badge-danger-text: #B91C1C;
+
+  /* ── Charts ── */
+  --pvx-chart-1: #2563EB;
+  --pvx-chart-2: #16A34A;
+  --pvx-chart-3: #EA580C;
+  --pvx-chart-4: #7C3AED;
+  --pvx-chart-5: #0891B2;
+  --pvx-chart-grid: #E2E8F0;
+
+  /* ── Elevation ── */
+  --pvx-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --pvx-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --pvx-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --pvx-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12);
+  --pvx-shadow-lift: 0 12px 32px rgba(15, 23, 42, 0.1);
+  --pvx-shadow: var(--pvx-shadow-md);
+  --pvx-shadow-soft: var(--pvx-shadow-sm);
+
+  /* ── Gradients (minimal use) ── */
+  --pvx-gradient: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  --pvx-soft-gradient: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.02));
+
+  /* ── Typography ── */
+  --pvx-font-display: var(--font-display, "Sora", ui-sans-serif, system-ui, sans-serif);
+  --pvx-font-body: var(--font-sans, "Inter", ui-sans-serif, system-ui, sans-serif);
+  --pvx-font-metric: var(--font-metric, "Inter", ui-sans-serif, system-ui, sans-serif);
+
+  --pvx-text-display: clamp(2rem, 4vw, 2.75rem);
+  --pvx-text-h1: 1.75rem;
+  --pvx-text-h2: 1.375rem;
+  --pvx-text-h3: 1.125rem;
+  --pvx-text-title: 1rem;
+  --pvx-text-body: 0.875rem;
+  --pvx-text-caption: 0.8125rem;
+
+  --pvx-leading-display: 1.15;
+  --pvx-leading-heading: 1.25;
+  --pvx-leading-body: 1.5;
+  --pvx-leading-caption: 1.4;
+
+  /* ── Spacing Scale ── */
+  --pvx-space-1: 4px;
+  --pvx-space-2: 8px;
+  --pvx-space-3: 12px;
+  --pvx-space-4: 16px;
+  --pvx-space-5: 20px;
+  --pvx-space-6: 24px;
+  --pvx-space-8: 32px;
+  --pvx-space-10: 40px;
+  --pvx-space-12: 48px;
+  --pvx-space-16: 64px;
+
+  /* ── Radius ── */
+  --pvx-radius-sm: 6px;
+  --pvx-radius-md: 10px;
+  --pvx-radius-lg: 14px;
+  --pvx-radius-xl: 18px;
+  --pvx-radius-card: 16px;
+  --pvx-radius-button: 10px;
+  --pvx-radius-input: 10px;
+  --pvx-radius-full: 9999px;
+
+  /* ── Motion ── */
+  --pvx-motion-fast: 150ms;
+  --pvx-motion-base: 200ms;
+  --pvx-motion-slow: 250ms;
+  --pvx-ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --pvx-ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+
+  /* ── Z-Index ── */
+  --pvx-z-dropdown: 1000;
+  --pvx-z-sticky: 1020;
+  --pvx-z-header: 1030;
+  --pvx-z-modal: 1050;
+  --pvx-z-toast: 1080;
+}
+
+html.dark {
+  --pvx-bg-canvas: #020617;
+  --pvx-bg-surface: #0F172A;
+  --pvx-bg-elevated: #111827;
+  --pvx-bg-muted: #1E293B;
+  --pvx-bg-subtle: #0F172A;
+  --pvx-bg-overlay: rgba(2, 6, 23, 0.72);
+
+  --pvx-border-default: #334155;
+  --pvx-border-subtle: #1E293B;
+  --pvx-border-strong: #475569;
+  --pvx-border-focus: #3B82F6;
+
+  --pvx-text-primary: #F8FAFC;
+  --pvx-text-secondary: #CBD5E1;
+  --pvx-text-muted: #94A3B8;
+  --pvx-text-inverse: #0F172A;
+
+  --pvx-icon-default: #CBD5E1;
+  --pvx-icon-muted: #94A3B8;
+  --pvx-icon-accent: #3B82F6;
+
+  --pvx-accent: #3B82F6;
+  --pvx-accent-hover: #2563EB;
+  --pvx-accent-subtle: rgba(59, 130, 246, 0.12);
+  --pvx-accent-muted: rgba(59, 130, 246, 0.16);
+  --pvx-success: #22C55E;
+  --pvx-success-subtle: rgba(34, 197, 94, 0.12);
+  --pvx-warning: #F97316;
+  --pvx-warning-subtle: rgba(249, 115, 22, 0.12);
+  --pvx-danger: #EF4444;
+  --pvx-danger-subtle: rgba(239, 68, 68, 0.12);
+
+  --pvx-btn-primary-bg: #3B82F6;
+  --pvx-btn-primary-hover: #2563EB;
+  --pvx-btn-secondary-bg: #1E293B;
+  --pvx-btn-secondary-hover: #334155;
+  --pvx-btn-ghost-hover: #1E293B;
+
+  --pvx-input-bg: #1E293B;
+  --pvx-input-focus-ring: rgba(59, 130, 246, 0.25);
+
+  --pvx-card-bg: var(--pvx-bg-surface);
+  --pvx-nav-bg: rgba(15, 23, 42, 0.88);
+  --pvx-nav-active-bg: #1E293B;
+
+  --pvx-badge-accent-text: #93C5FD;
+  --pvx-badge-success-text: #86EFAC;
+  --pvx-badge-warning-text: #FDBA74;
+  --pvx-badge-danger-text: #FCA5A5;
+
+  --pvx-chart-grid: #334155;
+
+  --pvx-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --pvx-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --pvx-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --pvx-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --pvx-shadow-lift: 0 12px 32px rgba(0, 0, 0, 0.36);
+
+  --pvx-gradient: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  --pvx-soft-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
+}
