@@ -6,7 +6,7 @@
 import React from 'react';
 
 interface SkeletonLoaderProps {
-  type?: 'analytics' | 'jobGrid' | 'table' | 'profile' | 'metrics' | 'candidateCards' | 'pipeline';
+  type?: 'analytics' | 'jobGrid' | 'hiringWorkspace' | 'table' | 'profile' | 'metrics' | 'candidateCards' | 'pipeline';
   count?: number;
 }
 
@@ -14,6 +14,7 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
   const loadingLabel = {
     analytics: 'Loading analytics',
     jobGrid: 'Loading opportunities',
+    hiringWorkspace: 'Loading hiring workspace',
     table: 'Loading table',
     profile: 'Loading profile',
     metrics: 'Loading summary metrics',
@@ -33,6 +34,39 @@ function SkeletonContent({ type = 'jobGrid', count = 3 }: SkeletonLoaderProps) {
   const pulseBg = 'pvx-skeleton';
   const pulseText = 'pvx-skeleton h-3';
   const surface = 'pvx-skeleton-card';
+
+  if (type === 'jobGrid') {
+    return (
+      <div className="career-os-skeleton">
+        <div className="career-os-skeleton-search">
+          <div className={`${pulseBg} h-12 flex-1`} /><div className={`${pulseBg} h-12 w-40`} /><div className={`${pulseBg} h-12 w-36`} />
+        </div>
+        <div className="career-os-skeleton-layout">
+          <section className="career-os-skeleton-feed">
+            <div className="flex items-end justify-between"><div className="space-y-2"><div className={`${pulseText} w-28`} /><div className={`${pulseBg} h-8 w-56`} /><div className={`${pulseText} w-72 max-w-full`} /></div><div className={`${pulseBg} h-10 w-16`} /></div>
+            {Array.from({ length: count }).map((_, idx) => <OpportunitySkeleton key={idx} index={idx} />)}
+          </section>
+          <aside className="career-os-skeleton-rail">
+            <div className={`${surface} space-y-4`}><div className={`${pulseText} w-24`} /><div className="flex gap-3"><div className={`${pulseBg} h-12 w-12 rounded-xl`} /><div className="flex-1 space-y-2"><div className={`${pulseBg} h-4 w-4/5`} /><div className={`${pulseText} w-3/5`} /></div></div><div className={`${pulseBg} h-9 w-full`} /></div>
+            <div className={`${surface} space-y-4`}><div className={`${pulseText} w-28`} /><div className={`${pulseBg} h-3 w-full rounded-full`} /><div className="grid grid-cols-4 gap-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className={`${pulseBg} h-8 rounded-full`} />)}</div></div>
+            <div className={`${surface} space-y-3`}><div className={`${pulseText} w-32`} /><div className={`${pulseBg} h-14 w-full`} /><div className={`${pulseBg} h-14 w-full`} /></div>
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'hiringWorkspace') {
+    return (
+      <div className="hiring-os-skeleton">
+        <div className="hiring-os-skeleton-head"><div className="space-y-3"><div className={`${pulseText} w-28`} /><div className={`${pulseBg} h-8 w-64`} /><div className={`${pulseText} w-44`} /></div><div className="flex gap-2"><div className={`${pulseBg} h-11 w-28`} /><div className={`${pulseBg} h-11 w-32`} /></div></div>
+        <div className="hiring-os-skeleton-layout">
+          <section className={`${surface} space-y-4`}><div className="flex justify-between"><div className={`${pulseBg} h-5 w-44`} /><div className={`${pulseText} w-16`} /></div>{Array.from({ length: 4 }).map((_, i) => <div key={i} className="flex items-center gap-3"><div className={`${pulseBg} h-11 w-11 rounded-xl`} /><div className="flex-1 space-y-2"><div className={`${pulseBg} h-4 w-2/5`} /><div className={`${pulseText} w-3/5`} /></div><div className={`${pulseBg} h-9 w-16`} /></div>)}</section>
+          <aside className={`${surface} space-y-5`}><div className={`${pulseBg} h-5 w-36`} />{Array.from({ length: 5 }).map((_, i) => <div key={i} className="flex items-center gap-3"><div className={`${pulseBg} h-9 w-9 rounded-full`} /><div className={`${pulseText} flex-1`} /><div className={`${pulseBg} h-6 w-8`} /></div>)}</aside>
+        </div>
+      </div>
+    );
+  }
 
   if (type === 'metrics') {
     return (
@@ -139,57 +173,6 @@ function SkeletonContent({ type = 'jobGrid', count = 3 }: SkeletonLoaderProps) {
     );
   }
 
-  if (type === 'jobGrid') {
-    return (
-      <div className="space-y-6">
-        <div className={surface}>
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-            <div className="md:col-span-6">
-              <div className={`${pulseBg} h-10 w-full`} />
-            </div>
-            <div className="md:col-span-3">
-              <div className={`${pulseBg} h-10 w-full`} />
-            </div>
-            <div className="md:col-span-3">
-              <div className={`${pulseBg} h-10 w-full`} />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
-          {Array.from({ length: count }).map((_, idx) => (
-            <div key={idx} className={`${surface} flex flex-col justify-between h-[250px]`}>
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-2 flex-1">
-                    <div className={`${pulseBg} h-5 w-4/5`} />
-                    <div className="flex space-x-1.5">
-                      <div className={`${pulseText} w-24`} />
-                      <div className={`${pulseText} w-16`} />
-                    </div>
-                  </div>
-                  <div className={`${pulseBg} h-10 w-10`} />
-                </div>
-                <div className="grid grid-cols-2 gap-y-3 pt-2">
-                  {Array.from({ length: 4 }).map((__, i) => (
-                    <div key={i} className="flex items-center space-x-1.5">
-                      <div className={`${pulseBg} h-4 w-4 rounded-full`} />
-                      <div className={`${pulseText} w-16`} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="border-t pt-4 mt-4 flex items-center justify-between" style={{ borderColor: 'var(--pvx-border-subtle)' }}>
-                <div className={`${pulseText} w-24`} />
-                <div className={`${pulseBg} h-8 w-24 rounded-lg`} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   if (type === 'table') {
     return (
       <div className={`${surface} overflow-hidden`}>
@@ -275,4 +258,14 @@ function SkeletonContent({ type = 'jobGrid', count = 3 }: SkeletonLoaderProps) {
   }
 
   return null;
+}
+
+function OpportunitySkeleton({ index }: { index: number }) {
+  return (
+    <article className="premium-opportunity-skeleton" style={{ '--skeleton-index': index } as React.CSSProperties}>
+      <div className="flex items-start gap-4"><div className="pvx-skeleton h-14 w-14 rounded-2xl" /><div className="min-w-0 flex-1 space-y-2"><div className="pvx-skeleton h-5 w-2/5" /><div className="pvx-skeleton h-3 w-1/4" /><div className="flex gap-2 pt-2"><div className="pvx-skeleton h-7 w-24 rounded-full" /><div className="pvx-skeleton h-7 w-20 rounded-full" /><div className="pvx-skeleton h-7 w-16 rounded-full" /></div></div><div className="pvx-skeleton h-16 w-16 rounded-full" /></div>
+      <div className="grid grid-cols-3 gap-3"><div className="pvx-skeleton h-12" /><div className="pvx-skeleton h-12" /><div className="pvx-skeleton h-12" /></div>
+      <div className="flex items-center justify-between gap-4"><div className="pvx-skeleton h-8 w-2/5" /><div className="flex gap-2"><div className="pvx-skeleton h-10 w-20" /><div className="pvx-skeleton h-10 w-24" /></div></div>
+    </article>
+  );
 }

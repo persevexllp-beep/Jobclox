@@ -122,7 +122,7 @@
   --pvx-text-h2: 1.375rem;
   --pvx-text-h3: 1.125rem;
   --pvx-text-title: 1rem;
-  --pvx-text-body: 0.875rem;
+  --pvx-text-body: 0.9375rem;
   --pvx-text-caption: 0.8125rem;
 
   --pvx-leading-display: 1.15;
@@ -168,17 +168,17 @@
 }
 
 html.dark {
-  --pvx-bg-canvas: #020617;
-  --pvx-bg-surface: #0F172A;
-  --pvx-bg-elevated: #111827;
-  --pvx-bg-muted: #1E293B;
-  --pvx-bg-subtle: #0F172A;
-  --pvx-bg-overlay: rgba(2, 6, 23, 0.72);
+  --pvx-bg-canvas: #070a12;
+  --pvx-bg-surface: #0d1220;
+  --pvx-bg-elevated: #121827;
+  --pvx-bg-muted: #171f31;
+  --pvx-bg-subtle: #0a0f1b;
+  --pvx-bg-overlay: rgba(5, 8, 15, 0.78);
 
-  --pvx-border-default: #334155;
-  --pvx-border-subtle: #1E293B;
-  --pvx-border-strong: #475569;
-  --pvx-border-focus: #3B82F6;
+  --pvx-border-default: rgba(148, 163, 184, 0.16);
+  --pvx-border-subtle: rgba(148, 163, 184, 0.09);
+  --pvx-border-strong: rgba(148, 163, 184, 0.24);
+  --pvx-border-focus: #818cf8;
 
   --pvx-text-primary: #F8FAFC;
   --pvx-text-secondary: #CBD5E1;
@@ -189,10 +189,10 @@ html.dark {
   --pvx-icon-muted: #94A3B8;
   --pvx-icon-accent: #3B82F6;
 
-  --pvx-accent: #3B82F6;
-  --pvx-accent-hover: #2563EB;
-  --pvx-accent-subtle: rgba(59, 130, 246, 0.12);
-  --pvx-accent-muted: rgba(59, 130, 246, 0.16);
+  --pvx-accent: #7c8cff;
+  --pvx-accent-hover: #94a3ff;
+  --pvx-accent-subtle: rgba(124, 140, 255, 0.12);
+  --pvx-accent-muted: rgba(124, 140, 255, 0.18);
   --pvx-success: #22C55E;
   --pvx-success-subtle: rgba(34, 197, 94, 0.12);
   --pvx-warning: #F97316;
@@ -210,8 +210,8 @@ html.dark {
   --pvx-input-focus-ring: rgba(59, 130, 246, 0.25);
 
   --pvx-card-bg: var(--pvx-bg-surface);
-  --pvx-nav-bg: rgba(15, 23, 42, 0.88);
-  --pvx-nav-active-bg: #1E293B;
+  --pvx-nav-bg: rgba(9, 13, 23, 0.82);
+  --pvx-nav-active-bg: #171f31;
 
   --pvx-badge-accent-text: #93C5FD;
   --pvx-badge-success-text: #86EFAC;
@@ -226,6 +226,6 @@ html.dark {
   --pvx-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
   --pvx-shadow-lift: 0 12px 32px rgba(0, 0, 0, 0.36);
 
-  --pvx-gradient: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-  --pvx-soft-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
+  --pvx-gradient: linear-gradient(135deg, #6877f5 0%, #7c5ce7 100%);
+  --pvx-soft-gradient: linear-gradient(135deg, rgba(124, 140, 255, 0.14), rgba(139, 92, 246, 0.05));
 }

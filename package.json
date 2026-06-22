@@ -10,7 +10,6 @@
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('.next',{recursive:true,force:true});\"",
     "lint": "tsc -p tsconfig.lint.json --noEmit",
     "type-check": "tsc -p tsconfig.json --noEmit",
-
     "test": "npm run test:resume && npm run test:communications",
     "test:resume": "tsx scripts/maintenance/resume-intelligence-tests.ts",
     "test:communications": "tsx scripts/maintenance/communication-reliability-tests.ts",
@@ -20,6 +19,7 @@
     "@google/genai": "^2.4.0",
     "@supabase/supabase-js": "^2.107.0",
     "dotenv": "^17.2.3",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "next": "^15.5.19",

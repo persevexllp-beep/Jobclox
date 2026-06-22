@@ -4,6 +4,9 @@
 @import "./styles/transformation.css";
 @import "./styles/landing.css";
 @import "./styles/premium-visuals.css";
+@import "./styles/journey-experience.css";
+@import "./styles/career-os.css";
+@import "./styles/job-marketplace.css";
 
 @theme {
   --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
@@ -10108,4 +10111,177 @@ html.dark .rec-profile-status {
   margin-top: 4px;
   color: var(--pvx-text-secondary);
   font-size: 10px;
+}
+
+/* ==========================================
+   CANDIDATE MARKETPLACE LAYOUT LOCK
+   This block must remain last: imported styles are evaluated before the legacy
+   rules above, several of which use !important layout declarations.
+   ========================================== */
+@media (min-width: 1181px) {
+  .career-flow-os.pvx-dashboard-shell {
+    width: 100% !important;
+    max-width: none !important;
+    margin-inline: 0 !important;
+  }
+
+  .career-flow-os.efficiency-os > main {
+    width: 100% !important;
+    max-width: 1680px !important;
+    margin-inline: auto !important;
+    padding-inline: 32px !important;
+  }
+
+  .career-flow-os .candidate-search-command {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .career-flow-os .candidate-discovery-workspace.eff-workspace {
+    display: grid !important;
+    width: 100% !important;
+    max-width: none !important;
+    grid-template-columns: minmax(0, 3fr) minmax(320px, 1fr) !important;
+    gap: 28px !important;
+    align-items: start !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-job-marketplace {
+    grid-column: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .career-flow-os .candidate-insights-rail {
+    grid-column: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed,
+  .career-flow-os .candidate-primary-feed {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card {
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 236px !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 24px !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: 64px minmax(0, 1fr) 82px !important;
+    gap: 18px !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-company-badge {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-skills {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-skills span:nth-child(-n + 4) {
+    display: inline-flex !important;
+    max-width: none !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-value-row {
+    width: 100% !important;
+    grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(120px, .7fr)) !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-footer {
+    width: 100% !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions {
+    display: flex !important;
+    width: auto !important;
+    min-width: 0 !important;
+    grid-template-columns: none !important;
+  }
+}
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .career-flow-os .candidate-discovery-workspace.eff-workspace {
+    display: grid !important;
+    width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 24px !important;
+  }
+
+  .career-flow-os .candidate-job-marketplace,
+  .career-flow-os .candidate-insights-rail,
+  .career-flow-os .candidate-wide-job-feed,
+  .career-flow-os .candidate-primary-feed {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .career-flow-os .candidate-insights-rail {
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card {
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-main {
+    width: 100% !important;
+    grid-template-columns: 64px minmax(0, 1fr) 82px !important;
+    gap: 18px !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions {
+    display: flex !important;
+    width: auto !important;
+    grid-template-columns: none !important;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 820px) {
+  .career-flow-os .candidate-wide-job-feed .eff-job-card {
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-main {
+    width: 100% !important;
+    grid-template-columns: 58px minmax(0, 1fr) 76px !important;
+    gap: 16px !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions {
+    display: flex !important;
+    width: auto !important;
+    grid-template-columns: none !important;
+  }
 }

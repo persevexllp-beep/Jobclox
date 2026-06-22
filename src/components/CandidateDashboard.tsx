@@ -45,6 +45,7 @@ import SkeletonLoader from './SkeletonLoader';
 import { formatEmailAlertPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
+import CareerSignalLottie from './experience/CareerSignalLottie';
 
 interface CandidateDashboardProps {
   currentUser: User;
@@ -58,7 +59,6 @@ type SalaryFilter = 'all' | 'lt10' | '10-20' | '20plus';
 type ExperienceFilter = 'all' | 'entry' | 'mid' | 'senior';
 type SortMode = 'match' | 'recent' | 'salary';
 type OnboardingStep = 'basics' | 'photo' | 'resume' | 'review' | 'skills' | 'preferences' | 'jobs' | 'apply';
-type JourneyStage = 'training' | 'internship' | 'applications' | 'interviews' | 'placement';
 
 const navItems: Array<{ id: WorkspaceMode; label: string; icon: AppIcon }> = [
   { id: 'jobs', label: 'Jobs', icon: Briefcase },
@@ -69,12 +69,13 @@ const navItems: Array<{ id: WorkspaceMode; label: string; icon: AppIcon }> = [
   { id: 'signals', label: 'Notifications', icon: Bell },
 ];
 
-const stageLabels: Record<JourneyStage, string> = {
-  training: 'Learning',
-  internship: 'Training',
-  applications: 'Internship',
-  interviews: 'Placement',
-  placement: 'Career Growth',
+const workspaceTitles: Record<WorkspaceMode, string> = {
+  jobs: 'Find your next opportunity',
+  saved: 'Your shortlist',
+  applications: 'Your application journey',
+  ecosystem: 'Build your advantage',
+  profile: 'Your career signal',
+  signals: 'Updates that matter',
 };
 
 const applicationStages = [
@@ -452,12 +453,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     selectedJobPreview ? rankedJobs.filter((job) => job.id !== selectedJobPreview.id).slice(0, 3) : []
   ), [rankedJobs, selectedJobPreview]);
   const recommendedOnboardingJobs = useMemo(() => rankedJobs.slice(0, 3), [rankedJobs]);
-  const bestMatch = useMemo(() => (rankedJobs.length ? getJobMatch(rankedJobs[0]) : 0), [getJobMatch, rankedJobs]);
-  const averageMatch = useMemo(() => (
-    rankedJobs.length
-      ? Math.round(rankedJobs.reduce((total, job) => total + getJobMatch(job), 0) / rankedJobs.length)
-      : 0
-  ), [getJobMatch, rankedJobs]);
   const hasApplied = useCallback((jobId: string) => appliedJobIdSet.has(jobId), [appliedJobIdSet]);
   const toggleSavedJob = useCallback((jobId: string) => {
     const job = jobById.get(jobId);
@@ -493,14 +488,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     && careerPreference.trim()
   );
   const showOnboarding = !minimumOnboardingComplete;
-
-  const currentJourneyStage = useMemo((): JourneyStage => {
-    if (applications.some((app) => app.status === 'selected' || app.finalResult === 'hired')) return 'placement';
-    if (applications.some((app) => app.status === 'interviewing')) return 'interviews';
-    if (applications.length > 0) return 'applications';
-    if (experience.trim()) return 'internship';
-    return 'training';
-  }, [applications, experience]);
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!file) return;
@@ -724,6 +711,26 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     }
   }, [apiFetch, showToast]);
 
+  const renderOpportunityCard = (job: Job, index: number) => (
+    <JobCard
+      key={job.id}
+      job={job}
+      index={index}
+      fit={getJobFit(job)}
+      profileStrength={profileStrength}
+      selected={selectedJobId === job.id}
+      saved={savedJobIdSet.has(job.id)}
+      applied={hasApplied(job.id)}
+      onApply={() => openApply(job)}
+      onSave={() => toggleSavedJob(job.id)}
+      onViewDetails={() => setSelectedJobId(job.id)}
+      onOpenDetails={() => {
+        setSelectedJobId(job.id);
+        setDetailsDrawerOpen(true);
+      }}
+    />
+  );
+
   return (
     <div className="career-flow-os efficiency-os relative pvx-dashboard-shell pvx-dashboard-shell--candidate">
       <main className="relative z-10 w-full">
@@ -736,11 +743,12 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
             />
           ) : (
             <>
-              <PageHeader
-                eyebrow="Career Command Center"
-                title="Your Career Workspace"
-                description="Discover opportunities, track applications, and grow your profile."
-              />
+              {activeMode !== 'jobs' && (
+                <PageHeader
+                  title={workspaceTitles[activeMode]}
+                  className="candidate-context-header"
+                />
+              )}
               <TabNav<WorkspaceMode>
                 items={navItems.map((item) => ({
                   ...item,
@@ -764,26 +772,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
           <EfficiencyLoading />
         ) : (
           <>
-            {!showOnboarding && activeMode === 'jobs' && (
-              <CareerSnapshot
-                currentUser={currentUser}
-                profileStrength={profileStrength}
-                applications={applications}
-                savedCount={savedJobs.length}
-                bestMatch={bestMatch}
-                averageMatch={averageMatch}
-                topSkill={inlinePreviewFit?.matchedSkills[0] || profileSkills[0] || 'Add skills'}
-                skillGaps={resumeIntelligence?.careerInsights.missingSkills.length
-                  ? resumeIntelligence.careerInsights.missingSkills
-                  : inlinePreviewFit?.missingSkills || []}
-                trendingSkills={allSkills.slice(0, 3)}
-                missingProfileSections={activation.missing}
-                stage={currentJourneyStage}
-                onProfile={() => setActiveMode('profile')}
-                onApplications={() => setActiveMode('applications')}
-              />
-            )}
-
             {showOnboarding && (
               <OnboardingFunnel
                 step={onboardingStep}
@@ -819,34 +807,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
             {!showOnboarding && <>
               {activeMode === 'jobs' && (
-                <section
-                  key="jobs"
-                  className="eff-workspace"
-                >
-                  <FilterSidebar
-                    skills={allSkills}
-                    searchTerm={searchTerm}
-                    filterType={filterType}
-                    filterLoc={filterLoc}
-                    filterSkill={filterSkill}
-                    filterSalary={filterSalary}
-                    filterExperience={filterExperience}
-                    setSearchTerm={setSearchTerm}
-                    setFilterType={setFilterType}
-                    setFilterLoc={setFilterLoc}
-                    setFilterSkill={setFilterSkill}
-                    setFilterSalary={setFilterSalary}
-                    setFilterExperience={setFilterExperience}
-                    onReset={() => {
-                      setSearchTerm('');
-                      setFilterType('all');
-                      setFilterLoc('all');
-                      setFilterSkill('all');
-                      setFilterSalary('all');
-                      setFilterExperience('all');
-                    }}
-                  />
-                  <section className="eff-opportunities">
+                <React.Fragment key="jobs">
+                  <div className="candidate-search-command">
                     <JobsFilterToolbar
                       filtersOpen={filtersOpen}
                       setFiltersOpen={setFiltersOpen}
@@ -874,12 +836,13 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                         setFilterExperience('all');
                       }}
                     />
-                    <SectionHeader
-                      eyebrow="Job Search"
-                      title={`${rankedJobs.length} recommended jobs`}
-                      action={<span className="eff-results-hint">{bestMatch ? `Top match ${bestMatch}%` : 'Adjust filters to refine your results'}</span>}
-                    />
-
+                  </div>
+                  <section className="eff-workspace candidate-discovery-workspace">
+                    <section className="candidate-job-marketplace" aria-labelledby="recommended-jobs-title">
+                    <header className="candidate-feed-heading">
+                      <div><span>Recommended jobs</span><h1 id="recommended-jobs-title">Best jobs for you</h1><p>Ranked by your skills, experience, and preferences.</p></div>
+                      <div><strong>{rankedJobs.length}</strong><small>opportunities</small></div>
+                    </header>
                     {rankedJobs.length === 0 ? (
                       <JobEmptyState onReset={() => {
                         setSearchTerm('');
@@ -890,43 +853,30 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                         setFilterExperience('all');
                       }} />
                     ) : (
-                      <div className="eff-job-grid eff-job-grid-discovery">
-                        {rankedJobs.map((job, index) => (
-                          <JobCard
-                            key={job.id}
-                            job={job}
-                            index={index}
-                            fit={getJobFit(job)}
-                            profileStrength={profileStrength}
-                            selected={selectedJobId === job.id}
-                            saved={savedJobIdSet.has(job.id)}
-                            applied={hasApplied(job.id)}
-                            onApply={() => openApply(job)}
-                            onSave={() => toggleSavedJob(job.id)}
-                            onViewDetails={() => setSelectedJobId(job.id)}
-                            onOpenDetails={() => {
-                              setSelectedJobId(job.id);
-                              setDetailsDrawerOpen(true);
-                            }}
-                          />
-                        ))}
+                      <div className="candidate-primary-feed">
+                        <div className="candidate-wide-job-feed">
+                          {rankedJobs.map((job, index) => renderOpportunityCard(job, index))}
+                        </div>
                       </div>
                     )}
-                  </section>
-                  <CandidateInsightsRail
+                    </section>
+                    <CandidateInsightsRail
                     selectedJob={inlinePreviewJob}
                     selectedFit={inlinePreviewFit}
+                    applications={applications}
                     profileStrength={profileStrength}
                     missingProfileSections={activation.missing}
                     trendingSkills={allSkills.slice(0, 3)}
                     saved={inlinePreviewJob ? savedJobIdSet.has(inlinePreviewJob.id) : false}
                     applied={inlinePreviewJob ? hasApplied(inlinePreviewJob.id) : false}
                     onProfile={() => setActiveMode('profile')}
+                    onApplications={() => setActiveMode('applications')}
                     onApply={inlinePreviewJob ? () => openApply(inlinePreviewJob) : undefined}
                     onSave={inlinePreviewJob ? () => toggleSavedJob(inlinePreviewJob.id) : undefined}
                     onOpenDetails={() => setDetailsDrawerOpen(true)}
-                  />
-                </section>
+                    />
+                  </section>
+                </React.Fragment>
               )}
 
               {activeMode === 'applications' && (
@@ -1014,12 +964,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
             {!showOnboarding && activeMode === 'jobs' && (
               <>
-                <CompactApplicationStrip
-                  applications={applications}
-                  activeApplicationId={activeApplicationId}
-                  setActiveApplicationId={setActiveApplicationId}
-                  onViewAll={() => setActiveMode('applications')}
-                />
                 {selectedJobPreview && (
                   <div className="eff-mobile-apply-bar">
                     <span>
@@ -1296,81 +1240,6 @@ function OnboardingFunnel({
   );
 }
 
-function CareerSnapshot({ currentUser, profileStrength, applications, savedCount, bestMatch, averageMatch, topSkill, skillGaps, trendingSkills, missingProfileSections, stage, onProfile, onApplications }: {
-  currentUser: User;
-  profileStrength: number;
-  applications: Application[];
-  savedCount: number;
-  bestMatch: number;
-  averageMatch: number;
-  topSkill: string;
-  skillGaps: string[];
-  trendingSkills: string[];
-  missingProfileSections: string[];
-  stage: JourneyStage;
-  onProfile: () => void;
-  onApplications: () => void;
-}) {
-  const interviews = applications.filter((app) => app.status === 'interviewing' || app.status === 'forwarded').length;
-  const offers = applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length;
-
-  return (
-    <section className="candidate-overview" aria-label="Career dashboard overview">
-      <article className="candidate-overview-card candidate-profile-card">
-        <div className="candidate-widget-head">
-          <span><Award className="h-4 w-4" /> Profile strength</span>
-          <strong>{profileStrength}%</strong>
-        </div>
-        <div className="candidate-widget-progress" aria-label={`${profileStrength}% profile complete`}>
-          <span style={{ width: `${profileStrength}%` }} />
-        </div>
-        <p>{missingProfileSections.length ? `Next: ${missingProfileSections[0]}` : `${currentUser.name.split(' ')[0]}, your profile is application-ready.`}</p>
-        <button type="button" onClick={onProfile}>Improve profile <ArrowUpRight className="h-3.5 w-3.5" /></button>
-      </article>
-
-      <article className="candidate-overview-card">
-        <div className="candidate-widget-head">
-          <span><FileText className="h-4 w-4" /> Application summary</span>
-          <button type="button" onClick={onApplications}>View all</button>
-        </div>
-        <div className="candidate-summary-grid">
-          <span><strong>{applications.length}</strong>Applied</span>
-          <span><strong>{savedCount}</strong>Saved</span>
-          <span><strong>{interviews}</strong>Interviews</span>
-          <span><strong>{offers}</strong>Offers</span>
-        </div>
-      </article>
-
-      <article className="candidate-overview-card">
-        <div className="candidate-widget-head">
-          <span><Target className="h-4 w-4" /> AI match summary</span>
-          <strong>{averageMatch}% avg</strong>
-        </div>
-        <div className="candidate-match-row">
-          <span><small>Best match</small><strong>{bestMatch}%</strong></span>
-          <span><small>Top skill</small><strong>{topSkill}</strong></span>
-        </div>
-        <p>{skillGaps.length ? `${skillGaps.length} skill gaps: ${skillGaps.slice(0, 2).join(', ')}` : 'No major skill gaps in your top match.'}</p>
-      </article>
-
-      <article className="candidate-overview-card">
-        <div className="candidate-widget-head">
-          <span><Rocket className="h-4 w-4" /> Career insights</span>
-          <strong>{stageLabels[stage]}</strong>
-        </div>
-        <div className="candidate-skill-line">
-          <small>Recommended</small>
-          <span>{(skillGaps.length ? skillGaps : trendingSkills).slice(0, 2).join(' / ') || 'Explore matched roles'}</span>
-        </div>
-        <div className="candidate-skill-line">
-          <small>Trending</small>
-          <span>{trendingSkills.slice(0, 2).join(' / ') || 'Skills update with live jobs'}</span>
-        </div>
-      </article>
-    </section>
-  );
-}
-
 function SectionHeader({ eyebrow, title, action }: { eyebrow: string; title: string; action?: React.ReactNode }) {
   return (
     <div className="eff-section-head">
@@ -1513,48 +1382,58 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   onViewDetails: () => void;
   onOpenDetails: () => void;
 }) {
-  const daysLeft = getDaysLeft(job.deadline);
   const workMode = getWorkMode(job.location);
-  const recent = isRecentlyPosted(job.createdAt);
-  const additionalSkills = Math.max(0, job.requirements.length - 4);
-  const compactMeta = [job.location, job.jobType, job.experience].filter(Boolean).join(' / ');
+  const visibleSkills = (fit.matchedSkills.length ? fit.matchedSkills : job.requirements).slice(0, 3);
   void profileStrength;
+  void index;
   return (
     <article
-      className={`eff-job-card ${selected ? 'is-selected' : ''}`}
+      className={`eff-job-card opportunity-card-wide ${selected ? 'is-selected' : ''}`}
       aria-current={selected ? 'true' : undefined}
     >
       <div className="eff-job-row-main">
         <CompanyBadge company={job.companyName} />
         <div className="eff-job-row-copy">
           <div className="eff-job-card-head">
-            <button type="button" className="eff-job-title-button" onClick={onViewDetails}>{job.title}</button>
+            <button type="button" className="eff-job-title-button" onClick={() => { onViewDetails(); onOpenDetails(); }}>{job.title}</button>
             <span className={`eff-work-mode ${workMode.tone}`}>{workMode.label}</span>
           </div>
           <small className="eff-company-line">
             <span>{job.companyName}</span>
-            <em><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />Verified listing</em>
+            <em title="Verified listing"><BadgeCheck className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Verified listing</span></em>
           </small>
           <div className="eff-job-location-row eff-job-row-meta">
-            <span><MapPin className="h-3.5 w-3.5" />{compactMeta}</span>
-            {recent && <em>Recently Posted</em>}
+            <span><MapPin className="h-3.5 w-3.5" />{job.location}</span>
           </div>
-          <div className="eff-job-skills">
-            {job.requirements.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}
-            {additionalSkills > 0 && <span className="eff-skill-more">+{additionalSkills}</span>}
+          <div className="eff-skill-alignment" aria-label={`${visibleSkills.length} top aligned skills`}>
+            {visibleSkills.map((skill, skillIndex) => (
+              <span key={skill} className={fit.matchedSkills.includes(skill) ? 'is-matched' : ''}>
+                <i aria-hidden="true"><b style={{ width: `${Math.max(58, fit.score - skillIndex * 9)}%` }} /></i>
+                <em>{skill}</em>
+              </span>
+            ))}
           </div>
         </div>
         <div className="eff-job-row-signals">
-          <strong>{job.salary || 'Compensation not listed'}</strong>
-          <span className={`eff-quality-chip ${fit.quality.tone}`}>{fit.score}% Match</span>
-          <small>{formatPostedDate(job.createdAt)}</small>
-          {daysLeft !== null && <small className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft}d left`}</small>}
+          <span className={`eff-match-orbit ${fit.quality.tone}`} aria-label={`${fit.score}% job match`} style={{ '--match-score': `${fit.score * 3.6}deg` } as React.CSSProperties}>
+            <strong>{fit.score}%</strong><small>match</small>
+          </span>
         </div>
       </div>
-      <div className="eff-job-actions">
-        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={`eff-save-job ${saved ? 'is-saved' : ''}`}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply'}</button>
-        <button type="button" className="eff-view-details" onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}>View Details</button>
+      <div className="eff-job-value-row">
+        <span><small>Compensation</small><strong>{job.salary || 'Salary on request'}</strong></span>
+        <span><small>Work style</small><strong>{workMode.label}</strong></span>
+      </div>
+      <div className="eff-job-card-footer">
+        <button type="button" className="eff-job-disclosure" onClick={() => { onViewDetails(); onOpenDetails(); }}>
+          <span className="eff-job-disclosure-mark" aria-hidden="true" />
+          {fit.quality.label} alignment
+          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+        <div className="eff-job-actions">
+          <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={`eff-save-job ${saved ? 'is-saved' : ''}`} aria-label={saved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply now'}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
+        </div>
       </div>
     </article>
   );
@@ -1564,44 +1443,36 @@ function CompanyBadge({ company }: { company: string }) {
   return <span className="eff-company-badge">{company.slice(0, 2).toUpperCase()}</span>;
 }
 
-function CandidateInsightsRail({ selectedJob, selectedFit, profileStrength, missingProfileSections, trendingSkills, saved, applied, onProfile, onApply, onSave, onOpenDetails }: {
+function CandidateInsightsRail({ selectedJob, selectedFit, applications, profileStrength, missingProfileSections, trendingSkills, saved, applied, onProfile, onApplications, onApply, onSave, onOpenDetails }: {
   selectedJob: Job | null;
   selectedFit: JobFitAnalysis | null;
+  applications: Application[];
   profileStrength: number;
   missingProfileSections: string[];
   trendingSkills: string[];
   saved: boolean;
   applied: boolean;
   onProfile: () => void;
+  onApplications: () => void;
   onApply?: () => void;
   onSave?: () => void;
   onOpenDetails: () => void;
 }) {
+  const latestApplication = applications.find((app) => app.status === 'interviewing' || app.status === 'forwarded') || applications[0] || null;
+  const currentStage = latestApplication ? getApplicationStage(latestApplication.status) : 'Applied';
+  const timelineStages = applicationStages.slice(0, 4);
+  const currentStageIndex = Math.max(0, timelineStages.findIndex((item) => item.label === currentStage));
   return (
     <aside className="candidate-insights-rail" aria-label="Career insights and recommendations">
-      <div className="candidate-rail-heading">
-        <span>Career intelligence</span>
-        <strong>Actions for you</strong>
+      <div className="candidate-ai-coach-heading">
+        <CareerSignalLottie className="candidate-coach-lottie" label="AI Career Coach active" />
+        <span><small>AI Career Coach</small><strong>Your next best move</strong></span>
       </div>
-
-      <section className="candidate-rail-card candidate-rail-profile">
-        <div className="candidate-widget-head">
-          <span><Award className="h-4 w-4" /> Profile readiness</span>
-          <strong>{profileStrength}%</strong>
-        </div>
-        <div className="candidate-widget-progress"><span style={{ width: `${profileStrength}%` }} /></div>
-        <ul>
-          {(missingProfileSections.length ? missingProfileSections.slice(0, 2) : ['Profile is ready for high-intent applications']).map((item) => (
-            <li key={item}><CheckCircle2 className="h-3.5 w-3.5" />{item}</li>
-          ))}
-        </ul>
-        <button type="button" onClick={onProfile}>Open profile <ArrowUpRight className="h-3.5 w-3.5" /></button>
-      </section>
 
       <section className="candidate-rail-card candidate-rail-recommendation">
         <div className="candidate-widget-head">
-          <span><Target className="h-4 w-4" /> Top recommendation</span>
-          {selectedFit && <strong>{selectedFit.score}%</strong>}
+          <span><Target className="h-4 w-4" /> Best opportunity</span>
+          {selectedFit && <strong>{selectedFit.score}% fit</strong>}
         </div>
         {selectedJob && selectedFit ? (
           <>
@@ -1609,7 +1480,6 @@ function CandidateInsightsRail({ selectedJob, selectedFit, profileStrength, miss
               <CompanyBadge company={selectedJob.companyName} />
               <span><strong>{selectedJob.title}</strong><small>{selectedJob.companyName} / {selectedJob.location}</small></span>
             </div>
-            <p>{selectedFit.resumeInsight}</p>
             <div className="candidate-rail-tags">
               {selectedJob.requirements.slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}
             </div>
@@ -1620,19 +1490,46 @@ function CandidateInsightsRail({ selectedJob, selectedFit, profileStrength, miss
             </div>
           </>
         ) : (
-          <p>Job recommendations will appear as soon as matching roles are available.</p>
+          <p>Matching roles will appear here.</p>
         )}
       </section>
 
-      <section className="candidate-rail-card">
+      <section className="candidate-rail-card candidate-application-timeline">
         <div className="candidate-widget-head">
-          <span><Rocket className="h-4 w-4" /> Skills to watch</span>
+          <span><CalendarClock className="h-4 w-4" /> Application journey</span>
+          <button type="button" onClick={onApplications}>{applications.length} total</button>
         </div>
-        <div className="candidate-rail-tags">
-          {(selectedFit?.missingSkills.length ? selectedFit.missingSkills : trendingSkills).slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
-        </div>
-        <p>{selectedFit?.missingSkills.length ? 'Add these skills to improve your strongest job matches.' : 'Your top-role skills are aligned. Keep them current.'}</p>
+        {latestApplication ? (
+          <>
+            <strong>{latestApplication.jobTitle}</strong>
+            <small>{latestApplication.companyName}</small>
+            <ol aria-label={`Application status: ${currentStage}`}>
+              {timelineStages.map((item, index) => <li key={item.label} className={index <= currentStageIndex ? 'is-active' : ''}><span>{index < currentStageIndex ? <CheckCircle2 className="h-3 w-3" /> : index + 1}</span><small>{item.label}</small></li>)}
+            </ol>
+          </>
+        ) : (
+          <button type="button" className="candidate-start-application" onClick={onApplications}>Your first application will appear here <ArrowUpRight className="h-4 w-4" /></button>
+        )}
       </section>
+
+      <details className="candidate-insight-disclosure">
+        <summary>
+          <span className="candidate-readiness-ring" style={{ '--readiness': `${profileStrength * 3.6}deg` } as React.CSSProperties}><strong>{profileStrength}%</strong></span>
+          <span><strong>Career readiness</strong><small>{missingProfileSections.length ? `${missingProfileSections.length} quick wins` : 'Profile ready'}</small></span>
+          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+        </summary>
+        <div>
+          <ul>
+            {(missingProfileSections.length ? missingProfileSections.slice(0, 3) : ['Profile is ready for applications']).map((item) => <li key={item}><CheckCircle2 className="h-3.5 w-3.5" />{item}</li>)}
+          </ul>
+          <button type="button" onClick={onProfile}>Improve profile <ArrowUpRight className="h-3.5 w-3.5" /></button>
+        </div>
+      </details>
+
+      <details className="candidate-insight-disclosure">
+        <summary><span className="candidate-insight-icon"><Rocket className="h-4 w-4" /></span><span><strong>Skills to grow</strong><small>Based on live roles</small></span><ChevronDown className="h-4 w-4" /></summary>
+        <div className="candidate-rail-tags">{(selectedFit?.missingSkills.length ? selectedFit.missingSkills : trendingSkills).slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}</div>
+      </details>
     </aside>
   );
 }
@@ -2458,19 +2355,11 @@ function StatusPill({ status }: { status: Application['status'] }) {
 }
 
 function EmptyCompact({ icon: Icon, title, body, actionLabel, onAction }: { icon: AppIcon; title: string; body: string; actionLabel?: string; onAction?: () => void }) {
-  const hint = title.includes('jobs')
-    ? 'Try widening location or skill filters.'
-    : title.includes('saved')
-      ? 'Use Save on roles you want to compare later.'
-      : title.includes('applications')
-        ? 'Apply to one strong-match role to start your pipeline.'
-        : 'New updates will appear here automatically.';
   return (
     <div className="eff-empty">
-      <Icon className="h-8 w-8 text-cyan-500" />
+      <div className="empty-visual" aria-hidden="true"><i /><i /><span><Icon className="h-7 w-7" /></span></div>
       <strong>{title}</strong>
       <span>{body}</span>
-      <small>{hint}</small>
       {actionLabel && onAction && <button type="button" className="eff-action" onClick={onAction}>{actionLabel}</button>}
     </div>
   );
@@ -2479,9 +2368,9 @@ function EmptyCompact({ icon: Icon, title, body, actionLabel, onAction }: { icon
 function JobEmptyState({ onReset }: { onReset: () => void }) {
   return (
     <div className="eff-empty eff-empty-jobs">
-      <Briefcase className="h-9 w-9 text-cyan-500" />
+      <div className="empty-visual" aria-hidden="true"><i /><i /><span><Briefcase className="h-7 w-7" /></span></div>
       <strong>No jobs match your current filters.</strong>
-      <span>Try widening your skills, location, salary, or experience filters to discover more opportunities.</span>
+      <span>Widen your search to reveal more opportunities.</span>
       <button type="button" className="eff-action" onClick={onReset}>Reset Filters</button>
     </div>
   );

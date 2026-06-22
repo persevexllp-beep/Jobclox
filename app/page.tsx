@@ -36,16 +36,45 @@ async function getFeaturedJobs(): Promise<Job[]> {
 }
 
 const candidateSteps = [
-  ['Create your career profile', 'Turn your skills, education, and resume into a clear candidate signal.'],
-  ['Discover relevant roles', 'Focus on verified jobs and internships aligned with your goals.'],
-  ['Apply with confidence', 'Understand your readiness, apply, and track every next step.'],
+  ['Build your signal', 'Bring your skills and resume into focus.'],
+  ['Find your fit', 'See verified roles aligned to you.'],
+  ['Make your move', 'Apply and follow every next step.'],
 ];
 
 const recruiterBenefits = [
-  ['Structured hiring pipeline', 'Move from role creation to candidate review without losing context.'],
-  ['Candidate-fit intelligence', 'Review matched skills, missing skills, notes, and hiring signals together.'],
-  ['Verified employer identity', 'Build candidate trust through a transparent moderation and verification flow.'],
+  ['One clear pipeline', 'Keep every decision in context.'],
+  ['Stronger candidate signal', 'See fit, skills, and notes together.'],
+  ['Trusted employer presence', 'Turn verification into candidate confidence.'],
 ];
+
+const opportunityJourney = [
+  { label: 'Discover', icon: Search },
+  { label: 'Improve', icon: GraduationCap },
+  { label: 'Apply', icon: ArrowRight },
+  { label: 'Interview', icon: UsersRound },
+  { label: 'Hired', icon: BadgeCheck },
+];
+
+function OpportunityJourneyVisual() {
+  return (
+    <div className="landing-journey-visual" role="img" aria-label="A candidate progresses from discovering a role to getting hired">
+      <div className="landing-journey-glow" aria-hidden="true" />
+      <div className="landing-journey-person" aria-hidden="true"><span /><span /><i /><i /><i /></div>
+      <div className="landing-opportunity-card">
+        <div className="landing-opportunity-company">NS</div>
+        <div><small>Best match</small><strong>Product Design Intern</strong><span>Northstar · Remote</span></div>
+        <b>92%</b>
+      </div>
+      <ol className="landing-journey-path" aria-hidden="true">
+        {opportunityJourney.map(({ label, icon: Icon }, index) => (
+          <li key={label} className={index < 3 ? 'is-complete' : index === 3 ? 'is-current' : ''}><span><Icon /></span><small>{label}</small></li>
+        ))}
+      </ol>
+      <div className="landing-growth-signal" aria-hidden="true"><Sparkles /><span><strong>Career signal +18%</strong><small>Skills aligned</small></span></div>
+      <div className="landing-interview-signal" aria-hidden="true"><CheckCircle2 /><span><strong>Interview unlocked</strong><small>Your next chapter is moving</small></span></div>
+    </div>
+  );
+}
 
 export default async function HomePage() {
   const [user, featuredJobs] = await Promise.all([getCurrentUser(), getFeaturedJobs()]);
@@ -80,7 +109,7 @@ export default async function HomePage() {
             <div className="landing-hero-copy">
               <div className="landing-kicker"><Sparkles aria-hidden="true" /> India’s early-career opportunity engine</div>
               <h1>Move from potential to <span>your next opportunity.</span></h1>
-              <p>Persevex brings verified jobs, internships, application tracking, and career intelligence into one focused workspace for students and hiring teams.</p>
+              <p>Discover verified roles, grow your signal, and move toward work that fits.</p>
               <form className="landing-search" action="/login" aria-label="Find opportunities">
                 <label>
                   <Search aria-hidden="true" />
@@ -105,36 +134,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="landing-product-preview" aria-label="Persevex product preview">
-              <div className="landing-preview-bar"><span /><span /><span /><em>Career workspace</em></div>
-              <div className="landing-preview-content">
-                <div className="landing-preview-sidebar">
-                  <strong>Good morning</strong>
-                  <small>Your career signal is getting stronger.</small>
-                  <div className="landing-progress"><span style={{ width: '78%' }} /></div>
-                  <b>78% profile strength</b>
-                  <ul>
-                    <li className="is-active"><BriefcaseBusiness /> Discover jobs</li>
-                    <li><CheckCircle2 /> Applications</li>
-                    <li><GraduationCap /> Career support</li>
-                  </ul>
-                </div>
-                <div className="landing-preview-main">
-                  <div className="landing-preview-heading"><div><small>Recommended for you</small><strong>High-intent opportunities</strong></div><span>24 roles</span></div>
-                  {[
-                    ['Product Design Intern', 'Northstar Labs', 'Remote', '92%'],
-                    ['Frontend Engineer', 'Orbit Systems', 'Bengaluru', '86%'],
-                    ['Business Analyst', 'Kinetic Works', 'Hybrid', '81%'],
-                  ].map(([role, company, location, match]) => (
-                    <article key={role} className="landing-preview-job">
-                      <div className="landing-company-mark">{company.slice(0, 2).toUpperCase()}</div>
-                      <div><strong>{role}</strong><small>{company} · {location}</small></div>
-                      <span>{match} match</span>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <OpportunityJourneyVisual />
           </div>
         </section>
 

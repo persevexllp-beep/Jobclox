@@ -9,6 +9,7 @@ import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'r
 import type { AppIcon } from '@/src/lib/icons';
 import {
   AlertCircle,
+  ArrowUpRight,
   BarChart3,
   BriefcaseBusiness,
   Calendar,
@@ -444,13 +445,12 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
       )}
 
       <PageHeader
-        eyebrow="Hiring Operating System"
         title={company?.companyName || 'Recruiter Workspace'}
-        description="Manage jobs, review candidates, and track hiring performance."
         badge={company?.verificationStatus === 'approved' ? 'Verified' : 'Pending KYC'}
+        className="recruiter-context-header"
       />
 
-      {(activeTab === 'command' || activeTab === 'analytics') && (
+      {activeTab === 'analytics' && (
         <section className="rec-metrics" aria-label="Hiring performance overview">
           <RecruiterMetricCard title="Active Jobs" value={metrics.activeJobs} trend={`${jobs.filter((job) => job.status === 'submitted').length} pending approval`} icon={BriefcaseBusiness} />
           <RecruiterMetricCard title="Applications" value={metrics.applications} trend={`${applications.filter((app) => app.status === 'under_review').length} in review`} icon={FileText} />
@@ -468,7 +468,7 @@ export default function CompanyDashboard({ currentUser, apiFetch, showToast, onC
       />
 
       {loading ? (
-        <SkeletonLoader type={activeTab === 'pipeline' ? 'pipeline' : activeTab === 'jobs' ? 'table' : activeTab === 'command' || activeTab === 'analytics' ? 'metrics' : 'profile'} count={4} />
+        <SkeletonLoader type={activeTab === 'pipeline' ? 'pipeline' : activeTab === 'jobs' ? 'table' : activeTab === 'command' ? 'hiringWorkspace' : activeTab === 'analytics' ? 'analytics' : 'profile'} count={4} />
       ) : (
         <>
           {activeTab === 'command' && (
@@ -623,20 +623,72 @@ function RecruiterMetricCard({ title, value, trend, icon: Icon }: { title: strin
 }
 
 function HiringCommandCenter({ jobs, applications, onPost, onPipeline }: { jobs: Job[]; applications: Application[]; onPost: () => void; onPipeline: () => void }) {
+  const journey = [
+    { label: 'Attract', value: jobs.filter((job) => job.status === 'approved').length, icon: BriefcaseBusiness },
+    { label: 'Review', value: applications.filter((app) => app.status === 'applied' || app.status === 'under_review').length, icon: UsersRound },
+    { label: 'Shortlist', value: applications.filter((app) => app.status === 'shortlisted' || app.status === 'forwarded').length, icon: Star },
+    { label: 'Interview', value: applications.filter((app) => app.status === 'interviewing').length, icon: Calendar },
+    { label: 'Hire', value: applications.filter((app) => app.status === 'selected' || app.finalResult === 'hired').length, icon: UserCheck },
+  ];
+  const reviewCount = journey[1].value + journey[2].value;
+  const pendingJobs = jobs.filter((job) => job.status === 'submitted').length;
+  const scheduledInterviews = applications.filter((app) => app.interviewDate).length;
+  const priorityCandidates = applications
+    .filter((app) => app.status === 'applied' || app.status === 'under_review' || app.status === 'shortlisted')
+    .slice(0, 4);
+
   return (
-    <section className="rec-command-grid">
-      <div className="rec-panel">
-        <SectionHeader eyebrow="Today" title="Hiring focus" action={<button type="button" onClick={onPost}>Post job</button>} />
-        <div className="rec-focus-list">
-          <FocusRow icon={BriefcaseBusiness} title={`${jobs.filter((job) => job.status === 'submitted').length} jobs awaiting approval`} body="Submitted roles stay visible here while moderation completes." />
-          <FocusRow icon={UsersRound} title={`${applications.filter((app) => app.status === 'under_review' || app.status === 'shortlisted').length} candidates need review`} body="Move qualified profiles into interview or offer stages." />
-          <FocusRow icon={Calendar} title={`${applications.filter((app) => app.interviewDate).length} interviews scheduled`} body="Interview details are surfaced from the application records." />
+    <section className="hiring-os" aria-labelledby="hiring-journey-title">
+      <header className="hiring-os-header">
+        <div><span>Today in hiring</span><h2 id="hiring-journey-title">Make the next decision.</h2><p>{reviewCount ? `${reviewCount} candidates need your attention.` : 'Your review queue is clear.'}</p></div>
+        <div><button type="button" onClick={onPost}><PlusCircle className="h-4 w-4" /> Post job</button><button type="button" onClick={onPipeline}>Open pipeline</button></div>
+      </header>
+
+      <div className="hiring-os-layout">
+        <section className="hiring-priority-queue" aria-labelledby="priority-candidates-title">
+          <div className="hiring-panel-heading"><div><span>Priority queue</span><h3 id="priority-candidates-title">Candidates to review</h3></div><button type="button" onClick={onPipeline}>View all <ArrowUpRight className="h-4 w-4" /></button></div>
+          {priorityCandidates.length ? (
+            <div className="hiring-candidate-list">
+              {priorityCandidates.map((app) => (
+                <button type="button" key={app.id} onClick={onPipeline} className="hiring-candidate-row">
+                  <span className="hiring-candidate-avatar">{app.candidateName.slice(0, 2).toUpperCase()}</span>
+                  <span><strong>{app.candidateName}</strong><small>{app.jobTitle}</small></span>
+                  <span className="hiring-match-score"><strong>{app.score}%</strong><small>match</small></span>
+                  <span className="hiring-row-action">Review <ArrowUpRight className="h-4 w-4" /></span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="hiring-queue-empty"><CheckCircle2 className="h-6 w-6" /><strong>Queue cleared</strong><span>New candidate reviews will appear here.</span></div>
+          )}
+        </section>
+
+        <aside className="hiring-flow-map" aria-label="Hiring flow">
+          <div className="hiring-panel-heading"><div><span>Hiring flow</span><h3>Pipeline momentum</h3></div></div>
+          <ol>
+            {journey.map(({ label, value, icon: Icon }, index) => (
+              <li key={label} className={value ? 'has-talent' : ''}>
+                <span><Icon className="h-4 w-4" /></span>
+                <div><small>{label}</small><strong>{value}</strong></div>
+                {index < journey.length - 1 && <i />}
+              </li>
+            ))}
+          </ol>
+          <div className="hiring-attention-grid">
+            <span><BriefcaseBusiness className="h-4 w-4" /><strong>{pendingJobs}</strong><small>jobs pending</small></span>
+            <span><Calendar className="h-4 w-4" /><strong>{scheduledInterviews}</strong><small>interviews</small></span>
+          </div>
+        </aside>
+      </div>
+
+      <footer className="hiring-os-footer">
+        <div className="recruiter-action-copy"><span>Operating signal</span><strong>{reviewCount ? 'Candidate review is today’s highest-impact action.' : 'Focus on attracting the next qualified candidate.'}</strong></div>
+        <div className="recruiter-action-chips">
+          {pendingJobs > 0 && <span><BriefcaseBusiness className="h-4 w-4" />{pendingJobs} awaiting approval</span>}
+          {scheduledInterviews > 0 && <span><Calendar className="h-4 w-4" />{scheduledInterviews} interviews</span>}
+          {!pendingJobs && !scheduledInterviews && <span><CheckCircle2 className="h-4 w-4" />All caught up</span>}
         </div>
-      </div>
-      <div className="rec-panel">
-        <SectionHeader eyebrow="Pipeline" title="Hiring funnel" action={<button type="button" onClick={onPipeline}>Open pipeline</button>} />
-        <MiniFunnel applications={applications} />
-      </div>
+      </footer>
     </section>
   );
 }
