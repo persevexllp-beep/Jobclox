@@ -1,4 +1,4 @@
-import { PDFParse } from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 import type {
   CandidateProfile,
   ParsedResumeData,
@@ -440,13 +440,8 @@ export function buildAutofillResult(
 }
 
 async function extractTextWithPdfParse(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText();
-    return normalizeWhitespace(result.text || '');
-  } finally {
-    await parser.destroy();
-  }
+  const result = await pdfParse(buffer);
+  return normalizeWhitespace(result.text || '');
 }
 
 function assertPdf(buffer: Buffer) {
