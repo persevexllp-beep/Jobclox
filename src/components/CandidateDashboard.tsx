@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { AppIcon } from '@/src/lib/icons';
 import {
   AlertCircle,
@@ -173,6 +174,7 @@ function serializeResumeHistory(options: ResumeOption[]) {
 }
 
 export default function CandidateDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: CandidateDashboardProps) {
+  const router = useRouter();
   const routeInitializedRef = useRef(false);
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('jobs');
   const [loading, setLoading] = useState(true);
@@ -750,13 +752,9 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   };
 
   const openApply = useCallback((job: Job) => {
-    setSelectedJob(job);
     setSelectedJobId(job.id);
-    setFeedbackScore(null);
-    setErrorMsg('');
-    setSuccessMsg('');
-    setApplyResult(null);
-  }, []);
+    router.push(`/candidate/jobs/${job.id}/apply`);
+  }, [router]);
 
   const shareOpportunity = useCallback(async (job: Job) => {
     if (typeof window === 'undefined') return;
@@ -1088,28 +1086,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
         onSelectSimilar={(id) => setSelectedJobId(id)}
       />
 
-      <ApplyModal
-        selectedJob={selectedJob}
-        selectedFit={selectedApplyFit}
-        resumeText={resumeText}
-        resumeFileName={resumeFileName}
-        resumeOptions={resumeOptions}
-        resumeQualityScore={resumeIntelligence?.careerInsights?.placementReadiness ?? profileStrength}
-        feedbackScore={feedbackScore}
-        applying={applying}
-        errorMsg={errorMsg}
-        successMsg={successMsg}
-        applyResult={applyResult}
-        onClose={() => setSelectedJob(null)}
-        onSubmit={handleApplySubmit}
-        onResumeText={setResumeText}
-        onResumeFileName={setResumeFileName}
-        onResumeUpload={handleFileUpload}
-        onViewApplications={() => {
-          setSelectedJob(null);
-          setActiveMode('applications');
-        }}
-      />
       </div>
   );
 }
@@ -2099,13 +2075,14 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const visibleApplications = applications.filter((app) => statusFilter === 'all' || getApplicationStage(app.status) === statusFilter);
+  const activeApplication = applications.find((app) => app.id === activeApplicationId) || visibleApplications[0] || null;
   const stageCounts = applicationStages.map((stage) => ({
     ...stage,
     count: applications.filter((app) => stage.keys.includes(app.status)).length,
   }));
 
   return (
-    <section className="eff-full-panel">
+    <section className="eff-full-panel application-command-center">
       <SectionHeader eyebrow="Applications" title="Application tracker" action={<button type="button" className="eff-action" onClick={onExplore}>Find more jobs</button>} />
       {applications.length === 0 ? (
         <EmptyCompact icon={FileText} title="No applications yet" body="Apply to a strong-match role to begin tracking your progress." actionLabel="Find a role" onAction={onExplore} />
@@ -2123,21 +2100,80 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
               <span>All</span>
             </button>
           </div>
-          <div className="eff-application-list">
-            {visibleApplications.map((app) => (
-              <ApplicationMini
-                key={app.id}
-                app={app}
-                expanded={activeApplicationId === app.id}
-                onToggle={() => setActiveApplicationId(activeApplicationId === app.id ? null : app.id)}
-                large
-              />
-            ))}
+          <div className="application-tracker-layout">
+            <div className="application-table-card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Role</th>
+                    <th>Company</th>
+                    <th>Source</th>
+                    <th>Applied Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleApplications.map((app) => (
+                    <tr key={app.id} className={activeApplication?.id === app.id ? 'is-active' : ''}>
+                      <td><strong>{app.jobTitle}</strong><small>{app.score}% match</small></td>
+                      <td>{app.companyName}</td>
+                      <td><ApplicationSourceBadge source={app.source} /></td>
+                      <td>{new Date(app.appliedAt).toLocaleDateString()}</td>
+                      <td><StatusPill status={app.status} /></td>
+                      <td><button type="button" onClick={() => setActiveApplicationId(app.id)}>View details</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {activeApplication && <ApplicationDetailView app={activeApplication} />}
           </div>
         </>
       )}
     </section>
   );
+}
+
+function ApplicationSourceBadge({ source }: { source?: Application['source'] }) {
+  const normalized = source || 'INTERNAL';
+  const label = normalized === 'JSEARCH' ? 'JSearch' : normalized === 'EXTERNAL' ? 'External' : normalized === 'PARTNER' ? 'Partner' : 'Internal';
+  return <span className={`application-source-badge is-${normalized.toLowerCase()}`}>{label}</span>;
+}
+
+function ApplicationDetailView({ app }: { app: Application }) {
+  return (
+    <aside className="application-detail-view">
+      <header>
+        <span>Application detail view</span>
+        <h3>{app.jobTitle}</h3>
+        <p>{app.companyName}</p>
+      </header>
+      <div className="application-detail-grid">
+        <InfoTile label="Source" value={app.source === 'JSEARCH' ? 'JSearch' : app.source || 'Internal'} />
+        <InfoTile label="Applied date" value={new Date(app.appliedAt).toLocaleString()} />
+        <InfoTile label="Status" value={formatApplicationStatus(app.status)} />
+        <InfoTile label="Resume used" value={app.resumeUsed || 'Current profile resume'} />
+      </div>
+      <Pipeline app={app} />
+      <div className="application-notes-panel">
+        <strong>Notes</strong>
+        <p>{app.notes || 'No notes have been added yet.'}</p>
+      </div>
+      <div className="eff-skill-compare">
+        <SkillSet title="Matched" skills={app.matchedSkills} empty="None" good />
+        <SkillSet title="Missing" skills={app.missingSkills} empty="Full match" />
+      </div>
+    </aside>
+  );
+}
+
+function InfoTile({ label, value }: { label: string; value: string }) {
+  return <div><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function formatApplicationStatus(status: Application['status']) {
+  return status.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function ApplicationMini({ app, expanded, onToggle, large }: {

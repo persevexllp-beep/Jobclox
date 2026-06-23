@@ -110,6 +110,12 @@ export async function POST(request: Request) {
     status: 'applied',
     notes: '',
     appliedAt: new Date().toISOString(),
+    source: 'INTERNAL',
+    resumeUsed: fileName,
+    metadata: {
+      source: 'internal',
+      resumeFileName: fileName,
+    },
   };
 
   let newApplication;

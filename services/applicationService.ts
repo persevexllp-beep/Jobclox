@@ -22,6 +22,11 @@ type SupabaseApplicationRow = {
   interview_date: string | null;
   final_result: FinalResult | null;
   rejection_reason: string | null;
+  source?: Application['source'] | null;
+  external_job_id?: string | null;
+  external_application_id?: string | null;
+  resume_used?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type CreateApplicationInput = {
@@ -42,6 +47,11 @@ export type CreateApplicationInput = {
   interviewDate?: string;
   finalResult?: FinalResult;
   rejectionReason?: string;
+  source?: Application['source'];
+  externalJobId?: string;
+  externalApplicationId?: string;
+  resumeUsed?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type UpdateApplicationStatusInput = {
@@ -70,6 +80,11 @@ const APPLICATION_SELECT = [
   'interview_date',
   'final_result',
   'rejection_reason',
+  'source',
+  'external_job_id',
+  'external_application_id',
+  'resume_used',
+  'metadata',
 ].join(',');
 
 function requireSupabaseAdmin() {
@@ -102,6 +117,11 @@ function mapSupabaseApplication(row: SupabaseApplicationRow): Application {
     interviewDate: row.interview_date || undefined,
     finalResult: row.final_result || undefined,
     rejectionReason: row.rejection_reason || undefined,
+    source: row.source || 'INTERNAL',
+    externalJobId: row.external_job_id || undefined,
+    externalApplicationId: row.external_application_id || undefined,
+    resumeUsed: row.resume_used || undefined,
+    metadata: row.metadata || undefined,
   };
 }
 
@@ -132,6 +152,11 @@ function buildApplicationInsert(application: CreateApplicationInput): Record<str
   if (application.interviewDate !== undefined) payload.interview_date = application.interviewDate;
   if (application.finalResult !== undefined) payload.final_result = application.finalResult;
   if (application.rejectionReason !== undefined) payload.rejection_reason = application.rejectionReason;
+  if (application.source !== undefined) payload.source = application.source;
+  if (application.externalJobId !== undefined) payload.external_job_id = application.externalJobId;
+  if (application.externalApplicationId !== undefined) payload.external_application_id = application.externalApplicationId;
+  if (application.resumeUsed !== undefined) payload.resume_used = application.resumeUsed;
+  if (application.metadata !== undefined) payload.metadata = application.metadata;
   if (application.id && isUuid(application.id)) payload.id = application.id;
 
   return payload;

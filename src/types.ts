@@ -102,6 +102,11 @@ export interface Application {
   interviewDate?: string;
   finalResult?: 'hired' | 'rejected' | 'withdrawn';
   rejectionReason?: string;
+  source?: 'INTERNAL' | 'JSEARCH' | 'EXTERNAL' | 'PARTNER';
+  externalJobId?: string;
+  externalApplicationId?: string;
+  resumeUsed?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export type ExternalJobApplicationStatus =

@@ -2,6 +2,31 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { emitJobActionNotification, getAdminCompanyForJobRequest, parseStringList } from '@/lib/jobs/workflow';
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getCurrentUser(request);
+  if (!user) {
+    return jsonError(403, 'Authenticated workspace access required');
+  }
+
+  const { id } = await params;
+  try {
+    const { getJobById } = await import('@/services/jobService');
+    const job = await getJobById(id);
+    if (!job) {
+      return jsonError(404, 'Job opening not found');
+    }
+    if (user.role === 'candidate' && (job.status !== 'approved' || job.isActive === false || job.visibility === 'private')) {
+      return jsonError(404, 'Job opening not found');
+    }
+    return jsonOk({ job });
+  } catch {
+    return jsonError(500, 'Job service unavailable');
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
