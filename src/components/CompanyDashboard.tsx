@@ -45,6 +45,7 @@ import SkeletonLoader from './SkeletonLoader';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
 import { PageHeader, TabNav } from '@/src/components/layout';
+import { branding } from '@/src/config/branding';
 
 interface CompanyDashboardProps {
   currentUser: User;
@@ -809,7 +810,7 @@ function PostJobWizard(props: {
               <div className="rec-screening">
                 <PreviewStat icon={Target} label="Screening" value="Resume keyword match enabled" />
                 <PreviewStat icon={FileText} label="Questions" value="Role fit, availability, salary expectation" />
-                <PreviewStat icon={Star} label="Priority" value="Persevex score and skill gaps" />
+                <PreviewStat icon={Star} label="Priority" value={`${branding.productName} score and skill gaps`} />
               </div>
             )}
             {props.wizardStep === 4 && <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />}

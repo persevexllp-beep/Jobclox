@@ -62,6 +62,16 @@ export interface Job {
   viewCount: number;
   createdAt: string;
   updatedAt?: string;
+  isExternal?: boolean;
+  source?: string;
+  sourceJobId?: string;
+  sourceUrl?: string;
+  externalApplyUrl?: string;
+  importedAt?: string;
+  lastSeenAt?: string;
+  jobFingerprint?: string;
+  isActive?: boolean;
+  normalizedSkills?: string[];
 }
 
 export type ApplicationStatus = 
@@ -92,6 +102,34 @@ export interface Application {
   interviewDate?: string;
   finalResult?: 'hired' | 'rejected' | 'withdrawn';
   rejectionReason?: string;
+}
+
+export type ExternalJobApplicationStatus =
+  | 'new'
+  | 'contacted'
+  | 'shared_with_company'
+  | 'interview_scheduled'
+  | 'rejected'
+  | 'placed';
+
+export interface ExternalJobApplication {
+  id: string;
+  jobId: string;
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone?: string;
+  resumeUrl?: string;
+  resumeText: string;
+  skills: string[];
+  experience: string;
+  source: string;
+  companyName: string;
+  jobTitle: string;
+  status: ExternalJobApplicationStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CandidateProfile {

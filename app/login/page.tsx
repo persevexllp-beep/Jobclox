@@ -7,6 +7,7 @@ import AuthScreen from '@/src/components/AuthScreen';
 import ToastViewport, { type ToastItem, type ToastTone } from '@/src/components/ToastViewport';
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
 import { clearStoredSession, persistStoredSession, readStoredSession } from '@/src/lib/sessionClient';
+import { branding } from '@/src/config/branding';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -113,7 +114,7 @@ export default function LoginPage() {
         <ToastViewport toasts={toasts} onDismiss={dismissToast} />
         <div className="pvx-boot-card" role="status" aria-live="polite">
           <h1>Loading workspace</h1>
-          <p>Checking your Persevex session before opening the dashboard.</p>
+          <p>Checking your {branding.productName} session before opening the dashboard.</p>
         </div>
       </main>
     );

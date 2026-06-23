@@ -1,6 +1,7 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-type LogContext = Record<string, string | number | boolean | null | undefined>;
+type LogValue = string | number | boolean | null | undefined | string[] | Record<string, unknown> | Record<string, unknown>[];
+type LogContext = Record<string, LogValue>;
 
 function serializeError(error: unknown): LogContext {
   if (error instanceof Error) {
@@ -8,6 +9,15 @@ function serializeError(error: unknown): LogContext {
       errorName: error.name,
       errorMessage: error.message,
       errorStack: process.env.NODE_ENV === 'production' ? undefined : error.stack,
+    };
+  }
+  if (typeof error === 'object' && error !== null) {
+    const details = error as Record<string, unknown>;
+    return {
+      errorMessage: typeof details.message === 'string' ? details.message : JSON.stringify(details),
+      errorCode: typeof details.code === 'string' ? details.code : undefined,
+      errorDetails: typeof details.details === 'string' ? details.details : undefined,
+      errorHint: typeof details.hint === 'string' ? details.hint : undefined,
     };
   }
   return { errorMessage: String(error) };

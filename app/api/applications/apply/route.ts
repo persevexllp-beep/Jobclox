@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { getUserProfilePhotoUrl } from '@/lib/storage/uploads';
 import { logger } from '@/services/logger';
+import { branding } from '@/src/config/branding';
 
 export async function POST(request: Request) {
   const user = await getCurrentUser(request);
@@ -30,6 +31,14 @@ export async function POST(request: Request) {
 
   if (!targetJob) {
     return jsonError(404, 'Job specification mismatch');
+  }
+
+  if (targetJob.isExternal) {
+    return jsonError(409, `External jobs use the dedicated ${branding.productName} lead application flow`);
+  }
+
+  if (targetJob.isActive === false || targetJob.status !== 'approved') {
+    return jsonError(409, 'This job is no longer accepting applications');
   }
 
   let candProfile: CandidateProfile | null = null;
@@ -139,7 +148,7 @@ export async function POST(request: Request) {
         ? [{
             recipientId: applicationCompany.userId,
             title: 'New Candidate Application',
-            message: `${user.name} applied for "${targetJob.title}" with ${matchScore}% alignment. Persevex review will route qualified profiles.`,
+            message: `${user.name} applied for "${targetJob.title}" with ${matchScore}% alignment. ${branding.productName} review will route qualified profiles.`,
             type: 'info' as const,
           }]
         : []),

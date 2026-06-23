@@ -9,6 +9,7 @@ import ToastViewport, { type ToastItem, type ToastTone } from '@/src/components/
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
 import { clearStoredSession, persistStoredSession, readStoredSession } from '@/src/lib/sessionClient';
 import { initializeTheme, toggleTheme } from '@/src/lib/theme';
+import { branding } from '@/src/config/branding';
 
 type DashboardComponentProps = {
   currentUser: User;
@@ -374,7 +375,7 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
       <main className="pvx-boot-screen">
         <ToastViewport toasts={toasts} onDismiss={dismissToast} />
         <div className="pvx-boot-card" role="status" aria-live="polite">
-          <BrandLogo subline="Hiring & Placement Engine" />
+          <BrandLogo subline={branding.tagline} />
           <p>Loading verified jobs and placement routes</p>
         </div>
       </main>
@@ -414,8 +415,8 @@ export default function WorkspaceRuntime({ Dashboard, requiredRole }: WorkspaceR
 
       <footer className="pvx-footer">
         <div>
-          <BrandLogo subline="Jobs • Internships • Placement" />
-          <span>&copy; {new Date().getFullYear()} Persevex</span>
+          <BrandLogo subline={branding.tagline} />
+          <span>{branding.footer}</span>
         </div>
       </footer>
     </div>

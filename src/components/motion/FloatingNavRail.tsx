@@ -11,6 +11,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
 import { LucideIcon } from 'lucide-react';
+import { branding } from '@/src/config/branding';
 
 export interface NavRailItem {
   id: string;
@@ -84,7 +85,7 @@ export default function FloatingNavRail({
                 className="overflow-hidden whitespace-nowrap"
               >
                 <span className="block font-display text-sm font-bold leading-tight text-slate-950 dark:text-white">
-                  Persevex Flow
+                  {branding.productName} Flow
                 </span>
                 <span className="font-mono text-[9px] uppercase tracking-widest text-cyan-500">
                   Career Operating Rail

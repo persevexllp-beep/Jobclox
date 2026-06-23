@@ -20,10 +20,11 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
 import { getPublicJobsRanked } from '@/lib/jobs/workflow';
 import type { Job } from '@/src/types';
+import { branding } from '@/src/config/branding';
 
 export const metadata: Metadata = {
-  title: 'Persevex | Verified jobs, internships, and hiring',
-  description: 'Discover verified jobs and internships, build a stronger career profile, or hire high-intent early-career talent with Persevex.',
+  title: `${branding.productName} | Verified jobs, internships, and hiring`,
+  description: branding.metadata.description,
 };
 
 async function getFeaturedJobs(): Promise<Job[]> {
@@ -87,12 +88,12 @@ export default async function HomePage() {
 
       <header className="landing-nav-wrap">
         <nav className="landing-nav" aria-label="Primary navigation">
-          <Link href="/" aria-label="Persevex home"><BrandLogo subline="Jobs · Internships · Hiring" /></Link>
+          <Link href="/" aria-label={`${branding.productName} home`}><BrandLogo subline={branding.tagline} /></Link>
           <div className="landing-nav-links">
             <a href="#opportunities">Opportunities</a>
             <a href="#students">For students</a>
             <a href="#employers">For employers</a>
-            <a href="#trust">Why Persevex</a>
+            <a href="#trust">Why {branding.productName}</a>
           </div>
           <div className="landing-nav-actions">
             <Link className="landing-link-button" href={workspaceHref}>{workspaceLabel}</Link>
@@ -107,7 +108,7 @@ export default async function HomePage() {
           <div className="landing-orb landing-orb-two" aria-hidden="true" />
           <div className="landing-container landing-hero-grid">
             <div className="landing-hero-copy">
-              <div className="landing-kicker"><Sparkles aria-hidden="true" /> India’s early-career opportunity engine</div>
+              <div className="landing-kicker"><Sparkles aria-hidden="true" /> {branding.tagline}</div>
               <h1>Move from potential to <span>your next opportunity.</span></h1>
               <p>Discover verified roles, grow your signal, and move toward work that fits.</p>
               <form className="landing-search" action="/login" aria-label="Find opportunities">
@@ -207,13 +208,13 @@ export default async function HomePage() {
         <section className="landing-cta">
           <div className="landing-container">
             <div><span>Ready for the next move?</span><h2>Build a career signal—or a hiring engine—that compounds.</h2></div>
-            <div><Link className="landing-primary-button is-light" href="/login?mode=register&role=candidate">Join as a candidate <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login?mode=register&role=company">Hire with Persevex</Link></div>
+            <div><Link className="landing-primary-button is-light" href="/login?mode=register&role=candidate">Join as a candidate <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login?mode=register&role=company">Hire with {branding.productName}</Link></div>
           </div>
         </section>
       </main>
 
       <footer className="landing-footer">
-        <div className="landing-container"><BrandLogo subline="Jobs · Internships · Placement" /><p>Trusted career infrastructure for ambitious students and thoughtful hiring teams.</p><div><a href="#students">Students</a><a href="#employers">Employers</a><Link href="/login">Sign in</Link></div><small>© {new Date().getFullYear()} Persevex. All rights reserved.</small></div>
+        <div className="landing-container"><BrandLogo subline={branding.tagline} /><p>Trusted career infrastructure for ambitious students and thoughtful hiring teams.</p><div><a href="#students">Students</a><a href="#employers">Employers</a><Link href="/login">Sign in</Link></div><small>{branding.footer}</small></div>
       </footer>
     </div>
   );

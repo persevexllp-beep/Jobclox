@@ -1,5 +1,5 @@
 {
-  "name": "persevex-job-portal",
+  "name": "jobclox",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,15 +10,17 @@
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('.next',{recursive:true,force:true});\"",
     "lint": "tsc -p tsconfig.lint.json --noEmit",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run test:resume && npm run test:communications",
+    "test": "npm run test:resume && npm run test:communications && npm run test:marketplace",
     "test:resume": "tsx scripts/maintenance/resume-intelligence-tests.ts",
     "test:communications": "tsx scripts/maintenance/communication-reliability-tests.ts",
+    "test:marketplace": "tsx scripts/maintenance/hybrid-marketplace-tests.ts",
     "smoke:e2e": "tsx scripts/maintenance/smoke-e2e.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@supabase/supabase-js": "^2.107.0",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
@@ -35,5 +37,8 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }

@@ -2,6 +2,7 @@ import type { Job } from '@/src/types';
 import { getCurrentUser } from '@/lib/auth/session';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { emitJobActionNotification, getAdminCompanyForJobRequest, parseStringList } from '@/lib/jobs/workflow';
+import { branding } from '@/src/config/branding';
 
 export async function POST(request: Request) {
   const user = await getCurrentUser(request);
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       return jsonError(errorLike.statusCode || 500, errorLike.message || 'Unable to assign company to job');
     }
     if (!companyId) {
-      return jsonError(500, 'Persevex Internal company is not configured in Supabase');
+      return jsonError(500, `${branding.productName} internal company is not configured in Supabase`);
     }
     status = ['draft', 'submitted', 'approved', 'paused', 'closed'].includes(String(requestedStatus))
       ? (requestedStatus as Job['status'])

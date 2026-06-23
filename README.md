@@ -1,6 +1,6 @@
-# Persevex Job Portal
+# JobClox
 
-Persevex Job Portal is a production-ready hiring and placement platform for candidates, company recruiters, and Persevex administrators. The application now runs on a Next.js-first architecture with Supabase as the only database source of truth.
+JobClox is a production-ready hiring and placement platform for candidates, company recruiters, and platform administrators. The application now runs on a Next.js-first architecture with Supabase as the only database source of truth.
 
 ## Features
 

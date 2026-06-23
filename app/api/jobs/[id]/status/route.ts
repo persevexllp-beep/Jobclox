@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/lib/auth/session';
 import { jsonError, jsonOk } from '@/lib/http/responses';
+import { branding } from '@/src/config/branding';
 
 export async function POST(
   request: Request,
@@ -50,7 +51,7 @@ export async function POST(
           title: approved ? 'Job Request Approved' : 'Job Request Feedback',
           message: approved
             ? `Your job post for "${currentJob.title}" has been reviewed, approved, and is now live for candidates!`
-            : `Your job post request for "${currentJob.title}" was rejected or deactivated by Persevex HR.`,
+            : `Your job post request for "${currentJob.title}" was rejected or deactivated by ${branding.productName} HR.`,
           type: approved ? 'success' : 'warning',
         }],
         emails: [{

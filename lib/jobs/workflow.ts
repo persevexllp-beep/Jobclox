@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { AppNotification, Company, Job, User } from '@/src/types';
+import { branding } from '@/src/config/branding';
 
 export function parseStringList(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -82,12 +83,12 @@ export async function getAdminCompanyForJobRequest(
 
   const internalId = await getPersevexInternalCompanyId();
   if (!internalId) {
-    const error = new Error('Persevex Internal company is not configured in Supabase') as Error & { statusCode?: number };
+    const error = new Error(`${branding.productName} internal company is not configured in Supabase`) as Error & { statusCode?: number };
     error.statusCode = 500;
     throw error;
   }
 
-  return { companyId: internalId, companyName: companyName || 'Persevex Internal' };
+  return { companyId: internalId, companyName: companyName || `${branding.productName} Internal` };
 }
 
 export async function emitJobActionNotification(job: Job, action: string, actor: User) {
@@ -146,7 +147,7 @@ export async function emitJobActionNotification(job: Job, action: string, actor:
       ...(company?.userId ? [{
         recipientId: company.userId,
         title: titleByAction[action] || 'Job Updated',
-        message: `Your job "${job.title}" was ${action} by Persevex Admin.`,
+        message: `Your job "${job.title}" was ${action} by ${branding.productName} Admin.`,
         type: action === 'rejected' || action === 'suspended' ? 'warning' as const : 'info' as const,
       }] : []),
     ],

@@ -8,6 +8,7 @@ import {
 import { getCurrentUser } from '@/lib/auth/session';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { logger } from '@/services/logger';
+import { branding } from '@/src/config/branding';
 
 export async function POST(
   request: Request,
@@ -60,7 +61,7 @@ export async function POST(
     }
 
     if (!['forwarded', 'interviewing', 'selected', 'rejected'].includes(currentApplication.status)) {
-      return jsonError(403, 'Candidate must be forwarded by Persevex before company reviews');
+      return jsonError(403, `Candidate must be forwarded by ${branding.productName} before company reviews`);
     }
 
     if (!['interviewing', 'selected', 'rejected'].includes(status)) {
@@ -115,7 +116,7 @@ export async function POST(
           notifications: [{
             recipientId: companyOwner,
             title: 'New Qualified Candidate Forwarded',
-            message: `Persevex screened and forwarded a prime match for "${currentApplication.jobTitle}": ${currentApplication.candidateName} (Score: ${currentApplication.score}%). View candidates in your pipeline.`,
+            message: `${branding.productName} screened and forwarded a prime match for "${currentApplication.jobTitle}": ${currentApplication.candidateName} (Score: ${currentApplication.score}%). View candidates in your pipeline.`,
             type: 'success',
           }],
           metadata: { applicationId: currentApplication.id, status },

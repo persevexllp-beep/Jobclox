@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { Application, ApplicationStatus, CandidateProfile, Company, Job } from '@/src/types';
 import { logger } from '@/services/logger';
+import { branding } from '@/src/config/branding';
 
 export function computeApplicationMatch(
   targetJob: Job,
@@ -71,11 +72,11 @@ export function getCandidateStatusNotification(
   let message = `Your profile status for ${application.jobTitle} changed to ${status.replace('_', ' ')}.`;
 
   if (status === 'shortlisted') {
-    title = 'Profile Shortlisted by Persevex';
-    message = `Fantastic! The Persevex Admin team shortlisted your resume for "${application.jobTitle}". It is currently undergoing final quality routing before submission.`;
+    title = `Profile Shortlisted by ${branding.productName}`;
+    message = `Fantastic! The ${branding.productName} team shortlisted your resume for "${application.jobTitle}". It is currently undergoing final quality routing before submission.`;
   } else if (status === 'forwarded') {
     title = 'Profile Forwarded to Corporate HR!';
-    message = `Great news! Persevex Senior Recruiters finalized review and forwarded your credentials to the official hiring team at ${application.companyName}. Keep an eye out for scheduling!`;
+    message = `Great news! ${branding.productName} recruiters finalized review and forwarded your credentials to the official hiring team at ${application.companyName}. Keep an eye out for scheduling!`;
   } else if (status === 'interviewing') {
     title = 'Interview Scheduled!';
     message = `The hiring manager at ${application.companyName} checked your profile and scheduled an interview. Details: ${interviewDate || 'To be communicated soon'}.`;
@@ -103,11 +104,11 @@ export function getCandidateStatusNotification(
 
 export function buildForwardedCompanyEmail(application: Application, company: Company): { subject: string; html: string } {
   return {
-    subject: `[Candidate Forwarded] Persevex matched a candidate for your role - ${application.jobTitle}`,
+    subject: `[Candidate Forwarded] ${branding.productName} matched a candidate for your role - ${application.jobTitle}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
         <div style="background-color: #0f172a; color: white; padding: 24px; text-align: center;">
-          <h1 style="margin: 0; font-size: 20px; font-weight: bold;">PERSEVEX PARTNER HUB</h1>
+          <h1 style="margin: 0; font-size: 20px; font-weight: bold;">${branding.productName.toUpperCase()} PARTNER HUB</h1>
         </div>
         <div style="padding: 24px; color: #1e293b; background-color: #ffffff; line-height: 1.6;">
           <h3 style="margin-top: 0;">Dear ${company.contactPerson || 'Hiring Team'},</h3>
@@ -138,7 +139,7 @@ export function buildForwardedCompanyEmail(application: Application, company: Co
 
           <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
           <div style="text-align: center;">
-            <span style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 8px;">Triggered dynamically by Persevex Status Change System</span>
+            <span style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 8px;">Triggered dynamically by ${branding.productName} Status Change System</span>
           </div>
         </div>
       </div>
@@ -156,7 +157,7 @@ export function buildCandidateStatusEmail(
   const emailTemplate = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
       <div style="background-color: #10b981; color: white; padding: 24px; text-align: center;">
-        <h1 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: -0.025em;">PERSEVEX CAREER HUB</h1>
+        <h1 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: -0.025em;">${branding.productName.toUpperCase()} CAREER HUB</h1>
         <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9; text-transform: uppercase; font-family: monospace;">Automated Alert System</p>
       </div>
       <div style="padding: 24px; color: #1e293b; background-color: #ffffff; line-height: 1.6;">
@@ -170,13 +171,13 @@ export function buildCandidateStatusEmail(
         <div style="margin: 15px 0; font-size: 14px; text-align: left; background: #fafafa; border: 1px solid #eaeaea; padding: 15px; border-radius: 8px;">
           ${
             status === 'shortlisted'
-              ? "<p style='margin:0;'>The Persevex expert team evaluated your credentials against the job parameters and verified your high qualification match score. We have shortlisted your candidacy and prepared submission folders for Corporate HR managers.</p>"
+              ? `<p style='margin:0;'>The ${branding.productName} expert team evaluated your credentials against the job parameters and verified your high qualification match score. We have shortlisted your candidacy and prepared submission folders for Corporate HR managers.</p>`
               : status === 'forwarded'
                 ? `<p style='margin:0;'>Outstanding news! We completed candidate routing and forwarded your credentials immediately to the selection committee at <strong>${application.companyName}</strong>. Their HR managers can now view your structured index, experience timelines, and resume PDF fields.</p>`
                 : status === 'interviewing'
-                  ? `<p style='margin:0;'>Get ready! The recruiting team at <strong>${application.companyName}</strong> has approved your resume and scheduled an interview event. Details listed on Persevex Portal: <em>${interviewDate || 'To be communicated soon'}</em>.</p>`
+                  ? `<p style='margin:0;'>Get ready! The recruiting team at <strong>${application.companyName}</strong> has approved your resume and scheduled an interview event. Details listed on ${branding.productName}: <em>${interviewDate || 'To be communicated soon'}</em>.</p>`
                   : status === 'selected'
-                    ? `<p style='margin:0;'>Congratulations! After strict corporate review, the hiring leaders at <strong>${application.companyName}</strong> selected your profile and offered the role! Please visit the dashboard on the Persevex Portal to verify and check follow-up parameters.</p>`
+                    ? `<p style='margin:0;'>Congratulations! After strict corporate review, the hiring leaders at <strong>${application.companyName}</strong> selected your profile and offered the role! Please visit the dashboard on ${branding.productName} to verify and check follow-up parameters.</p>`
                     : status === 'rejected'
                       ? "<p style='margin:0;'>Thank you for participating in the screening pipeline. The corporate hiring managers reviewed your match indexes and decided to proceed with other matching candidates at this stage. We kept your resume active in the general pool for immediate lateral placement!</p>"
                       : "<p style='margin:0;'>Your profile is currently under reviewer evaluation for the matching pipeline in our candidate database.</p>"
@@ -184,19 +185,19 @@ export function buildCandidateStatusEmail(
         </div>
 
         <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Please sign in to the Persevex portal to view real-time status details.</p>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Please sign in to ${branding.productName} to view real-time status details.</p>
       </div>
       <div style="background-color: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8;">
-        You are receiving this automated career updates pipeline alert because you are registered on Persevex.<br />
-        &copy; 2026 Persevex HR Systems Inc., Seattle Corporate HQ
+        You are receiving this automated career updates pipeline alert because you are registered on ${branding.productName}.<br />
+        ${branding.footer}
       </div>
     </div>
   `;
 
   if (status === 'shortlisted') {
-    emailSubject = `[Persevex Careers] Shortlisted Candidate: ${application.jobTitle}`;
+    emailSubject = `[${branding.productName} Careers] Shortlisted Candidate: ${application.jobTitle}`;
   } else if (status === 'forwarded') {
-    emailSubject = `[Persevex Careers] Profile Forwarded to HR Team at ${application.companyName}`;
+    emailSubject = `[${branding.productName} Careers] Profile Forwarded to HR Team at ${application.companyName}`;
   } else if (status === 'interviewing') {
     emailSubject = `[Interview Alert] ${application.companyName} scheduled interview for ${application.jobTitle}`;
   } else if (status === 'selected') {

@@ -46,6 +46,7 @@ import { formatEmailAlertPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
 import CareerSignalLottie from './experience/CareerSignalLottie';
+import { branding } from '@/src/config/branding';
 
 interface CandidateDashboardProps {
   currentUser: User;
@@ -176,7 +177,13 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('jobs');
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
+  const [marketplacePage, setMarketplacePage] = useState(1);
+  const [marketplaceTotal, setMarketplaceTotal] = useState(0);
+  const [marketplaceTotalPages, setMarketplaceTotalPages] = useState(1);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [externalAppliedJobIds, setExternalAppliedJobIds] = useState<string[]>([]);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [emailAlerts, setEmailAlerts] = useState<EmailAlert[]>([]);
 
@@ -188,6 +195,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [filterExperience, setFilterExperience] = useState<ExperienceFilter>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('match');
+  const [coachOpen, setCoachOpen] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -229,18 +237,26 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const fetchInitialData = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ jobs: remoteJobs }, { applications: remoteApps }, { profile: remoteProf }, emailData] = await Promise.all([
-        apiFetch('/api/jobs'),
+      const [jobsData, { applications: remoteApps }, { profile: remoteProf }, emailData, savedData, externalData] = await Promise.all([
+        apiFetch('/api/jobs?page=1&pageSize=24'),
         apiFetch('/api/applications'),
         apiFetch(`/api/candidates/${currentUser.id}`),
         apiFetch('/api/email-alerts').catch((err) => {
           console.error('Email alerts failed fetch', err);
           return { emailAlerts: [] };
         }),
+        apiFetch('/api/saved-jobs').catch(() => ({ jobs: [], savedJobIds: [] })),
+        apiFetch('/api/external-job-applications').catch(() => ({ applications: [], appliedJobIds: [] })),
       ]);
 
-      setJobs(remoteJobs || []);
+      setJobs(jobsData.jobs || []);
+      setMarketplacePage(jobsData.page || 1);
+      setMarketplaceTotal(jobsData.total ?? (jobsData.jobs || []).length);
+      setMarketplaceTotalPages(jobsData.totalPages || 1);
+      setSavedJobs(savedData.jobs || []);
+      setSavedJobIds(savedData.savedJobIds || []);
       setApplications(remoteApps || []);
+      setExternalAppliedJobIds(externalData.appliedJobIds || []);
       setEmailAlerts(emailData?.emailAlerts || []);
       if (remoteProf) {
         setProfile(remoteProf);
@@ -266,6 +282,37 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  useEffect(() => {
+    setMarketplacePage(1);
+  }, [deferredSearchTerm, filterLoc, filterSkill, filterType]);
+
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams({
+      page: String(marketplacePage),
+      pageSize: '24',
+    });
+    if (deferredSearchTerm.trim()) params.set('search', deferredSearchTerm.trim());
+    if (filterType !== 'all') params.set('jobType', filterType);
+    if (filterLoc !== 'all') params.set('workMode', filterLoc === 'on-site' ? 'onsite' : filterLoc);
+    if (filterSkill !== 'all') params.set('skill', filterSkill);
+
+    let cancelled = false;
+    setMarketplaceLoading(true);
+    apiFetch(`/api/jobs?${params}`)
+      .then((data) => {
+        if (cancelled) return;
+        setJobs(data.jobs || []);
+        setMarketplaceTotal(data.total ?? (data.jobs || []).length);
+        setMarketplaceTotalPages(data.totalPages || 1);
+      })
+      .catch((error) => {
+        if (!cancelled) showToast('error', 'Job search failed', error instanceof Error ? error.message : 'Unable to refresh opportunities.');
+      })
+      .finally(() => { if (!cancelled) setMarketplaceLoading(false); });
+    return () => { cancelled = true; };
+  }, [apiFetch, deferredSearchTerm, filterLoc, filterSkill, filterType, loading, marketplacePage, showToast]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -338,9 +385,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const profileSkills = useMemo(() => skillsStr.split(',').map((skill) => skill.trim().toLowerCase()).filter(Boolean), [skillsStr]);
   const allSkills = useMemo(() => Array.from(new Set(jobs.flatMap((job) => [...job.requirements, ...(job.preferredSkills || [])]))).filter(Boolean).slice(0, 18), [jobs]);
   const savedJobIdSet = useMemo(() => new Set(savedJobIds), [savedJobIds]);
-  const appliedJobIdSet = useMemo(() => new Set(applications.map((application) => application.jobId)), [applications]);
-  const jobById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
-  const savedJobs = useMemo(() => jobs.filter((job) => savedJobIdSet.has(job.id)), [jobs, savedJobIdSet]);
+  const appliedJobIdSet = useMemo(() => new Set([...applications.map((application) => application.jobId), ...externalAppliedJobIds]), [applications, externalAppliedJobIds]);
+  const jobById = useMemo(() => new Map([...jobs, ...savedJobs].map((job) => [job.id, job])), [jobs, savedJobs]);
   const resumeOptions = useMemo(() => {
     const currentResume = resumeText.trim() ? [{
       id: `current-${currentUser.id}`,
@@ -434,6 +480,9 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const getJobMatch = useCallback((job: Job) => getJobFit(job).score, [getJobFit]);
 
   const rankedJobs = useMemo(() => [...filteredJobs].sort((a, b) => {
+    const sourceTier = (job: Job) => job.isExternal ? 2 : job.featured ? 0 : 1;
+    const tierDifference = sourceTier(a) - sourceTier(b);
+    if (tierDifference !== 0) return tierDifference;
     if (sortMode === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortMode === 'salary') return parseSalaryValue(b.salary) - parseSalaryValue(a.salary);
     return getJobMatch(b) - getJobMatch(a);
@@ -454,14 +503,21 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   ), [rankedJobs, selectedJobPreview]);
   const recommendedOnboardingJobs = useMemo(() => rankedJobs.slice(0, 3), [rankedJobs]);
   const hasApplied = useCallback((jobId: string) => appliedJobIdSet.has(jobId), [appliedJobIdSet]);
-  const toggleSavedJob = useCallback((jobId: string) => {
+  const toggleSavedJob = useCallback(async (jobId: string) => {
     const job = jobById.get(jobId);
-    setSavedJobIds((current) => {
-      const isSaved = current.includes(jobId);
-      showToast(isSaved ? 'info' : 'success', isSaved ? 'Saved job removed' : 'Job saved', job ? job.title : 'Your saved jobs list was updated.');
-      return isSaved ? current.filter((id) => id !== jobId) : [...current, jobId];
-    });
-  }, [jobById, showToast]);
+    if (!job) return;
+    const isSaved = savedJobIdSet.has(jobId);
+    setSavedJobIds((current) => isSaved ? current.filter((id) => id !== jobId) : [...current, jobId]);
+    setSavedJobs((current) => isSaved ? current.filter((item) => item.id !== jobId) : [job, ...current.filter((item) => item.id !== jobId)]);
+    try {
+      await apiFetch(`/api/saved-jobs/${jobId}`, { method: isSaved ? 'DELETE' : 'PUT' });
+      showToast(isSaved ? 'info' : 'success', isSaved ? 'Saved job removed' : 'Job saved', job.title);
+    } catch (error) {
+      setSavedJobIds((current) => isSaved ? [...current, jobId] : current.filter((id) => id !== jobId));
+      setSavedJobs((current) => isSaved ? [job, ...current.filter((item) => item.id !== jobId)] : current.filter((item) => item.id !== jobId));
+      showToast('error', 'Saved jobs update failed', error instanceof Error ? error.message : 'Please try again.');
+    }
+  }, [apiFetch, jobById, savedJobIdSet, showToast]);
   const activation = useMemo(() => {
     const missing = [
       !profilePhotoUrl && 'Add a profile photo',
@@ -619,7 +675,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     setApplyResult(null);
 
     try {
-      const response = await apiFetch('/api/applications/apply', {
+      const isExternal = Boolean(selectedJob.isExternal);
+      const response = await apiFetch(isExternal ? '/api/external-job-applications' : '/api/applications/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -631,6 +688,22 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
       if (response.error) {
         setErrorMsg(response.error);
+      } else if (isExternal) {
+        const message = `Application submitted successfully. The ${branding.productName} team will process your profile for this opportunity.`;
+        setFeedbackScore(selectedApplyFit?.score ?? null);
+        setSuccessMsg(message);
+        setApplyResult({
+          applicationId: response.application?.id || '',
+          appliedAt: response.application?.createdAt || new Date().toISOString(),
+          status: response.application?.status || 'new',
+          score: selectedApplyFit?.score || 0,
+          matchedSkills: selectedApplyFit?.matchedSkills || [],
+          missingSkills: selectedApplyFit?.missingSkills || [],
+          communication: { notificationCount: 0, emailCount: 0, failures: [] },
+          activityHistory: [{ label: `Lead captured by ${branding.productName}`, timestamp: response.application?.createdAt || new Date().toISOString(), detail: `The ${branding.productName} team will review and process your profile.` }],
+        });
+        setExternalAppliedJobIds((current) => current.includes(selectedJob.id) ? current : [...current, selectedJob.id]);
+        showToast('success', 'Application submitted', message);
       } else {
         setFeedbackScore(response.score);
         setSuccessMsg(`Application submitted with ${response.score}% match confidence.`);
@@ -738,7 +811,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
           {showOnboarding ? (
             <PageHeader
               eyebrow="Career Command Center"
-              title="Welcome to Persevex"
+              title={`Welcome to ${branding.productName}`}
               description="Complete onboarding to unlock your full career workspace."
             />
           ) : (
@@ -827,6 +900,8 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                       setFilterExperience={setFilterExperience}
                       sortMode={sortMode}
                       setSortMode={setSortMode}
+                      resultCount={rankedJobs.length}
+                      totalCount={marketplaceTotal}
                       onReset={() => {
                         setSearchTerm('');
                         setFilterType('all');
@@ -836,12 +911,38 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                         setFilterExperience('all');
                       }}
                     />
+                    <div className="candidate-coach-control">
+                      <button type="button" className="candidate-coach-toggle" onClick={() => setCoachOpen((open) => !open)} aria-expanded={coachOpen} aria-controls="candidate-career-coach-panel">
+                        <span className="candidate-coach-toggle-icon"><Rocket className="h-4 w-4" /></span>
+                        <span><strong>Career coach</strong><small>Optional guidance when you want it</small></span>
+                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      {coachOpen && (
+                        <div id="candidate-career-coach-panel" className="candidate-coach-dropdown">
+                          <CandidateInsightsRail
+                            selectedJob={inlinePreviewJob}
+                            selectedFit={inlinePreviewFit}
+                            applications={applications}
+                            profileStrength={profileStrength}
+                            missingProfileSections={activation.missing}
+                            trendingSkills={allSkills.slice(0, 3)}
+                            saved={inlinePreviewJob ? savedJobIdSet.has(inlinePreviewJob.id) : false}
+                            applied={inlinePreviewJob ? hasApplied(inlinePreviewJob.id) : false}
+                            onProfile={() => setActiveMode('profile')}
+                            onApplications={() => setActiveMode('applications')}
+                            onApply={inlinePreviewJob ? () => openApply(inlinePreviewJob) : undefined}
+                            onSave={inlinePreviewJob ? () => toggleSavedJob(inlinePreviewJob.id) : undefined}
+                            onOpenDetails={() => setDetailsDrawerOpen(true)}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <section className="eff-workspace candidate-discovery-workspace">
                     <section className="candidate-job-marketplace" aria-labelledby="recommended-jobs-title">
                     <header className="candidate-feed-heading">
                       <div><span>Recommended jobs</span><h1 id="recommended-jobs-title">Best jobs for you</h1><p>Ranked by your skills, experience, and preferences.</p></div>
-                      <div><strong>{rankedJobs.length}</strong><small>opportunities</small></div>
+                      <div><strong>{marketplaceTotal}</strong><small>opportunities</small></div>
                     </header>
                     {rankedJobs.length === 0 ? (
                       <JobEmptyState onReset={() => {
@@ -857,24 +958,16 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                         <div className="candidate-wide-job-feed">
                           {rankedJobs.map((job, index) => renderOpportunityCard(job, index))}
                         </div>
+                        {marketplaceTotalPages > 1 && (
+                          <nav className="mt-5 flex items-center justify-center gap-3" aria-label="Job results pages">
+                            <button type="button" className="eff-action subtle" disabled={marketplacePage <= 1 || marketplaceLoading} onClick={() => setMarketplacePage((page) => Math.max(1, page - 1))}>Previous</button>
+                            <span className="text-sm font-semibold text-slate-600">Page {marketplacePage} of {marketplaceTotalPages}</span>
+                            <button type="button" className="eff-action" disabled={marketplacePage >= marketplaceTotalPages || marketplaceLoading} onClick={() => setMarketplacePage((page) => Math.min(marketplaceTotalPages, page + 1))}>Next</button>
+                          </nav>
+                        )}
                       </div>
                     )}
                     </section>
-                    <CandidateInsightsRail
-                    selectedJob={inlinePreviewJob}
-                    selectedFit={inlinePreviewFit}
-                    applications={applications}
-                    profileStrength={profileStrength}
-                    missingProfileSections={activation.missing}
-                    trendingSkills={allSkills.slice(0, 3)}
-                    saved={inlinePreviewJob ? savedJobIdSet.has(inlinePreviewJob.id) : false}
-                    applied={inlinePreviewJob ? hasApplied(inlinePreviewJob.id) : false}
-                    onProfile={() => setActiveMode('profile')}
-                    onApplications={() => setActiveMode('applications')}
-                    onApply={inlinePreviewJob ? () => openApply(inlinePreviewJob) : undefined}
-                    onSave={inlinePreviewJob ? () => toggleSavedJob(inlinePreviewJob.id) : undefined}
-                    onOpenDetails={() => setDetailsDrawerOpen(true)}
-                    />
                   </section>
                 </React.Fragment>
               )}
@@ -971,7 +1064,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                       <small>{selectedJobPreview.companyName}</small>
                     </span>
                     <button type="button" onClick={() => openApply(selectedJobPreview)} disabled={hasApplied(selectedJobPreview.id)}>
-                      {hasApplied(selectedJobPreview.id) ? 'Applied' : 'Apply'}
+                      {hasApplied(selectedJobPreview.id) ? 'Applied' : selectedJobPreview.isExternal ? `Apply via ${branding.productName}` : 'Apply'}
                     </button>
                   </div>
                 )}
@@ -1156,7 +1249,7 @@ function OnboardingFunnel({
             <label className="onboarding-upload">
               <Upload className="h-5 w-5" />
               <strong className={parsingFile ? 'is-processing' : ''}>{parsingFile ? 'Parsing resume...' : resumeFileName || 'Upload resume PDF'}</strong>
-              <span>PDF only. Persevex will extract skills, education, and experience.</span>
+              <span>PDF only. {branding.productName} will extract skills, education, and experience.</span>
               <input type="file" accept=".pdf" className="hidden" onChange={(e) => e.target.files?.[0] && onResumeUpload(e.target.files[0])} />
             </label>
             {parseError && <em>{parseError}</em>}
@@ -1263,6 +1356,8 @@ function JobsFilterToolbar(props: {
   filterSalary: SalaryFilter;
   filterExperience: ExperienceFilter;
   sortMode: SortMode;
+  resultCount: number;
+  totalCount: number;
   setSearchTerm: (value: string) => void;
   setFilterType: (value: string) => void;
   setFilterLoc: (value: string) => void;
@@ -1279,12 +1374,14 @@ function JobsFilterToolbar(props: {
           <Search className="h-4 w-4 text-cyan-500" />
           <input value={props.searchTerm} onChange={(e) => props.setSearchTerm(e.target.value)} placeholder="Search title, company, skill, or keyword" />
         </label>
+        <FilterSelect compact label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Best match'], ['recent', 'Newest'], ['salary', 'Highest pay']]} />
         <FilterSelect compact label="Skills" value={props.filterSkill} onChange={props.setFilterSkill} options={[['all', 'Skills'], ...props.skills.map((skill) => [skill, skill] as [string, string])]} />
         <FilterSelect compact label="Experience" value={props.filterExperience} onChange={(value) => props.setFilterExperience(value as ExperienceFilter)} options={[['all', 'Experience'], ['entry', 'Entry / Junior'], ['mid', 'Mid-level'], ['senior', 'Senior / Lead']]} />
         <FilterSelect compact label="Location" value={props.filterLoc} onChange={props.setFilterLoc} options={[['all', 'Location'], ['remote', 'Remote'], ['on-site', 'On-site']]} />
+        <span className="eff-result-count"><strong>{props.resultCount}</strong><small>shown of {props.totalCount}</small></span>
         <button type="button" className="eff-toolbar-toggle" onClick={() => props.setFiltersOpen(!props.filtersOpen)} aria-expanded={props.filtersOpen}>
           <SlidersHorizontal className="h-4 w-4" />
-          <span>{props.filtersOpen ? 'Hide Filters' : 'Show Filters'}</span>
+          <span>{props.filtersOpen ? 'Hide advanced' : 'More filters'}</span>
           {props.filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </div>
@@ -1401,6 +1498,7 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
           <small className="eff-company-line">
             <span>{job.companyName}</span>
             <em title="Verified listing"><BadgeCheck className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Verified listing</span></em>
+            <JobSourceBadge job={job} />
           </small>
           <div className="eff-job-location-row eff-job-row-meta">
             <span><MapPin className="h-3.5 w-3.5" />{job.location}</span>
@@ -1415,8 +1513,8 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
           </div>
         </div>
         <div className="eff-job-row-signals">
-          <span className={`eff-match-orbit ${fit.quality.tone}`} aria-label={`${fit.score}% job match`} style={{ '--match-score': `${fit.score * 3.6}deg` } as React.CSSProperties}>
-            <strong>{fit.score}%</strong><small>match</small>
+          <span className={`eff-match-orbit candidate-match-meter ${fit.quality.tone}`} aria-label={`${fit.score}% job match`}>
+            <small>Match</small><strong>{fit.score}%</strong><i aria-hidden="true"><b style={{ width: `${fit.score}%` }} /></i>
           </span>
         </div>
       </div>
@@ -1432,7 +1530,7 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         </button>
         <div className="eff-job-actions">
           <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={`eff-save-job ${saved ? 'is-saved' : ''}`} aria-label={saved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply now'}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : job.isExternal ? `Apply via ${branding.productName}` : 'Apply now'}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
         </div>
       </div>
     </article>
@@ -1441,6 +1539,11 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
 
 function CompanyBadge({ company }: { company: string }) {
   return <span className="eff-company-badge">{company.slice(0, 2).toUpperCase()}</span>;
+}
+
+function JobSourceBadge({ job }: { job: Job }) {
+  const label = job.isExternal ? (job.source === 'jsearch' ? 'JSearch' : job.source === 'adzuna' ? 'Adzuna' : job.source || 'External') : 'Internal';
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${job.isExternal ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>{label}</span>;
 }
 
 function CandidateInsightsRail({ selectedJob, selectedFit, applications, profileStrength, missingProfileSections, trendingSkills, saved, applied, onProfile, onApplications, onApply, onSave, onOpenDetails }: {
@@ -1485,7 +1588,7 @@ function CandidateInsightsRail({ selectedJob, selectedFit, applications, profile
             </div>
             <div className="candidate-rail-actions">
               <button type="button" onClick={onOpenDetails}>Details</button>
-              <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Apply now'}</button>
+              <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : selectedJob.isExternal ? `Apply via ${branding.productName}` : 'Apply now'}</button>
               <button type="button" onClick={onSave}>{saved ? 'Saved' : 'Save'}</button>
             </div>
           </>
@@ -1618,6 +1721,7 @@ function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applie
               <div>
                 <small>{selectedJob.companyName}</small>
                 <h3 id="job-drawer-title">{selectedJob.title}</h3>
+                <JobSourceBadge job={selectedJob} />
                 <div className="eff-drawer-meta">
                   <span>{selectedJob.location}</span>
                   <span>{selectedJob.jobType}</span>
@@ -1710,7 +1814,7 @@ function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applie
             <button type="button" onClick={onSave} className={saved ? 'is-saved' : ''}><Bookmark className="h-4 w-4" />{saved ? 'Saved Job' : 'Save Job'}</button>
             <button type="button" onClick={onShare || shareJob}><ArrowUpRight className="h-4 w-4" />Share Job</button>
             <button type="button" onClick={onReport}><AlertCircle className="h-4 w-4" />Report</button>
-            <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Already Applied' : 'Apply Now'}</button>
+            <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Already Applied' : selectedJob.isExternal ? `Apply via ${branding.productName}` : 'Apply Now'}</button>
           </div>
         </aside>
       </div>
@@ -1757,7 +1861,7 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
                   <CompanyBadge company={job.companyName} />
                   <span>
                     <strong>{job.title}</strong>
-                    <small>{job.companyName} - {job.location}</small>
+                    <small>{job.companyName} - {job.location}</small><JobSourceBadge job={job} />
                   </span>
                   <span className="eff-match">{getJobMatch(job)}%</span>
                 </div>
@@ -1768,7 +1872,7 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
                 </div>
                 <div className="eff-job-actions">
                   <button type="button" onClick={() => onRemove(job.id)}>Remove</button>
-                  <button type="button" disabled={hasApplied(job.id)} onClick={() => onApply(job)}>{hasApplied(job.id) ? 'Applied' : 'Apply'}</button>
+                  <button type="button" disabled={hasApplied(job.id)} onClick={() => onApply(job)}>{hasApplied(job.id) ? 'Applied' : job.isExternal ? `Apply via ${branding.productName}` : 'Apply'}</button>
                 </div>
               </article>
             );
@@ -2506,14 +2610,14 @@ function ApplyModal({
             {applyResult ? (
               <div className="eff-success">
                 <CheckCircle2 className="h-[72px] w-[72px] text-emerald-500" aria-hidden="true" />
-                <h4>{applyResult.score}% alignment</h4>
+                <h4>{selectedJob.isExternal ? 'Application submitted successfully' : `${applyResult.score}% alignment`}</h4>
                 <p>{successMsg}</p>
                 <div className="grid gap-2 text-left text-sm text-slate-600">
                   <span><strong>Application ID:</strong> {applyResult.applicationId}</span>
                   <span><strong>Date:</strong> {new Date(applyResult.appliedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   <span><strong>Status:</strong> {applyResult.status.replace('_', ' ')}</span>
-                  <span><strong>Notifications:</strong> {applyResult.communication.notificationCount}</span>
-                  <span><strong>Email events:</strong> {applyResult.communication.emailCount}</span>
+                  {!selectedJob.isExternal && <span><strong>Notifications:</strong> {applyResult.communication.notificationCount}</span>}
+                  {!selectedJob.isExternal && <span><strong>Email events:</strong> {applyResult.communication.emailCount}</span>}
                 </div>
                 <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700">
                   {applyResult.activityHistory.map((item) => (
@@ -2523,7 +2627,7 @@ function ApplyModal({
                     </div>
                   ))}
                 </div>
-                <button type="button" className="eff-action" onClick={onViewApplications}>View application</button>
+                <button type="button" className="eff-action" onClick={selectedJob.isExternal ? onClose : onViewApplications}>{selectedJob.isExternal ? 'Close' : 'View application'}</button>
               </div>
             ) : (
               <form onSubmit={onSubmit} className="eff-apply-form">
@@ -2645,7 +2749,7 @@ function ApplyModal({
                       <div className="flex items-center justify-between">
                         <div>
                           <strong className="block text-lg text-slate-900">Ready to apply</strong>
-                          <p className="text-sm text-slate-600">Persevex will submit this resume signal, log activity, and notify the right teams.</p>
+                          <p className="text-sm text-slate-600">{branding.productName} will submit this resume signal, log activity, and notify the right teams.</p>
                         </div>
                         <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">{selectedFit?.score || 0}% match</span>
                       </div>

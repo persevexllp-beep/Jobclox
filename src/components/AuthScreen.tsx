@@ -22,6 +22,7 @@ import { User, UserRole } from '../types';
 import { CareerFlowBackground } from './motion';
 import BrandLogo from './BrandLogo';
 import type { ToastTone } from './ToastViewport';
+import { branding } from '@/src/config/branding';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: User, token: string) => void;
@@ -89,7 +90,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email }),
         });
-        const message = 'If this email exists, a recovery workflow will be sent by the Persevex team.';
+        const message = `If this email exists, a recovery workflow will be sent by the ${branding.productName} team.`;
         setSuccess(message);
         showToast('info', 'Recovery requested', message);
       } catch (err: any) {
@@ -141,14 +142,14 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
           transition={{ duration: 0.4 }}
         >
           <div className="auth-brand-lockup">
-            <Link href="/" aria-label="Back to Persevex home"><BrandLogo subline="Hiring & Placement Engine" /></Link>
+            <Link href="/" aria-label={`Back to ${branding.productName} home`}><BrandLogo subline={branding.tagline} /></Link>
           </div>
 
           <div>
             <p className="auth-eyebrow">Jobs, internships, placement</p>
-            <h1>Find verified jobs and internships through Persevex.</h1>
+            <h1>Find verified jobs and internships through {branding.productName}.</h1>
             <p className="auth-hero-copy">
-              The Persevex hiring engine helps freshers, final-year students, and early-career talent apply faster, track applications clearly, and grow toward placement.
+              {branding.productName} helps freshers, final-year students, and early-career talent apply faster, track applications clearly, and grow toward placement.
             </p>
           </div>
 
@@ -175,7 +176,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
           <div className="auth-card-head">
             <div>
               <p className="auth-eyebrow">{mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Account recovery' : 'Welcome back'}</p>
-              <h2>{mode === 'register' ? 'Join Persevex' : mode === 'forgot' ? 'Reset access' : 'Sign in'}</h2>
+              <h2>{mode === 'register' ? `Join ${branding.productName}` : mode === 'forgot' ? 'Reset access' : 'Sign in'}</h2>
             </div>
             <button type="button" onClick={() => switchMode(mode === 'register' ? 'login' : 'register')}>
               {mode === 'register' ? 'Sign in' : 'Register'}
@@ -230,10 +231,13 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
 
           <div className="auth-security-note">
             <ShieldCheck className="h-4 w-4" />
-            <span>Use your verified Persevex account to access jobs, internships, applications, and placement updates.</span>
+            <span>Use your verified {branding.productName} account to access jobs, internships, applications, and placement updates.</span>
           </div>
         </motion.section>
       </main>
+      <footer className="auth-footer">
+        <small>{branding.footer}</small>
+      </footer>
     </div>
   );
 }

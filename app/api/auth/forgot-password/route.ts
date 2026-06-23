@@ -1,6 +1,7 @@
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { checkRateLimit } from '@/lib/http/rate-limit';
 import { logger } from '@/services/logger';
+import { branding } from '@/src/config/branding';
 
 export async function POST(request: Request) {
   const rateLimit = checkRateLimit({
@@ -36,14 +37,14 @@ export async function POST(request: Request) {
     notifications: user ? [{
       recipientId: user.id,
       title: 'Password Reset Requested',
-      message: 'A password reset workflow was requested for your Persevex account.',
+      message: `A password reset workflow was requested for your ${branding.productName} account.`,
       type: 'warning',
     }] : [],
     emails: [{
       userId: user?.id,
       recipientEmail: email,
       recipientName: user?.name || email,
-      subject: 'Persevex password reset request',
+      subject: `${branding.productName} password reset request`,
       html: emailTemplates.passwordReset(email),
     }],
     metadata: { accountFound: Boolean(user) },

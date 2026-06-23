@@ -1,5 +1,6 @@
 import type { AppNotification, EmailAlert } from '../src/types';
 import { logger } from './logger';
+import { branding } from '@/src/config/branding';
 
 export const NOTIFICATION_EVENTS = [
   'WELCOME',
@@ -79,16 +80,16 @@ function templateShell(title: string, preheader: string, body: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
       <div style="background:#0f172a;color:#fff;padding:22px 24px;">
-        <h1 style="margin:0;font-size:20px;">Persevex</h1>
+        <h1 style="margin:0;font-size:20px;">${branding.productName}</h1>
         <p style="margin:6px 0 0;font-size:12px;color:#cbd5e1;">${preheader}</p>
       </div>
       <div style="padding:24px;color:#1e293b;background:#fff;line-height:1.6;">
         <h2 style="margin:0 0 12px;font-size:18px;">${title}</h2>
         ${body}
-        <p style="margin:22px 0 0;font-size:12px;color:#64748b;">Sign in to Persevex for the latest workflow state.</p>
+        <p style="margin:22px 0 0;font-size:12px;color:#64748b;">Sign in to ${branding.productName} for the latest workflow state.</p>
       </div>
       <div style="background:#f8fafc;padding:14px 24px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;">
-        Automated Persevex communication. Please do not reply to this message.
+        Automated ${branding.productName} communication. Please do not reply to this message.
       </div>
     </div>
   `;
@@ -96,14 +97,14 @@ function templateShell(title: string, preheader: string, body: string): string {
 
 export const emailTemplates = {
   welcome: (name: string, role: string) => templateShell(
-    'Welcome to Persevex',
+    `Welcome to ${branding.productName}`,
     'Account created',
     `<p>Hi ${name}, your ${role} workspace is ready.</p>`
   ),
   passwordReset: (email: string) => templateShell(
     'Password Reset Requested',
     'Account recovery',
-    `<p>A password reset workflow was requested for ${email}. If this was not you, no action is required.</p><p>Please contact the Persevex team to complete secure recovery.</p>`
+    `<p>A password reset workflow was requested for ${email}. If this was not you, no action is required.</p><p>Please contact the ${branding.productName} team to complete secure recovery.</p>`
   ),
   applicationSubmitted: (candidate: string, jobTitle: string, companyName: string, score: number) => templateShell(
     'Application Submitted',
@@ -138,7 +139,7 @@ export const emailTemplates = {
   jobDecision: (jobTitle: string, approved: boolean) => templateShell(
     approved ? 'Job Approved' : 'Job Rejected',
     'Job moderation',
-    `<p>Your job post <strong>${jobTitle}</strong> has been ${approved ? 'approved and is now live.' : 'rejected by Persevex moderation.'}</p>`
+    `<p>Your job post <strong>${jobTitle}</strong> has been ${approved ? 'approved and is now live.' : `rejected by ${branding.productName} moderation.`}</p>`
   ),
 };
 

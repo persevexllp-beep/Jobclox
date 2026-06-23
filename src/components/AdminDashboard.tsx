@@ -7,7 +7,7 @@
 
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { AppIcon } from '@/src/lib/icons';
-import { User, Company, Job, EmailAlert, Application } from '../types';
+import { User, Company, Job, EmailAlert, Application, ExternalJobApplication } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell } from 'recharts';
 import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye, BarChart3, Building2, UserCog } from 'lucide-react';
 import SkeletonLoader from './SkeletonLoader';
@@ -17,6 +17,8 @@ import UserAvatar from './UserAvatar';
 import { useTheme } from '@/src/lib/theme';
 import { PageHeader, TabNav } from '@/src/components/layout';
 import { MetricCard, Button } from '@/src/components/ui';
+import ExternalLeadsPanel, { type ExternalLeadFilters } from './ExternalLeadsPanel';
+import { branding } from '@/src/config/branding';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -54,6 +56,10 @@ function AdminJobManagementPanel(props: {
   setJobReason: (value: string) => void;
   updatingAction: boolean;
   onBulkAction: (action: string) => void;
+  page: number;
+  totalPages: number;
+  total: number;
+  onPageChange: (page: number) => void;
   filters: {
     search: string;
     status: string;
@@ -151,7 +157,7 @@ function AdminJobManagementPanel(props: {
           ) : (
             <div className="admin-job-field">
               <span>Assignment</span>
-              <strong>Persevex Internal</strong>
+              <strong>{branding.productName} Internal</strong>
             </div>
           )}
           {props.form.companyMode === 'new' && (
@@ -339,6 +345,13 @@ function AdminJobManagementPanel(props: {
           </table>
         </div>
       </div>
+      {props.totalPages > 1 && (
+        <nav className="flex items-center justify-center gap-3" aria-label="Admin job pages">
+          <button type="button" className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold disabled:opacity-40" disabled={props.page <= 1} onClick={() => props.onPageChange(props.page - 1)}>Previous</button>
+          <span className="text-xs font-semibold text-slate-600">Page {props.page} of {props.totalPages} · {props.total} jobs</span>
+          <button type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white disabled:opacity-40" disabled={props.page >= props.totalPages} onClick={() => props.onPageChange(props.page + 1)}>Next</button>
+        </nav>
+      )}
     </div>
   );
 }
@@ -461,7 +474,7 @@ const emptyAdminJobForm: AdminJobFormState = {
 
 export default function AdminDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: AdminDashboardProps) {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'companies' | 'jobs' | 'screening' | 'users' | 'emails'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'companies' | 'jobs' | 'external-leads' | 'screening' | 'users' | 'emails'>('analytics');
   const [loading, setLoading] = useState(true);
   
   // Data lists
@@ -477,6 +490,20 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
   const [appsTrend, setAppsTrend] = useState<any[]>([]);
   const [jobsTrend, setJobsTrend] = useState<any[]>([]);
   const [topCompanies, setTopCompanies] = useState<any[]>([]);
+  const [jobSources, setJobSources] = useState<JobSourceAnalytics | null>(null);
+  const [providerHealth, setProviderHealth] = useState<ProviderHealth[]>([]);
+  const [adminJobPage, setAdminJobPage] = useState(1);
+  const [adminJobTotal, setAdminJobTotal] = useState(0);
+  const [adminJobTotalPages, setAdminJobTotalPages] = useState(1);
+  const [externalApplicationAnalytics, setExternalApplicationAnalytics] = useState<any>(null);
+  const [externalLeads, setExternalLeads] = useState<ExternalJobApplication[]>([]);
+  const [externalLeadFilters, setExternalLeadFilters] = useState<ExternalLeadFilters>({ search: '', company: '', source: 'all', status: 'all', dateFrom: '', dateTo: '' });
+  const [externalLeadPage, setExternalLeadPage] = useState(1);
+  const [externalLeadTotal, setExternalLeadTotal] = useState(0);
+  const [externalLeadTotalPages, setExternalLeadTotalPages] = useState(1);
+  const [externalLeadsLoading, setExternalLeadsLoading] = useState(false);
+  const [selectedExternalLead, setSelectedExternalLead] = useState<ExternalJobApplication | null>(null);
+  const [savingExternalLead, setSavingExternalLead] = useState(false);
 
   // Filtering Options
   const [moderationSearch, setModerationSearch] = useState('');
@@ -489,6 +516,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
   const [jobPromotionFilter, setJobPromotionFilter] = useState('all');
   const deferredJobSearch = useDeferredValue(jobSearch);
   const deferredScreenSearch = useDeferredValue(screenSearch);
+  const deferredExternalLeadSearch = useDeferredValue(externalLeadFilters.search);
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [jobForm, setJobForm] = useState<AdminJobFormState>(emptyAdminJobForm);
   const [savingJob, setSavingJob] = useState(false);
@@ -510,9 +538,9 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
     try {
       const [
         { companies: cList },
-        { jobs: jList },
+        jobsData,
         { applications: aList },
-        { analytics: sData },
+        sData,
         userData,
         emailData
       ] = await Promise.all([
@@ -525,7 +553,10 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
       ]);
 
       setCompanies(cList || []);
-      setJobs(jList || []);
+      setJobs(jobsData.jobs || []);
+      setAdminJobPage(jobsData.page || 1);
+      setAdminJobTotal(jobsData.total ?? (jobsData.jobs || []).length);
+      setAdminJobTotalPages(jobsData.totalPages || 1);
       setApplications(aList || []);
       setEmailAlerts(emailData?.emailAlerts || []);
       setUsers(userData?.users || []);
@@ -535,6 +566,9 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
         setAppsTrend(sData.appsTrend);
         setJobsTrend(sData.jobsTrend);
         setTopCompanies(sData.topCompanies);
+        setJobSources(sData.jobSources || null);
+        setProviderHealth(sData.providerHealth || []);
+        setExternalApplicationAnalytics(sData.externalApplications || null);
       }
     } catch (err) {
       console.error('Error fetching admin logs', err);
@@ -556,6 +590,48 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
       console.error(err);
       showToast('error', 'Delete failed', err.message || 'Unable to remove the email alert.');
     }
+  };
+
+  useEffect(() => {
+    setExternalLeadPage(1);
+  }, [deferredExternalLeadSearch, externalLeadFilters.company, externalLeadFilters.source, externalLeadFilters.status, externalLeadFilters.dateFrom, externalLeadFilters.dateTo]);
+
+  useEffect(() => {
+    if (activeTab !== 'external-leads') return;
+    const params = new URLSearchParams({ page: String(externalLeadPage), pageSize: '50' });
+    if (deferredExternalLeadSearch.trim()) params.set('search', deferredExternalLeadSearch.trim());
+    if (externalLeadFilters.company.trim()) params.set('company', externalLeadFilters.company.trim());
+    if (externalLeadFilters.source !== 'all') params.set('source', externalLeadFilters.source);
+    if (externalLeadFilters.status !== 'all') params.set('status', externalLeadFilters.status);
+    if (externalLeadFilters.dateFrom) params.set('dateFrom', externalLeadFilters.dateFrom);
+    if (externalLeadFilters.dateTo) params.set('dateTo', externalLeadFilters.dateTo);
+    let cancelled = false;
+    setExternalLeadsLoading(true);
+    apiFetch(`/api/admin/external-job-applications?${params}`).then((data) => {
+      if (cancelled) return;
+      setExternalLeads(data.leads || []);
+      setExternalLeadTotal(data.total || 0);
+      setExternalLeadTotalPages(data.totalPages || 1);
+      setSelectedExternalLead((selected) => selected && (data.leads || []).some((lead: ExternalJobApplication) => lead.id === selected.id) ? selected : (data.leads || [])[0] || null);
+    }).catch((error) => {
+      if (!cancelled) showToast('error', 'Lead load failed', error instanceof Error ? error.message : 'External leads could not be loaded.');
+    }).finally(() => { if (!cancelled) setExternalLeadsLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, apiFetch, deferredExternalLeadSearch, externalLeadFilters.company, externalLeadFilters.dateFrom, externalLeadFilters.dateTo, externalLeadFilters.source, externalLeadFilters.status, externalLeadPage, showToast]);
+
+  const handleSaveExternalLead = async (lead: ExternalJobApplication) => {
+    setSavingExternalLead(true);
+    try {
+      const response = await apiFetch(`/api/admin/external-job-applications/${lead.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: lead.status, notes: lead.notes }),
+      });
+      setExternalLeads((current) => current.map((item) => item.id === lead.id ? response.application : item));
+      setSelectedExternalLead(response.application);
+      showToast('success', 'External lead updated', 'Status and admin notes were saved.');
+    } catch (error) {
+      showToast('error', 'Lead update failed', error instanceof Error ? error.message : 'Unable to save this lead.');
+    } finally { setSavingExternalLead(false); }
   };
 
   // Company status update
@@ -742,6 +818,28 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
     });
   }, [deferredJobSearch, jobCompanyFilter, jobPromotionFilter, jobStatusFilter, jobTypeFilter, jobs]);
 
+  useEffect(() => {
+    setAdminJobPage(1);
+  }, [deferredJobSearch, jobCompanyFilter, jobPromotionFilter, jobStatusFilter, jobTypeFilter]);
+
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams({ page: String(adminJobPage), pageSize: '100' });
+    if (deferredJobSearch.trim()) params.set('search', deferredJobSearch.trim());
+    if (jobStatusFilter !== 'all') params.set('status', jobStatusFilter);
+    if (jobCompanyFilter !== 'all') params.set('companyId', jobCompanyFilter);
+    if (jobTypeFilter !== 'all') params.set('jobType', jobTypeFilter);
+    if (jobPromotionFilter !== 'all') params.set('promotion', jobPromotionFilter);
+    let cancelled = false;
+    apiFetch(`/api/jobs?${params}`).then((data) => {
+      if (cancelled) return;
+      setJobs(data.jobs || []);
+      setAdminJobTotal(data.total ?? (data.jobs || []).length);
+      setAdminJobTotalPages(data.totalPages || 1);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [adminJobPage, apiFetch, deferredJobSearch, jobCompanyFilter, jobPromotionFilter, jobStatusFilter, jobTypeFilter, loading]);
+
   const setJobFormField = <K extends keyof AdminJobFormState>(key: K, value: AdminJobFormState[K]) => {
     setJobForm((current) => ({ ...current, [key]: value }));
   };
@@ -913,13 +1011,14 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
     { id: 'companies' as const, label: 'KYC Verifications', icon: Building2, badge: pendingVerifications },
     { id: 'jobs' as const, label: 'Jobs & Moderation', icon: FileText, badge: pendingJobs },
+    { id: 'external-leads' as const, label: 'External Leads', icon: Bookmark, badge: externalApplicationAnalytics?.total || undefined },
     { id: 'screening' as const, label: 'Screening Desk', icon: Users, badge: screeningCount },
     { id: 'users' as const, label: 'User Accounts', icon: UserCog },
     { id: 'emails' as const, label: 'Email Audit', icon: Mail, badge: emailAlerts.length },
   ];
 
   return (
-    <div className="platform-page admin-page pvx-dashboard-shell pvx-dashboard-shell--admin">
+    <div className="platform-page admin-page admin-ops-console pvx-dashboard-shell pvx-dashboard-shell--admin">
       
       <PageHeader
         eyebrow="Platform Operations"
@@ -928,7 +1027,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
         badge="Admin"
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="admin-kpi-grid grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <MetricCard
           label="Total Partners"
           value={`${metrics?.totalCompanies ?? companies.length}`}
@@ -964,7 +1063,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
         />
       </div>
 
-      <TabNav<'analytics' | 'companies' | 'jobs' | 'screening' | 'users' | 'emails'>
+      <TabNav<'analytics' | 'companies' | 'jobs' | 'external-leads' | 'screening' | 'users' | 'emails'>
         items={adminTabs}
         activeId={activeTab}
         onChange={(id) => {
@@ -972,7 +1071,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
           if (id === 'emails') setActiveEmailId(null);
         }}
         ariaLabel="Admin workspace navigation"
-        className="mb-6"
+        className="admin-tab-strip mb-6"
       />
 
       {/* CORE MODULAR RENDERING Tab viewports */}
@@ -992,7 +1091,82 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
       ) : (
         <>
           {activeTab === 'analytics' && (
-        <div className="space-y-8">
+        <div className="admin-analytics-tab space-y-8">
+          <section className="space-y-4" aria-labelledby="job-source-analytics-title">
+            <div>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-700">Hybrid marketplace</span>
+              <h3 id="job-source-analytics-title" className="font-display text-lg font-bold text-slate-950">Job Sources Analytics</h3>
+              <p className="text-xs text-slate-500">Internal supply, imported inventory, freshness, and provider health.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+              <AdminJobMetric label="Total jobs" value={jobSources?.totalJobs ?? metrics?.totalJobs ?? 0} />
+              <AdminJobMetric label="Internal" value={jobSources?.internalJobs ?? 0} />
+              <AdminJobMetric label="External" value={jobSources?.externalJobs ?? 0} />
+              <AdminJobMetric label="Active" value={jobSources?.activeJobs ?? 0} />
+              <AdminJobMetric label="Stale" value={jobSources?.staleJobs ?? 0} />
+              <AdminJobMetric label="Imported today" value={jobSources?.importedToday ?? 0} />
+              <AdminJobMetric label="This week" value={jobSources?.importedThisWeek ?? 0} />
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="text-sm font-bold text-slate-900">Jobs by source</h4>
+                <div className="mt-4 space-y-3">
+                  {Object.entries(jobSources?.bySource || {}).map(([source, count]) => (
+                    <div key={source} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                      <span className="font-semibold capitalize text-slate-700">{source === 'internal' ? 'Internal recruiters' : source}</span>
+                      <strong className="font-mono text-slate-950">{count}</strong>
+                    </div>
+                  ))}
+                  {!Object.keys(jobSources?.bySource || {}).length && <p className="text-xs text-slate-500">No source data available.</p>}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="text-sm font-bold text-slate-900">Provider health</h4>
+                <div className="mt-4 space-y-3">
+                  {providerHealth.map((provider) => (
+                    <div key={provider.provider} className="rounded-xl border border-slate-100 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <strong className="capitalize text-slate-900">{provider.provider}</strong>
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${provider.status === 'success' ? 'bg-emerald-50 text-emerald-700' : provider.status === 'failed' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>{provider.status.replace('_', ' ')}</span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">Fetched {provider.fetchedCount} · inserted {provider.insertedCount} · updated {provider.updatedCount}</p>
+                      {provider.completedAt && <p className="mt-1 text-[11px] text-slate-400">Last completed {new Date(provider.completedAt).toLocaleString()}</p>}
+                      {provider.errorMessage && <p className="mt-2 text-xs text-rose-600">{provider.errorMessage}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4" aria-labelledby="external-application-analytics-title">
+            <div>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700">Lead conversion</span>
+              <h3 id="external-application-analytics-title" className="font-display text-lg font-bold text-slate-950">External Applications Analytics</h3>
+              <p className="text-xs text-slate-500">Candidate demand, company/source distribution, operational funnel, and placement outcomes.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+              <AdminJobMetric label="Total applications" value={externalApplicationAnalytics?.total || 0} />
+              {['new', 'contacted', 'shared_with_company', 'interview_scheduled', 'placed', 'rejected'].map((status) => (
+                <AdminJobMetric key={status} label={status.replaceAll('_', ' ')} value={externalApplicationAnalytics?.statusBreakdown?.find((item: any) => item.status === status)?.value || 0} />
+              ))}
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="text-sm font-bold text-slate-900">Applications per day</h4>
+                <div className="mt-4 h-56">
+                  {externalApplicationAnalytics?.byDay?.length ? <ResponsiveContainer width="100%" height="100%"><AreaChart data={externalApplicationAnalytics.byDay}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" /><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis allowDecimals={false} /><Tooltip /><Area type="monotone" dataKey="value" name="Applications" stroke="#0284c7" fill="#e0f2fe" strokeWidth={2} /></AreaChart></ResponsiveContainer> : <div className="flex h-full items-center justify-center text-xs text-slate-400">No external application history yet.</div>}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="text-sm font-bold text-slate-900">Conversion funnel</h4>
+                <div className="mt-4 space-y-2">{externalApplicationAnalytics?.statusBreakdown?.map((item: any, index: number) => <div key={item.status} className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{index + 1}</span><span className="flex-1 capitalize text-sm text-slate-700">{item.status.replaceAll('_', ' ')}</span><strong className="font-mono text-slate-950">{item.value}</strong></div>)}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="text-sm font-bold text-slate-900">Applications per company</h4><div className="mt-4 space-y-2">{externalApplicationAnalytics?.byCompany?.map((item: any) => <div key={item.name} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"><span>{item.name}</span><strong>{item.value}</strong></div>)}</div></div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="text-sm font-bold text-slate-900">Applications per source</h4><div className="mt-4 space-y-2">{externalApplicationAnalytics?.bySource?.map((item: any) => <div key={item.name} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"><span className="capitalize">{item.name}</span><strong>{item.value}</strong></div>)}</div></div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="text-sm font-bold text-slate-900">Top performing external jobs</h4><div className="mt-4 grid gap-2 md:grid-cols-2">{externalApplicationAnalytics?.topJobs?.map((item: any) => <div key={item.jobId} className="flex items-start justify-between rounded-xl bg-slate-50 p-3"><span><strong className="block text-sm text-slate-900">{item.jobTitle}</strong><small className="text-slate-500">{item.companyName}</small></span><strong className="font-mono text-sky-700">{item.value}</strong></div>)}</div></div>
+          </section>
           
           {/* Charts section layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1111,7 +1285,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
       {/* COMPANIES TAB */}
 
       {activeTab === 'companies' && (
-        <div className="space-y-6">
+        <div className="admin-companies-tab space-y-6">
           <div className="bg-slate-940 text-slate-900 border-none">
             <h3 className="font-display font-bold text-lg">
               KYC Corporate Identity Verifications
@@ -1214,6 +1388,10 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
           setJobReason={setJobReason}
           updatingAction={updatingAction}
           onBulkAction={handleBulkJobAction}
+          page={adminJobPage}
+          totalPages={adminJobTotalPages}
+          total={adminJobTotal}
+          onPageChange={setAdminJobPage}
           filters={{
             search: jobSearch,
             status: jobStatusFilter,
@@ -1228,6 +1406,23 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
             setType: setJobTypeFilter,
             setPromotion: setJobPromotionFilter,
           }}
+        />
+      )}
+
+      {activeTab === 'external-leads' && (
+        <ExternalLeadsPanel
+          leads={externalLeads}
+          loading={externalLeadsLoading}
+          total={externalLeadTotal}
+          page={externalLeadPage}
+          totalPages={externalLeadTotalPages}
+          filters={externalLeadFilters}
+          setFilters={setExternalLeadFilters}
+          selectedLead={selectedExternalLead}
+          setSelectedLead={setSelectedExternalLead}
+          onPageChange={setExternalLeadPage}
+          onSave={handleSaveExternalLead}
+          saving={savingExternalLead}
         />
       )}
 
@@ -1257,8 +1452,8 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
         };
 
         return (
-          <div className="space-y-6">
-            <div className="bg-slate-940 text-slate-900 border-none">
+          <div className="admin-screening-tab space-y-6">
+            <div className="admin-section-head bg-slate-940 text-slate-900 border-none">
               <h3 className="font-display font-bold text-lg">
                 Applications screening Desk
               </h3>
@@ -1268,7 +1463,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
             </div>
 
             {/* Filter Search controls & Select All Row */}
-            <div className="bg-white border border-slate-150 rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-xs">
+            <div className="admin-screening-toolbar bg-white border border-slate-150 rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-xs">
               <div className="relative flex-grow max-w-md">
                 <input
                   type="text"
@@ -1368,7 +1563,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="admin-screening-list grid grid-cols-1 gap-6">
               {visibleApps.length === 0 ? (
                 <AdminEmptyState
                   icon={FileText}
@@ -1390,7 +1585,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
                   return (
                     <div 
                       key={app.id} 
-                      className={`bg-white border transition-all rounded-2xl p-6 text-left shadow-sm ${
+                      className={`admin-screening-card bg-white border transition-all rounded-2xl p-6 text-left shadow-sm ${
                         isSelected ? 'ring-2 ring-emerald-500 border-emerald-300' : 'border-slate-150'
                       }`}
                     >
@@ -1565,7 +1760,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
 
       {activeTab === 'users' && (
         <div className="space-y-6">
-          <div className="bg-slate-940 text-slate-900 border-none">
+          <div className="admin-section-head bg-slate-940 text-slate-900 border-none">
             <h3 className="font-display font-bold text-lg">
               Portal Account Directory Control
             </h3>
@@ -1574,10 +1769,10 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
             </p>
           </div>
 
-          <div className="bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
-            <div className="border-b border-slate-100 bg-slate-50/70 p-5">
+          <div className="admin-users-panel bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+            <div className="admin-users-photo-bar border-b border-slate-100 bg-slate-50/70 p-5">
               <div className="flex flex-wrap items-center gap-4">
-                <UserAvatar name={currentUser.name} src={currentUser.profilePhotoUrl} className="h-16 w-16 rounded-2xl border border-white shadow-sm" />
+                <UserAvatar name={currentUser.name} src={currentUser.profilePhotoUrl} className="admin-current-avatar h-16 w-16 rounded-2xl border border-white shadow-sm" />
                 <div className="min-w-[220px] flex-1">
                   <strong className="block text-sm text-slate-900">Admin account photo</strong>
                   <p className="text-xs text-slate-500">Used in the navbar and audit workspace fallback surfaces.</p>
@@ -1616,7 +1811,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
                     <tr key={u.id} className="hover:bg-slate-50/40">
                       <td className="p-3.5 pl-6 font-semibold">
                         <div className="flex items-center gap-3">
-                          <UserAvatar name={u.name} src={u.profilePhotoUrl} className="h-10 w-10 rounded-xl border border-slate-200" />
+                          <UserAvatar name={u.name} src={u.profilePhotoUrl} className="admin-table-avatar h-10 w-10 rounded-xl border border-slate-200" />
                           <span>{u.name}</span>
                         </div>
                       </td>
@@ -1647,16 +1842,16 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
 
       {/* CORE ACTIVE TAB: AUTOMATED EMAIL ALERTS AUDIT LOG */}
       {activeTab === 'emails' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-150 rounded-2xl p-6 sm:p-8 shadow-sm">
-            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="admin-email-tab space-y-6">
+          <div className="admin-mail-shell bg-white border border-slate-150 rounded-2xl p-6 sm:p-8 shadow-sm">
+            <div className="admin-mail-header border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <span className="text-xs font-bold text-emerald-600 font-mono tracking-wider uppercase">System Transmittals Monitor</span>
                 <h3 className="font-display font-bold text-lg text-slate-950 mt-1">
                   Automated Email Dispatches Audit Trail
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Persevex Admin Engine maintains a real-time ledger of dispatched custom HTML notifications for workflow accountability.
+                  {branding.productName} Admin Engine maintains a real-time ledger of dispatched custom HTML notifications for workflow accountability.
                 </p>
               </div>
               <div className="px-3 py-1 bg-slate-100 rounded-full text-slate-650 text-xs font-mono self-start sm:self-center font-bold">
@@ -1675,9 +1870,9 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+              <div className="admin-mail-layout grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
                 {/* List col */}
-                <div className="lg:col-span-12 xl:col-span-5 space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                <div className="admin-mail-list lg:col-span-12 xl:col-span-5 space-y-3 max-h-[500px] overflow-y-auto pr-1">
                   {emailAlerts.map((email, idx) => {
                     const isSelected = activeEmailId ? activeEmailId === email.id : idx === 0;
                     const preview = formatEmailAlertPreview(email);
@@ -1686,7 +1881,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
                         key={email.id}
                         type="button"
                         onClick={() => setActiveEmailId(email.id)}
-                        className={`w-full text-left p-4 rounded-2xl border transition-all flex flex-col cursor-pointer ${
+                        className={`admin-mail-item w-full text-left p-4 rounded-2xl border transition-all flex flex-col cursor-pointer ${
                           isSelected
                             ? 'bg-emerald-50/50 border-emerald-300 shadow-xs'
                             : 'bg-white border-slate-100 hover:bg-slate-50'
@@ -1740,7 +1935,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
                 </div>
 
                 {/* Preview col */}
-                <div className="lg:col-span-12 xl:col-span-7 border border-slate-200 rounded-2xl overflow-hidden bg-white flex flex-col min-h-[450px]">
+                <div className="admin-mail-preview lg:col-span-12 xl:col-span-7 border border-slate-200 rounded-2xl overflow-hidden bg-white flex flex-col min-h-[450px]">
                   {(() => {
                     const email = emailAlerts.find(e => e.id === activeEmailId) || emailAlerts[0];
                     if (!email) return null;
@@ -1814,3 +2009,13 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
       </div>
   );
 }
+
+type JobSourceAnalytics = {
+  totalJobs: number; internalJobs: number; externalJobs: number; activeJobs: number;
+  staleJobs: number; importedToday: number; importedThisWeek: number; bySource: Record<string, number>;
+};
+
+type ProviderHealth = {
+  provider: string; status: string; completedAt?: string; fetchedCount: number;
+  insertedCount: number; updatedCount: number; durationMs?: number; errorMessage?: string;
+};

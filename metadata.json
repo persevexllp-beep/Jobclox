@@ -1,6 +1,6 @@
 {
-  "name": "Persevex Portal",
-  "description": "A centralized recruitment platform where verified companies post jobs, candidates apply, and Persevex screens and forwards high-quality resumes.",
+  "name": "JobClox",
+  "description": "A centralized recruitment platform where verified companies post jobs, candidates apply, and JobClox screens and forwards high-quality resumes.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -8,6 +8,7 @@ import { motion, useMotionValue, useTransform, useSpring } from 'motion/react';
 import { MapPin, DollarSign, Building2 } from 'lucide-react';
 import { Job } from '../../types';
 import { tokens } from '../../tokens';
+import { branding } from '@/src/config/branding';
 
 interface JobCardProps {
   job: Job;
@@ -226,7 +227,7 @@ export default function JobCard({ job, onApply, className = '' }: JobCardProps) 
             onApply(job);
           }}
         >
-          Apply & Index
+          {job.isExternal ? `Apply via ${branding.productName}` : 'Apply Now'}
         </motion.button>
       </div>
     </motion.div>

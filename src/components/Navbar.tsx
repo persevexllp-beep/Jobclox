@@ -15,6 +15,7 @@ import UserAvatar from './UserAvatar';
 import { useTheme } from '@/src/lib/theme';
 import Button from '@/src/components/ui/Button';
 import EmptyState from '@/src/components/ui/EmptyState';
+import { branding } from '@/src/config/branding';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -83,7 +84,7 @@ function Navbar({
     <header className="pvx-header" data-role={currentUser?.role}>
       <div className="pvx-header-inner">
           <div className="pvx-logo">
-            <BrandLogo subline="Hiring & Placement Engine" />
+            <BrandLogo subline={branding.tagline} />
           </div>
 
           <div className="pvx-header-actions">

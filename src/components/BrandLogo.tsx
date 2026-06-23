@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { branding } from '@/src/config/branding';
 
 type BrandLogoProps = {
   className?: string;
@@ -17,15 +18,15 @@ export default function BrandLogo({
   className = '',
   markClassName = '',
   textClassName = '',
-  subline = 'Hiring & Placement Engine',
+  subline = branding.tagline,
   compact = false,
 }: BrandLogoProps) {
   return (
     <span className={`pvx-brand-logo ${className}`}>
-      <img className={`pvx-brand-logo-mark ${markClassName}`} src="/persevex_logo.avif" alt="Persevex" width="40" height="40" decoding="async" />
+      <img className={`pvx-brand-logo-mark ${markClassName}`} src={branding.logo.src} alt={branding.logo.alt} width="40" height="40" decoding="async" />
       {!compact && (
         <span className={`pvx-brand-logo-text ${textClassName}`}>
-          <strong>Persevex</strong>
+          <strong>{branding.productName}</strong>
           <small>{subline}</small>
         </span>
       )}

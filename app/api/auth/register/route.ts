@@ -5,6 +5,7 @@ import { jsonError, jsonOk } from '@/lib/http/responses';
 import { checkRateLimit } from '@/lib/http/rate-limit';
 import { hydrateUserProfilePhoto } from '@/lib/storage/hydrate';
 import { logger } from '@/services/logger';
+import { branding } from '@/src/config/branding';
 
 export async function POST(request: Request) {
   const rateLimit = checkRateLimit({
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
       type: 'info',
     }] : [{
       recipientId: newUser.id,
-      title: 'Welcome to Persevex',
+      title: `Welcome to ${branding.productName}`,
       message: 'Your candidate workspace is ready. Complete your profile and upload a resume to improve matching.',
       type: 'success',
     }],
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
       userId: newUser.id,
       recipientEmail: newUser.email,
       recipientName: newUser.name,
-      subject: 'Welcome to Persevex',
+      subject: `Welcome to ${branding.productName}`,
       html: emailTemplates.welcome(newUser.name, newUser.role),
     }],
     metadata: { role: newUser.role },

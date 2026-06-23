@@ -3,6 +3,7 @@ import { Inter, Sora } from 'next/font/google';
 import './globals.css';
 import { THEME_STORAGE_KEY } from '@/src/lib/theme-constants';
 import MotionProvider from '@/src/components/motion/MotionProvider';
+import { branding } from '@/src/config/branding';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -18,8 +19,29 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: 'Persevex — Hiring & Placement Engine',
-  description: 'Premium hiring intelligence platform for candidates, recruiters, and platform operators.',
+  title: {
+    default: branding.metadata.title,
+    template: `%s | ${branding.productName}`,
+  },
+  description: branding.metadata.description,
+  applicationName: branding.productName,
+  appleWebApp: {
+    capable: true,
+    title: branding.productName,
+  },
+  icons: {
+    icon: branding.logo.src,
+    shortcut: branding.logo.src,
+    apple: branding.logo.src,
+  },
+  manifest: '/manifest.webmanifest',
+  openGraph: {
+    title: branding.metadata.title,
+    description: branding.metadata.description,
+    siteName: branding.metadata.siteName,
+    images: [{ url: branding.logo.src, alt: branding.logo.alt }],
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
