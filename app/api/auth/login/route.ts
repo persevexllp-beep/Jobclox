@@ -38,6 +38,21 @@ export async function POST(request: Request) {
   }
 
   if (!user) {
+    try {
+      const { getEligibleStudentByEmail, ensureCandidateAccountForEligibleStudent } = await import('@/services/eligibleStudentService');
+      const eligibleStudent = await getEligibleStudentByEmail(email);
+      if (eligibleStudent?.active && eligibleStudent.password === password) {
+        await ensureCandidateAccountForEligibleStudent(eligibleStudent, password);
+        const { getUserByEmail } = await import('@/services/userService');
+        user = await getUserByEmail(email);
+      }
+    } catch (err) {
+      logger.error('eligible-students', 'candidate account bootstrap failed', err);
+      return jsonError(500, 'Candidate eligibility service unavailable');
+    }
+  }
+
+  if (!user) {
     logger.warn('auth', 'login failed: user not found', { email: String(email) });
     return jsonError(401, 'Invalid email or password');
   }
@@ -47,6 +62,15 @@ export async function POST(request: Request) {
     return jsonError(403, 'Account is inactive');
   }
 
+  if (user.role === 'candidate') {
+    try {
+      await assertCandidateEligible(user.email);
+    } catch (err) {
+      logger.warn('auth', 'candidate login blocked: not eligible', { userId: user.id, email: user.email });
+      return jsonError(403, err instanceof Error ? err.message : 'Candidate access is restricted');
+    }
+  }
+
   let passwordHash: string | null;
   try {
     const { getPasswordHashForUser } = await import('@/services/authService');
@@ -54,6 +78,21 @@ export async function POST(request: Request) {
   } catch (err) {
     logger.error('auth', 'password storage unavailable', err);
     return jsonError(500, 'Authentication storage is not configured');
+  }
+
+  if (!passwordHash && user.role === 'candidate') {
+    try {
+      const { getEligibleStudentByEmail } = await import('@/services/eligibleStudentService');
+      const eligibleStudent = await getEligibleStudentByEmail(user.email);
+      if (eligibleStudent?.active && eligibleStudent.password === password) {
+        const { hashPassword, setPasswordHashForUser } = await import('@/services/authService');
+        passwordHash = await hashPassword(password);
+        await setPasswordHashForUser(user.id, passwordHash);
+      }
+    } catch (err) {
+      logger.error('eligible-students', 'failed to hydrate candidate password', err);
+      return jsonError(500, 'Candidate eligibility service unavailable');
+    }
   }
 
   if (!passwordHash) {
@@ -88,4 +127,9 @@ export async function POST(request: Request) {
 
   logger.info('auth', 'login succeeded', { userId: user.id, role: user.role });
   return response;
+}
+
+async function assertCandidateEligible(email: string): Promise<void> {
+  const { assertCandidateIsEligible } = await import('@/services/eligibleStudentService');
+  await assertCandidateIsEligible(email);
 }

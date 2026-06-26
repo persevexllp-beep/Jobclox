@@ -9,7 +9,7 @@ import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { AppIcon } from '@/src/lib/icons';
 import { User, Company, Job, EmailAlert, Application, ExternalJobApplication } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell } from 'recharts';
-import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye, BarChart3, Building2, UserCog } from 'lucide-react';
+import { ShieldCheck, Users, HelpCircle, FileText, Check, XCircle, ExternalLink, Calendar, PlusCircle, Bookmark, RefreshCw, ChevronRight, Award, Trash, Power, Mail, Eye, BarChart3, Building2, UserCog, UploadCloud, Database } from 'lucide-react';
 import SkeletonLoader from './SkeletonLoader';
 import { formatEmailAlertPreview, sanitizeEmailHtml } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
@@ -26,6 +26,17 @@ interface AdminDashboardProps {
   showToast: (tone: ToastTone, title: string, message?: string) => void;
   onCurrentUserUpdate: (updates: Partial<User>) => void;
 }
+
+type AdminTabId = 'analytics' | 'companies' | 'jobs' | 'external-leads' | 'screening' | 'eligible-students' | 'users' | 'emails';
+
+type EligibleStudentImportResult = {
+  totalRows: number;
+  imported: number;
+  accountsCreated: number;
+  accountsUpdated: number;
+  inactiveRows: number;
+  failed: Array<{ row: number; email?: string; reason: string }>;
+};
 
 function AdminJobManagementPanel(props: {
   jobs: Job[];
@@ -474,7 +485,7 @@ const emptyAdminJobForm: AdminJobFormState = {
 
 export default function AdminDashboard({ currentUser, apiFetch, showToast, onCurrentUserUpdate }: AdminDashboardProps) {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'companies' | 'jobs' | 'external-leads' | 'screening' | 'users' | 'emails'>('analytics');
+  const [activeTab, setActiveTab] = useState<AdminTabId>('analytics');
   const [loading, setLoading] = useState(true);
   
   // Data lists
@@ -528,6 +539,10 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
   const [updatingAction, setUpdatingAction] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState('');
+  const [eligibleCsvText, setEligibleCsvText] = useState('');
+  const [eligibleCsvFileName, setEligibleCsvFileName] = useState('');
+  const [eligibleImporting, setEligibleImporting] = useState(false);
+  const [eligibleImportResult, setEligibleImportResult] = useState<EligibleStudentImportResult | null>(null);
 
   useEffect(() => {
     fetchAdminData();
@@ -782,6 +797,44 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
     }
   };
 
+  const handleEligibleCsvFile = async (file: File) => {
+    if (!file) return;
+    setEligibleCsvFileName(file.name);
+    setEligibleImportResult(null);
+    try {
+      const text = await file.text();
+      setEligibleCsvText(text);
+      showToast('info', 'CSV loaded', `${file.name} is ready to import.`);
+    } catch (err: any) {
+      showToast('error', 'CSV read failed', err.message || 'Unable to read this CSV file.');
+    }
+  };
+
+  const handleEligibleStudentsImport = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!eligibleCsvText.trim()) {
+      showToast('warning', 'CSV required', 'Upload or paste eligible student CSV data before importing.');
+      return;
+    }
+
+    setEligibleImporting(true);
+    setEligibleImportResult(null);
+    try {
+      const response = await apiFetch('/api/admin/eligible-students/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvText: eligibleCsvText }),
+      });
+      setEligibleImportResult(response.result);
+      showToast('success', 'Eligible students imported', `${response.result.imported} row${response.result.imported === 1 ? '' : 's'} added to access control.`);
+      fetchAdminData();
+    } catch (err: any) {
+      showToast('error', 'Import failed', err.message || 'Eligible student CSV could not be imported.');
+    } finally {
+      setEligibleImporting(false);
+    }
+  };
+
   const jobDashboardMetrics = useMemo(() => {
     const totalApplications = applications.length;
     const activeJobs = jobs.filter((job) => job.status === 'approved').length;
@@ -1013,6 +1066,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
     { id: 'jobs' as const, label: 'Jobs & Moderation', icon: FileText, badge: pendingJobs },
     { id: 'external-leads' as const, label: 'External Leads', icon: Bookmark, badge: externalApplicationAnalytics?.total || undefined },
     { id: 'screening' as const, label: 'Screening Desk', icon: Users, badge: screeningCount },
+    { id: 'eligible-students' as const, label: 'Eligible Students', icon: Database },
     { id: 'users' as const, label: 'User Accounts', icon: UserCog },
     { id: 'emails' as const, label: 'Email Audit', icon: Mail, badge: emailAlerts.length },
   ];
@@ -1063,7 +1117,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
         />
       </div>
 
-      <TabNav<'analytics' | 'companies' | 'jobs' | 'external-leads' | 'screening' | 'users' | 'emails'>
+      <TabNav<AdminTabId>
         items={adminTabs}
         activeId={activeTab}
         onChange={(id) => {
@@ -1081,7 +1135,7 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
           <SkeletonLoader type="analytics" />
         ) : activeTab === 'screening' ? (
           <SkeletonLoader type="candidateCards" count={4} />
-        ) : activeTab === 'users' || activeTab === 'companies' ? (
+        ) : activeTab === 'users' || activeTab === 'companies' || activeTab === 'eligible-students' ? (
           <SkeletonLoader type="table" count={6} />
         ) : activeTab === 'jobs' ? (
           <SkeletonLoader type="metrics" count={4} />
@@ -1755,6 +1809,106 @@ export default function AdminDashboard({ currentUser, apiFetch, showToast, onCur
           </div>
         );
       })()}
+
+      {/* ELIGIBLE STUDENT ACCESS TAB */}
+
+      {activeTab === 'eligible-students' && (
+        <div className="space-y-6">
+          <div className="admin-section-head bg-slate-940 text-slate-900 border-none">
+            <h3 className="font-display font-bold text-lg">
+              Eligible Student Access Import
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Upload candidate access rows into eligible_students. Active rows create or update candidate login accounts; recruiter registration stays separate.
+            </p>
+          </div>
+
+          <form onSubmit={handleEligibleStudentsImport} className="eligible-students-panel bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+            <div className="grid gap-0 lg:grid-cols-[0.86fr_1.14fr]">
+              <div className="border-b border-slate-100 bg-slate-50/70 p-5 lg:border-b-0 lg:border-r">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-900 text-white">
+                    <UploadCloud className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-700">CSV source</span>
+                    <h4 className="mt-1 text-sm font-bold text-slate-950">Upload access list</h4>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Required columns: email, full_name, training_completed, internship_completed, active, created_at, password.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="mt-5 flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center transition hover:border-sky-300 hover:bg-sky-50/40">
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(event) => event.target.files?.[0] && void handleEligibleCsvFile(event.target.files[0])}
+                  />
+                  <UploadCloud className="h-7 w-7 text-sky-600" />
+                  <strong className="mt-3 text-sm text-slate-900">{eligibleCsvFileName || 'Choose CSV file'}</strong>
+                  <span className="mt-1 text-xs text-slate-500">Rows are validated before account creation.</span>
+                </label>
+
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                  Candidate login is allowed only when the email exists in eligible_students and active is true.
+                </div>
+              </div>
+
+              <div className="p-5">
+                <label className="admin-job-field">
+                  <span>CSV preview or paste input</span>
+                  <textarea
+                    value={eligibleCsvText}
+                    onChange={(event) => {
+                      setEligibleCsvText(event.target.value);
+                      setEligibleImportResult(null);
+                    }}
+                    rows={10}
+                    spellCheck={false}
+                    placeholder={'email,full_name,training_completed,internship_completed,active,created_at,password\nstudent@example.com,Student Name,true,true,true,2026-06-26,password123'}
+                  />
+                </label>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500">
+                    Imports upsert by email, then creates or updates candidate credentials with the provided password.
+                  </p>
+                  <button type="submit" disabled={eligibleImporting} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+                    <UploadCloud className="h-4 w-4" />
+                    {eligibleImporting ? 'Importing...' : 'Import students'}
+                  </button>
+                </div>
+
+                {eligibleImportResult && (
+                  <div className="mt-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                      <AdminJobMetric label="Rows" value={eligibleImportResult.totalRows} />
+                      <AdminJobMetric label="Imported" value={eligibleImportResult.imported} />
+                      <AdminJobMetric label="Created" value={eligibleImportResult.accountsCreated} />
+                      <AdminJobMetric label="Updated" value={eligibleImportResult.accountsUpdated} />
+                      <AdminJobMetric label="Inactive" value={eligibleImportResult.inactiveRows} />
+                    </div>
+                    {eligibleImportResult.failed.length > 0 && (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                        <strong className="text-sm text-rose-900">Rows needing review</strong>
+                        <div className="mt-3 max-h-40 overflow-auto divide-y divide-rose-100 text-xs text-rose-800">
+                          {eligibleImportResult.failed.map((failure) => (
+                            <p key={`${failure.row}-${failure.email || failure.reason}`} className="py-2">
+                              Row {failure.row}{failure.email ? ` (${failure.email})` : ''}: {failure.reason}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* USER ACCOUNT REGISTRY TAB */}
 

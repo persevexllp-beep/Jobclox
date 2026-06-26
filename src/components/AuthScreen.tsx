@@ -42,7 +42,7 @@ const journey = [
 export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: AuthScreenProps) {
   const loginSuccessTimerRef = useRef<number | null>(null);
   const [mode, setMode] = useState<AuthMode>('login');
-  const [role, setRole] = useState<UserRole>('candidate');
+  const [role] = useState<UserRole>('company');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,8 +60,8 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
     const params = new URLSearchParams(window.location.search);
     const requestedMode = params.get('mode');
     const requestedRole = params.get('role');
-    if (requestedMode === 'register' || requestedMode === 'forgot') setMode(requestedMode);
-    if (requestedRole === 'candidate' || requestedRole === 'company') setRole(requestedRole);
+    if (requestedMode === 'forgot') setMode('forgot');
+    if (requestedMode === 'register') setMode(requestedRole === 'candidate' ? 'login' : 'register');
   }, []);
 
   const resetFeedback = () => {
@@ -116,8 +116,8 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
 
       if (response.user) {
         if (mode === 'register') {
-          setSuccess('Account created. Opening your workspace...');
-          showToast('success', 'Account created', 'Opening your workspace now.');
+          setSuccess('Recruiter account created. Opening your workspace...');
+          showToast('success', 'Recruiter account created', 'Opening your workspace now.');
           loginSuccessTimerRef.current = window.setTimeout(() => onLoginSuccess(response.user, response.token), 700);
         } else {
           onLoginSuccess(response.user, response.token);
@@ -175,11 +175,11 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
         >
           <div className="auth-card-head">
             <div>
-              <p className="auth-eyebrow">{mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Account recovery' : 'Welcome back'}</p>
-              <h2>{mode === 'register' ? `Join ${branding.productName}` : mode === 'forgot' ? 'Reset access' : 'Sign in'}</h2>
+              <p className="auth-eyebrow">{mode === 'register' ? 'Recruiter access' : mode === 'forgot' ? 'Account recovery' : 'Welcome back'}</p>
+              <h2>{mode === 'register' ? 'Register HR' : mode === 'forgot' ? 'Reset access' : 'Sign in'}</h2>
             </div>
             <button type="button" onClick={() => switchMode(mode === 'register' ? 'login' : 'register')}>
-              {mode === 'register' ? 'Sign in' : 'Register'}
+              {mode === 'register' ? 'Sign in' : 'Recruiter register'}
             </button>
           </div>
 
@@ -198,15 +198,9 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
             )}
 
             {mode === 'register' && (
-              <div className="auth-role-grid" role="group" aria-label="Choose account type">
-                <button type="button" aria-pressed={role === 'candidate'} className={role === 'candidate' ? 'active' : ''} onClick={() => setRole('candidate')}>
-                  <UserIcon className="h-4 w-4" />
-                  Candidate
-                </button>
-                <button type="button" aria-pressed={role === 'company'} className={role === 'company' ? 'active' : ''} onClick={() => setRole('company')}>
-                  <Building2 className="h-4 w-4" />
-                  Employer
-                </button>
+              <div className="auth-register-note">
+                <Building2 className="h-4 w-4" />
+                <span>Registration is available for recruiters and external HR teams. Candidates can sign in only after admin eligibility upload.</span>
               </div>
             )}
 
@@ -217,7 +211,7 @@ export default function AuthScreen({ onLoginSuccess, apiFetch, showToast }: Auth
             )}
 
             <button type="submit" className="auth-submit" disabled={loading} aria-busy={loading || undefined}>
-              {loading ? 'Processing...' : mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Send recovery instructions' : 'Enter workspace'}
+              {loading ? 'Processing...' : mode === 'register' ? 'Create recruiter account' : mode === 'forgot' ? 'Send recovery instructions' : 'Enter workspace'}
               <ArrowRight className="h-4 w-4" />
             </button>
 

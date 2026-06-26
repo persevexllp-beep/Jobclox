@@ -6624,10 +6624,10 @@ html.dark .pvx-sanitized-email td {
 
 .pvx-footer {
   margin-top: auto;
-  padding: 16px clamp(14px, 2vw, 28px);
+  padding: 18px clamp(14px, 2vw, 28px);
   border-top: 1px solid var(--pvx-hairline);
   color: var(--pvx-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .pvx-footer > div {
@@ -6641,7 +6641,8 @@ html.dark .pvx-sanitized-email td {
 
 .pvx-footer span:last-child {
   font-family: var(--font-metric);
-  font-size: 11px;
+  font-size: 12.5px;
+  font-weight: 700;
 }
 
 /* ==========================================
@@ -6677,7 +6678,8 @@ html.dark .pvx-sanitized-email td {
   margin: 0 auto;
   padding: 0 clamp(16px, 3vw, 28px) 24px;
   color: var(--pvx-muted);
-  font-size: 12px;
+  font-size: 16px;
+  font-weight: 800;
   text-align: center;
 }
 
@@ -6903,6 +6905,20 @@ html.dark .auth-field > div {
   border-color: rgba(14, 165, 233, 0.34);
   color: var(--pvx-text);
   background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(16, 185, 129, 0.12));
+}
+
+.auth-register-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid rgba(14, 165, 233, 0.24);
+  border-radius: 15px;
+  padding: 11px 13px;
+  color: var(--pvx-muted);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(16, 185, 129, 0.08));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .auth-forgot {

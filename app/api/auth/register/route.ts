@@ -28,8 +28,8 @@ export async function POST(request: Request) {
     return jsonError(400, 'All profile fields are required');
   }
 
-  if (!['candidate', 'company'].includes(role)) {
-    return jsonError(400, 'Registration role must be candidate or company');
+  if (role !== 'company') {
+    return jsonError(403, 'Candidate registration is invite-only. Please sign in with an eligible student account uploaded by admin.');
   }
 
   const { createSessionToken, hashPassword, setPasswordHashForUser, validatePasswordStrength } = await import('@/services/authService');
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     id: `u-${Date.now()}`,
     name,
     email: String(email).toLowerCase(),
-    role: role as 'candidate' | 'company',
+    role: 'company',
     status: 'active',
     createdAt: new Date().toISOString(),
   };
@@ -81,12 +81,8 @@ export async function POST(request: Request) {
   try {
     newCompany = await provisionRegistrationProfile(newUser);
   } catch (err) {
-    if (role === 'company') {
-      logger.error('companies', 'service error', err);
-      return jsonError(500, 'Company service unavailable');
-    }
-    logger.error('candidate-profiles', 'service error', err);
-    return jsonError(500, 'Candidate profile service unavailable');
+    logger.error('companies', 'service error', err);
+    return jsonError(500, 'Company service unavailable');
   }
 
   const { emitCommunicationEvent, emailTemplates } = await import('@/services/communicationService');

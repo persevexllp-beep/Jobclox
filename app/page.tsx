@@ -155,7 +155,7 @@ export default async function HomePage() {
           <div className="landing-container">
             <div className="landing-section-heading">
               <div><span>Fresh opportunities</span><h2>Discover work worth growing into.</h2><p>Browse focused, moderated opportunities built for students, freshers, and early-career professionals.</p></div>
-              <Link href="/login?mode=register&role=candidate">View your recommendations <ArrowRight aria-hidden="true" /></Link>
+              <Link href="/login">View your recommendations <ArrowRight aria-hidden="true" /></Link>
             </div>
             {featuredJobs.length ? (
               <div className="landing-job-grid">
@@ -177,7 +177,7 @@ export default async function HomePage() {
                   [Target, 'Skill-aligned work', 'Find roles shaped around your strengths.'],
                 ].map(([Icon, title, copy]) => {
                   const ItemIcon = Icon as typeof BriefcaseBusiness;
-                  return <article key={String(title)}><ItemIcon /><h3>{String(title)}</h3><p>{String(copy)}</p><Link href="/login?mode=register">Explore roles <ArrowRight /></Link></article>;
+                  return <article key={String(title)}><ItemIcon /><h3>{String(title)}</h3><p>{String(copy)}</p><Link href="/login">Explore roles <ArrowRight /></Link></article>;
                 })}
               </div>
             )}
@@ -186,7 +186,7 @@ export default async function HomePage() {
 
         <section className="landing-section landing-section-tinted" id="students">
           <div className="landing-container landing-split-section">
-            <div className="landing-section-heading is-stacked"><span>For students and freshers</span><h2>A career workspace that keeps the next step clear.</h2><p>Move beyond scattered job boards. Build a stronger signal, understand your fit, and keep every application organized.</p><Link className="landing-primary-button" href="/login?mode=register&role=candidate">Create your career workspace <ArrowRight /></Link></div>
+            <div className="landing-section-heading is-stacked"><span>For students and freshers</span><h2>A career workspace that keeps the next step clear.</h2><p>Move beyond scattered job boards. Build a stronger signal, understand your fit, and keep every application organized.</p><Link className="landing-primary-button" href="/login">Sign in to your career workspace <ArrowRight /></Link></div>
             <div className="landing-step-list">
               {candidateSteps.map(([title, copy], index) => <article key={title}><b>0{index + 1}</b><div><h3>{title}</h3><p>{copy}</p></div></article>)}
             </div>
@@ -213,7 +213,7 @@ export default async function HomePage() {
         <section className="landing-cta">
           <div className="landing-container">
             <div><span>Ready for the next move?</span><h2>Build a career signal or a hiring engine that compounds.</h2></div>
-            <div><Link className="landing-primary-button is-light" href="/login?mode=register&role=candidate">Join as a candidate <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login?mode=register&role=company">Hire with {branding.productName}</Link></div>
+            <div><Link className="landing-primary-button is-light" href="/login">Candidate sign in <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login?mode=register&role=company">Hire with {branding.productName}</Link></div>
           </div>
         </section>
       </main>

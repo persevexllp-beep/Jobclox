@@ -188,7 +188,7 @@
 .landing-footer p { max-width: 520px; color: var(--pvx-text-secondary); font-size: 13px; line-height: 1.6; }
 .landing-footer div div { display: flex; gap: 20px; }
 .landing-footer a { color: var(--pvx-text-secondary); font-size: 12px; font-weight: 650; }
-.landing-footer small { grid-column: 1/-1; border-top: 1px solid var(--pvx-border-subtle); padding-top: 20px; color: var(--pvx-text-muted); font-size: 11px; }
+.landing-footer small { grid-column: 1/-1; border-top: 1px solid var(--pvx-border-subtle); padding-top: 20px; color: var(--pvx-text-muted); font-size: 12.5px; font-weight: 700; }
 
 @media (max-width: 1024px) {
   .landing-nav-links { display: none; }
