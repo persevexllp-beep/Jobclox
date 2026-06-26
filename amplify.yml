@@ -1,0 +1,56 @@
+version: 1
+env:
+  variables:
+    NEXT_TELEMETRY_DISABLED: "1"
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        - rm -f .env.production
+        - |
+          for key in \
+            ADZUNA_APP_ID \
+            ADZUNA_APP_KEY \
+            ADZUNA_COUNTRY \
+            APP_URL \
+            AUTH_BOOTSTRAP_EMAIL \
+            AUTH_BOOTSTRAP_PASSWORD \
+            AUTH_SECRET \
+            AUTH_SESSION_SECRET \
+            COMPANY_DOCUMENT_STORAGE_BUCKET \
+            CRON_SECRET \
+            EMAIL_DELIVERY_ENABLED \
+            EMAIL_WEBHOOK_URL \
+            GEMINI_API_KEY \
+            JOB_IMPORT_BATCH_SIZE \
+            JOB_IMPORT_LOCATIONS \
+            JOB_IMPORT_PAGE_SIZE \
+            JOB_IMPORT_PAGES \
+            JOB_IMPORT_QUERIES \
+            JOB_IMPORT_QUERY \
+            JOB_IMPORT_TIMEOUT_MS \
+            JSEARCH_API_HOST \
+            JSEARCH_API_KEY \
+            LOG_LEVEL \
+            NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            NEXT_PUBLIC_SUPABASE_URL \
+            PROFILE_PHOTO_STORAGE_BUCKET \
+            RESUME_STORAGE_BUCKET \
+            SUPABASE_SERVICE_ROLE_KEY
+          do
+            value="$(printenv "$key" || true)"
+            if [ -n "$value" ]; then
+              printf '%s=%s\n' "$key" "$value" >> .env.production
+            fi
+          done
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
