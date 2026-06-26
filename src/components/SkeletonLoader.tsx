@@ -6,7 +6,7 @@
 import React from 'react';
 
 interface SkeletonLoaderProps {
-  type?: 'analytics' | 'jobGrid' | 'hiringWorkspace' | 'table' | 'profile' | 'metrics' | 'candidateCards' | 'pipeline';
+  type?: 'analytics' | 'jobGrid' | 'hiringWorkspace' | 'table' | 'profile' | 'metrics' | 'candidateCards' | 'pipeline' | 'savedJobs' | 'applyWorkspace';
   count?: number;
 }
 
@@ -20,6 +20,8 @@ export default function SkeletonLoader({ type = 'jobGrid', count = 3 }: Skeleton
     metrics: 'Loading summary metrics',
     candidateCards: 'Loading candidates',
     pipeline: 'Loading hiring pipeline',
+    savedJobs: 'Loading saved jobs',
+    applyWorkspace: 'Loading application workspace',
   }[type];
 
   return (
@@ -63,6 +65,72 @@ function SkeletonContent({ type = 'jobGrid', count = 3 }: SkeletonLoaderProps) {
         <div className="hiring-os-skeleton-layout">
           <section className={`${surface} space-y-4`}><div className="flex justify-between"><div className={`${pulseBg} h-5 w-44`} /><div className={`${pulseText} w-16`} /></div>{Array.from({ length: 4 }).map((_, i) => <div key={i} className="flex items-center gap-3"><div className={`${pulseBg} h-11 w-11 rounded-xl`} /><div className="flex-1 space-y-2"><div className={`${pulseBg} h-4 w-2/5`} /><div className={`${pulseText} w-3/5`} /></div><div className={`${pulseBg} h-9 w-16`} /></div>)}</section>
           <aside className={`${surface} space-y-5`}><div className={`${pulseBg} h-5 w-36`} />{Array.from({ length: 5 }).map((_, i) => <div key={i} className="flex items-center gap-3"><div className={`${pulseBg} h-9 w-9 rounded-full`} /><div className={`${pulseText} flex-1`} /><div className={`${pulseBg} h-6 w-8`} /></div>)}</aside>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'savedJobs') {
+    return (
+      <div className="saved-jobs-skeleton">
+        {Array.from({ length: count }).map((_, idx) => (
+          <div key={idx} className="saved-job-skeleton-card">
+            <div className={`${pulseBg} h-12 w-12 rounded-xl`} />
+            <div className="saved-job-skeleton-copy">
+              <div className={`${pulseBg} h-4 w-64 max-w-full`} />
+              <div className={`${pulseText} w-80 max-w-full`} />
+              <div className="saved-job-skeleton-tags">
+                <div className={`${pulseText} h-8 w-20 rounded-full`} />
+                <div className={`${pulseText} h-8 w-56 rounded-full`} />
+                <div className={`${pulseText} h-8 w-28 rounded-full`} />
+              </div>
+            </div>
+            <div className={`${pulseBg} saved-job-skeleton-score`} />
+            <div className="saved-job-skeleton-actions">
+              <div className={`${pulseBg} h-10 w-20 rounded-xl`} />
+              <div className={`${pulseBg} h-10 w-20 rounded-xl`} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'applyWorkspace') {
+    return (
+      <div className="apply-workspace-skeleton">
+        <section className={`${surface} apply-workspace-skeleton-hero`}>
+          <div className={`${pulseBg} h-14 w-14 rounded-xl`} />
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className={`${pulseText} w-32`} />
+            <div className={`${pulseBg} h-8 w-80 max-w-full`} />
+            <div className="flex flex-wrap gap-2">
+              <div className={`${pulseText} h-8 w-24 rounded-full`} />
+              <div className={`${pulseText} h-8 w-28 rounded-full`} />
+              <div className={`${pulseText} h-8 w-32 rounded-full`} />
+            </div>
+          </div>
+          <div className={`${pulseBg} h-12 w-44 rounded-xl`} />
+        </section>
+        <div className="apply-workspace-skeleton-grid">
+          <section className={`${surface} space-y-5`}>
+            <div className={`${pulseText} w-28`} />
+            <div className={`${pulseBg} h-20 w-full rounded-xl`} />
+            <div className={`${pulseBg} h-36 w-full rounded-xl`} />
+            <div className="flex justify-end">
+              <div className={`${pulseBg} h-11 w-44 rounded-xl`} />
+            </div>
+          </section>
+          <aside className="space-y-3">
+            <div className={`${surface} space-y-3`}>
+              <div className={`${pulseText} w-24`} />
+              <div className={`${pulseBg} h-4 w-36`} />
+              <div className={`${pulseBg} h-4 w-28`} />
+            </div>
+            <div className={`${surface} flex items-center justify-center`}>
+              <div className={`${pulseBg} h-36 w-36 rounded-full`} />
+            </div>
+          </aside>
         </div>
       </div>
     );

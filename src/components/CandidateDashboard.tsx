@@ -964,7 +964,11 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                       <div><span>Recommended jobs</span><h1 id="recommended-jobs-title">Best jobs for you</h1><p>Ranked by your skills, experience, and preferences.</p></div>
                       <div><strong>{marketplaceTotal}</strong><small>opportunities</small></div>
                     </header>
-                    {rankedJobs.length === 0 ? (
+                    {marketplaceLoading ? (
+                      <div className="candidate-feed-refresh">
+                        <SkeletonLoader type="savedJobs" count={3} />
+                      </div>
+                    ) : rankedJobs.length === 0 ? (
                       <JobEmptyState onReset={() => {
                         setSearchTerm('');
                         setFilterType('all');
@@ -1883,21 +1887,24 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
             const compensation = formatCompensation(job);
             return (
               <article key={job.id} className="eff-saved-card">
-                <div>
+                <div className="eff-saved-main">
                   <CompanyBadge company={job.companyName} />
-                  <span>
+                  <span className="eff-saved-title">
                     <strong>{job.title}</strong>
-                    <small>{job.companyName} - {job.location}</small><JobSourceBadge job={job} />
+                    <small>{job.companyName}</small>
+                    <em><MapPin className="h-3.5 w-3.5" />{job.location || 'Location not listed'}</em>
                   </span>
+                  <JobSourceBadge job={job} />
                   <span className="eff-match">{getJobMatch(job)}%</span>
                 </div>
-                <div className="eff-job-skills">
+                <div className="eff-saved-facts">
                   <span>{job.jobType}</span>
                   <span className="eff-saved-compensation">
                     <small>{compensation.label}</small>
                     <strong>{compensation.value}</strong>
                     <em>{compensation.cadence}</em>
                   </span>
+                  <span>{job.experience || 'Experience open'}</span>
                   {daysLeft !== null && <span className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft} days left`}</span>}
                 </div>
                 <div className="eff-job-actions">

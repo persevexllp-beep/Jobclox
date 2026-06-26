@@ -14281,3 +14281,474 @@ html.dark .apply-score-ring {
     justify-self: start;
   }
 }
+
+/* Candidate job card dark-mode metadata refinement. */
+html.dark .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip span,
+html.dark .career-flow-os .candidate-wide-job-feed .eff-work-mode,
+html.dark .career-flow-os .candidate-wide-job-feed .eff-skill-placeholder {
+  border: 1px solid rgba(148, 163, 184, .2) !important;
+  background:
+    linear-gradient(135deg, rgba(30, 41, 59, .96), rgba(15, 23, 42, .96)) !important;
+  color: #dbeafe !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045) !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-work-mode.remote {
+  border-color: rgba(96, 165, 250, .36) !important;
+  background: rgba(37, 99, 235, .16) !important;
+  color: #bfdbfe !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-work-mode.hybrid {
+  border-color: rgba(45, 212, 191, .32) !important;
+  background: rgba(20, 184, 166, .14) !important;
+  color: #99f6e4 !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-work-mode.onsite {
+  border-color: rgba(167, 139, 250, .32) !important;
+  background: rgba(124, 58, 237, .14) !important;
+  color: #ddd6fe !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-posted-chip {
+  border-color: rgba(45, 212, 191, .28) !important;
+  background: rgba(6, 78, 59, .18) !important;
+  color: #a7f3d0 !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip span:hover,
+html.dark .career-flow-os .candidate-wide-job-feed .eff-work-mode:hover {
+  border-color: rgba(96, 165, 250, .46) !important;
+  background: rgba(30, 64, 175, .18) !important;
+  color: #eff6ff !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-skill-alignment > span {
+  color: #dbeafe !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-skill-alignment em {
+  color: #d8e4f7 !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .candidate-match-meter {
+  border-color: rgba(96, 165, 250, .34) !important;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(17, 24, 39, .96)) !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .candidate-match-meter i {
+  background: rgba(15, 23, 42, .92) !important;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, .16) !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-job-card-footer {
+  border-top-color: rgba(148, 163, 184, .22) !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-job-disclosure {
+  color: #86efac !important;
+}
+
+html.dark .career-flow-os .candidate-wide-job-feed .eff-job-disclosure-mark {
+  background: #22c55e !important;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, .14), 0 0 18px rgba(34, 197, 94, .36) !important;
+}
+
+/* ==========================================
+   SAVED JOBS + LOADING PERFORMANCE PASS
+   ========================================== */
+.career-flow-os .eff-saved-grid {
+  gap: 12px !important;
+}
+
+.career-flow-os .eff-saved-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "main actions"
+    "facts actions" !important;
+  align-items: center !important;
+  gap: 12px 18px !important;
+  min-height: 132px !important;
+  overflow: hidden !important;
+  padding: 18px !important;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 80%, transparent) !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(248, 250, 252, .9)) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .06) !important;
+}
+
+.career-flow-os .eff-saved-card:hover,
+.career-flow-os .eff-saved-card:focus-within {
+  border-color: rgba(37, 99, 235, .32) !important;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, .98), rgba(255, 255, 255, .96)) !important;
+  box-shadow: 0 18px 44px rgba(37, 99, 235, .10) !important;
+}
+
+.career-flow-os .eff-saved-main {
+  display: grid !important;
+  grid-area: main !important;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+}
+
+.career-flow-os .eff-saved-title {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 4px !important;
+}
+
+.career-flow-os .eff-saved-title strong {
+  display: block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  color: var(--pvx-text-primary) !important;
+  font-size: 15px !important;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.career-flow-os .eff-saved-title small,
+.career-flow-os .eff-saved-title em {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: var(--pvx-text-secondary) !important;
+  font-size: 12px !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.career-flow-os .eff-saved-main .application-source-badge {
+  justify-self: start !important;
+  white-space: nowrap !important;
+}
+
+.career-flow-os .eff-saved-main .eff-match {
+  display: grid !important;
+  width: 58px !important;
+  height: 52px !important;
+  place-items: center !important;
+  border: 1px solid rgba(45, 212, 191, .22) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(204, 251, 241, .85), rgba(219, 234, 254, .72)) !important;
+  color: #036672 !important;
+  font-family: var(--font-metric) !important;
+  font-size: 17px !important;
+  font-weight: 950 !important;
+}
+
+.career-flow-os .eff-saved-facts {
+  display: flex !important;
+  grid-area: facts !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  padding-left: 60px !important;
+}
+
+.career-flow-os .eff-saved-facts > span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 34px !important;
+  max-width: 100% !important;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 80%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--pvx-bg-muted) 72%, white) !important;
+  padding: 7px 11px !important;
+  color: var(--pvx-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  white-space: normal !important;
+}
+
+.career-flow-os .eff-saved-compensation {
+  display: inline-grid !important;
+  grid-template-columns: auto minmax(0, max-content) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: min(100%, 280px) !important;
+  border-color: rgba(45, 212, 191, .32) !important;
+  background: linear-gradient(135deg, rgba(236, 253, 245, .96), rgba(240, 253, 250, .9)) !important;
+  color: #064e3b !important;
+}
+
+.career-flow-os .eff-saved-compensation small,
+.career-flow-os .eff-saved-compensation em {
+  color: #0f766e !important;
+  font-size: 10.5px !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+}
+
+.career-flow-os .eff-saved-compensation strong {
+  min-width: 0 !important;
+  overflow: visible !important;
+  color: #052e2b !important;
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+.career-flow-os .eff-saved-card .eff-job-actions {
+  position: static !important;
+  display: flex !important;
+  grid-area: actions !important;
+  flex-wrap: nowrap !important;
+  align-self: end !important;
+  justify-content: flex-end !important;
+  width: auto !important;
+  min-width: 154px !important;
+  gap: 8px !important;
+}
+
+.career-flow-os .eff-saved-card .eff-job-actions button {
+  min-width: 74px !important;
+  min-height: 42px !important;
+  border-radius: 13px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  white-space: nowrap !important;
+}
+
+.candidate-feed-refresh {
+  margin-bottom: 18px !important;
+}
+
+.candidate-feed-refresh .pvx-skeleton-region {
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent);
+  padding: 12px;
+}
+
+.saved-jobs-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.saved-job-skeleton-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 64px auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 118px;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 92%, transparent);
+  padding: 16px;
+}
+
+.saved-job-skeleton-copy {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.saved-job-skeleton-tags,
+.saved-job-skeleton-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved-job-skeleton-score {
+  width: 58px;
+  height: 52px;
+  border-radius: 16px;
+}
+
+.apply-route-loading {
+  min-height: 100vh;
+  padding: 28px 32px 48px;
+}
+
+.apply-route-loading-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100%, 1520px);
+  margin: 0 auto 24px;
+}
+
+.apply-route-loading-pill {
+  width: min(34vw, 280px);
+  height: 42px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pvx-bg-muted) 84%, transparent);
+}
+
+.apply-workspace-skeleton {
+  display: grid;
+  width: min(100%, 1520px);
+  margin-inline: auto;
+  gap: 14px;
+}
+
+.apply-workspace-skeleton-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.apply-workspace-skeleton-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 430px);
+  gap: 14px;
+}
+
+html.dark .career-flow-os .eff-saved-card {
+  border-color: rgba(148, 163, 184, .18) !important;
+  background:
+    radial-gradient(circle at 0 0, rgba(59, 130, 246, .11), transparent 32%),
+    linear-gradient(145deg, rgba(17, 24, 39, .98), rgba(8, 13, 24, .99)) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .26) !important;
+}
+
+html.dark .career-flow-os .eff-saved-card:hover,
+html.dark .career-flow-os .eff-saved-card:focus-within {
+  border-color: rgba(96, 165, 250, .34) !important;
+  background:
+    radial-gradient(circle at 0 0, rgba(59, 130, 246, .16), transparent 34%),
+    linear-gradient(145deg, rgba(15, 23, 42, .98), rgba(7, 12, 22, .99)) !important;
+}
+
+html.dark .career-flow-os .eff-saved-title strong,
+html.dark .career-flow-os .eff-saved-compensation strong {
+  color: #f8fbff !important;
+}
+
+html.dark .career-flow-os .eff-saved-title small,
+html.dark .career-flow-os .eff-saved-title em,
+html.dark .career-flow-os .eff-saved-facts > span {
+  color: #c5d4e8 !important;
+}
+
+html.dark .career-flow-os .eff-saved-facts > span {
+  border-color: rgba(148, 163, 184, .2) !important;
+  background: rgba(30, 41, 59, .76) !important;
+}
+
+html.dark .career-flow-os .eff-saved-main .eff-match {
+  border-color: rgba(45, 212, 191, .22) !important;
+  background: rgba(20, 184, 166, .14) !important;
+  color: #99f6e4 !important;
+}
+
+html.dark .career-flow-os .eff-saved-compensation {
+  border-color: rgba(45, 212, 191, .28) !important;
+  background: rgba(6, 78, 59, .2) !important;
+}
+
+html.dark .career-flow-os .eff-saved-compensation small,
+html.dark .career-flow-os .eff-saved-compensation em {
+  color: #99f6e4 !important;
+}
+
+html.dark .saved-job-skeleton-card,
+html.dark .candidate-feed-refresh .pvx-skeleton-region,
+html.dark .apply-route-loading-pill {
+  border-color: rgba(148, 163, 184, .18);
+  background: rgba(15, 23, 42, .76);
+}
+
+@media (max-width: 860px) {
+  .career-flow-os .eff-saved-card {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "main"
+      "facts"
+      "actions" !important;
+  }
+
+  .career-flow-os .eff-saved-main {
+    grid-template-columns: 44px minmax(0, 1fr) auto !important;
+  }
+
+  .career-flow-os .eff-saved-main .application-source-badge {
+    grid-column: 2 !important;
+  }
+
+  .career-flow-os .eff-saved-main .eff-match {
+    grid-column: 3 !important;
+    grid-row: 1 / span 2 !important;
+  }
+
+  .career-flow-os .eff-saved-facts {
+    padding-left: 0 !important;
+  }
+
+  .career-flow-os .eff-saved-card .eff-job-actions {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .career-flow-os .eff-saved-card .eff-job-actions button {
+    flex: 1 1 0 !important;
+  }
+
+  .saved-job-skeleton-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .saved-job-skeleton-score,
+  .saved-job-skeleton-actions {
+    grid-column: 2;
+  }
+
+  .apply-workspace-skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .career-flow-os .eff-saved-main {
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+  }
+
+  .career-flow-os .eff-saved-main .eff-match {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    height: 40px !important;
+  }
+
+  .career-flow-os .eff-saved-title strong {
+    white-space: normal !important;
+  }
+
+  .career-flow-os .eff-saved-compensation {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .career-flow-os .eff-saved-compensation em {
+    grid-column: 2 !important;
+  }
+
+  .apply-workspace-skeleton-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
