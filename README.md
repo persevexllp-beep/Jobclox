@@ -154,8 +154,10 @@ supabase/
 - Supabase is the only active database source of truth.
 - Shared services and workflow helpers are used by Next.js route handlers.
 - Historical migration, audit, and validation artifacts are archived under `docs/archive/`.
-- The next production gate is final candidate apply flow validation plus deployment environment verification.
+- The next production gate is final candidate apply flow validation plus deployment environment verification..
 
 ## License
+
+JOBCLOX 2026 - POWERED BY PERSEVEX LLP
 
 No project license file is currently present. Usage and redistribution are undefined until a license is added.

@@ -219,24 +219,31 @@ function InternshipExplorer({
         <Achievement icon={CalendarClock} label="Open internships" value={internships.length} />
       </div>
       <div className="eco-internships">
-        {internships.length ? internships.map((internship) => (
-          <article key={internship.id} className="eco-internship-card">
-            <button type="button" className="text-left" onClick={() => onViewOpportunity(internship.id)}>
-              <strong>{internship.title}</strong>
-              <span>{internship.companyName} - {internship.location}</span>
-            </button>
-            <div className="eco-internship-facts">
-              <span>{internship.salary || 'Stipend TBD'}</span>
-              <span>{internship.experience || 'Beginner friendly'}</span>
-              <span>{internship.location.toLowerCase().includes('remote') ? 'Remote' : 'In-office / Hybrid'}</span>
-            </div>
-            <div>{internship.requirements.slice(0, 4).map((skill) => <em key={skill}>{skill}</em>)}</div>
-            <button type="button" className="eco-apply-inline" onClick={() => onApplyOpportunity(internship)}>
-              <Send className="h-3.5 w-3.5" />
-              Apply
-            </button>
-          </article>
-        )) : (
+        {internships.length ? internships.map((internship) => {
+          const compensation = formatEcosystemCompensation(internship);
+          return (
+            <article key={internship.id} className="eco-internship-card">
+              <button type="button" className="text-left" onClick={() => onViewOpportunity(internship.id)}>
+                <strong>{internship.title}</strong>
+                <span>{internship.companyName} - {internship.location}</span>
+              </button>
+              <div className="eco-internship-facts">
+                <span className="eco-compensation-chip">
+                  <small>{compensation.label}</small>
+                  <strong>{compensation.value}</strong>
+                  <em>{compensation.cadence}</em>
+                </span>
+                <span>{internship.experience || 'Beginner friendly'}</span>
+                <span>{internship.location.toLowerCase().includes('remote') ? 'Remote' : 'In-office / Hybrid'}</span>
+              </div>
+              <div>{internship.requirements.slice(0, 4).map((skill) => <em key={skill}>{skill}</em>)}</div>
+              <button type="button" className="eco-apply-inline" onClick={() => onApplyOpportunity(internship)}>
+                <Send className="h-3.5 w-3.5" />
+                Apply
+              </button>
+            </article>
+          );
+        }) : (
           <article className="eco-internship-card">
             <div>
               <strong>No internships available</strong>
@@ -415,6 +422,25 @@ function getOpportunityBadge(job: Job, match: number) {
   if (job.deadline && getDeadlineSortValue(job.deadline) - Date.now() < 1000 * 60 * 60 * 24 * 7) return 'Closing soon';
   if (match >= 75) return `${match}% match`;
   return 'Recently added';
+}
+
+function formatEcosystemCompensation(job: Job) {
+  const raw = job.salary?.trim() || '';
+  const isInternship = /intern|trainee|apprentice/i.test(`${job.title} ${job.jobType}`);
+  const label = isInternship ? 'Stipend' : 'Salary';
+  if (!raw || /not\s+disclosed|on\s+request|tbd/i.test(raw) || /^[\d\s,.-]+$/.test(raw)) {
+    return { label, value: isInternship ? 'To be shared' : 'Not disclosed', cadence: 'Basis pending' };
+  }
+  const cadence = /\/\s*hr|hour|hourly/i.test(raw)
+    ? 'Hourly'
+    : /\/\s*mo|month|monthly/i.test(raw)
+      ? 'Monthly'
+      : /\/\s*yr|year|annual|lpa|ctc/i.test(raw)
+        ? 'Annual'
+        : isInternship
+          ? 'Monthly typical'
+          : 'Annual typical';
+  return { label, value: raw.length > 28 ? `${raw.slice(0, 27).trim()}...` : raw, cadence };
 }
 
 function CareerProgressEngine({ profile, profileSkills, resumeText, applications }: {

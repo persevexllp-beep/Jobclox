@@ -12,6 +12,7 @@ type SupabaseEmailLogRow = {
   created_at: string | null;
   recipient_name: string | null;
   triggered_by_event: string | null;
+  is_read: boolean | null;
 };
 
 export type CreateEmailLogInput = {
@@ -25,10 +26,11 @@ export type CreateEmailLogInput = {
   errorMessage?: string;
   triggeredByEvent: string;
   createdAt?: string;
+  isRead?: boolean;
 };
 
 const EMAIL_LOG_SELECT =
-  'id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event';
+  'id,user_id,recipient,subject,template,status,error_message,created_at,recipient_name,triggered_by_event,is_read';
 
 function requireSupabaseAdmin() {
   if (!supabaseAdmin) {
@@ -47,6 +49,7 @@ function mapSupabaseEmailLog(row: SupabaseEmailLogRow): EmailAlert {
     status: row.status || 'pending',
     triggeredByEvent: row.triggered_by_event || row.error_message || 'Email log event',
     createdAt: row.created_at || new Date().toISOString(),
+    isRead: Boolean(row.is_read),
   };
 }
 
@@ -93,6 +96,7 @@ export async function createEmailLog(input: CreateEmailLogInput): Promise<EmailA
       created_at: createdAt,
       recipient_name: input.recipientName,
       triggered_by_event: input.triggeredByEvent,
+      is_read: input.isRead ?? false,
     })
     .select(EMAIL_LOG_SELECT)
     .single<SupabaseEmailLogRow>();
@@ -148,4 +152,62 @@ export async function deleteEmailLog(id: string): Promise<boolean> {
   }
 
   return true;
+}
+
+export async function updateEmailLogsReadStatus(
+  ids: string[],
+  isRead: boolean,
+  allowedRecipients?: string[],
+): Promise<EmailAlert[]> {
+  const normalizedIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+  if (normalizedIds.length === 0) return [];
+
+  let request = requireSupabaseAdmin()
+    .from('email_logs')
+    .update({ is_read: isRead })
+    .in('id', normalizedIds);
+
+  const recipients = normalizeRecipients(allowedRecipients);
+  if (recipients.length) {
+    request = request.in('recipient', recipients);
+  }
+
+  const { data, error } = await request
+    .select(EMAIL_LOG_SELECT);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map(row => mapSupabaseEmailLog(row as SupabaseEmailLogRow));
+}
+
+export async function deleteEmailLogs(
+  ids: string[],
+  allowedRecipients?: string[],
+): Promise<string[]> {
+  const normalizedIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+  if (normalizedIds.length === 0) return [];
+
+  let request = requireSupabaseAdmin()
+    .from('email_logs')
+    .delete()
+    .in('id', normalizedIds);
+
+  const recipients = normalizeRecipients(allowedRecipients);
+  if (recipients.length) {
+    request = request.in('recipient', recipients);
+  }
+
+  const { data, error } = await request.select('id');
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map((row) => String(row.id));
+}
+
+function normalizeRecipients(recipients?: string[]) {
+  return Array.from(new Set((recipients || []).map((recipient) => recipient.trim().toLowerCase()).filter(Boolean)));
 }

@@ -1,0 +1,413 @@
+[
+  {
+    "name": "04-candidate-jobs-desktop",
+    "url": "/candidate",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\04-candidate-jobs-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCandidate\nAS\nAarav Student\naarav.student@example.edu\nLogout\nCAREER COMMAND CENTER\nWelcome to JobClox\n\nComplete onboarding to unlock your full career workspace.\n\nACTIVATION\n75% ready\n\nAdd a profile photo\n\nPROFILE SETUP\nSTEP 1 OF 8\nBasics\nPhoto\nResume\nReview\nSkills\nTarget\nJobs\nApply\n\nSTEP 1\n\nConfirm your candidate basics\nAarav Student • aarav.student@example.edu\nB.Tech Computer Science, final year\nContinue\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1000,
+      "buttons": 12,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Welcome to JobClox",
+        "Confirm your candidate basics"
+      ],
+      "navButtons": [],
+      "visibleRegions": 7
+    }
+  },
+  {
+    "name": "05-candidate-saved-desktop",
+    "url": "/candidate?view=saved",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\05-candidate-saved-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCandidate\nAS\nAarav Student\naarav.student@example.edu\nLogout\nCAREER COMMAND CENTER\nWelcome to JobClox\n\nComplete onboarding to unlock your full career workspace.\n\nACTIVATION\n75% ready\n\nAdd a profile photo\n\nPROFILE SETUP\nSTEP 1 OF 8\nBasics\nPhoto\nResume\nReview\nSkills\nTarget\nJobs\nApply\n\nSTEP 1\n\nConfirm your candidate basics\nAarav Student • aarav.student@example.edu\nB.Tech Computer Science, final year\nContinue\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1000,
+      "buttons": 12,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Welcome to JobClox",
+        "Confirm your candidate basics"
+      ],
+      "navButtons": [],
+      "visibleRegions": 7
+    }
+  },
+  {
+    "name": "06-candidate-applications-desktop",
+    "url": "/candidate?view=applications",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\06-candidate-applications-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCandidate\nAS\nAarav Student\naarav.student@example.edu\nLogout\nCAREER COMMAND CENTER\nWelcome to JobClox\n\nComplete onboarding to unlock your full career workspace.\n\nACTIVATION\n75% ready\n\nAdd a profile photo\n\nPROFILE SETUP\nSTEP 1 OF 8\nBasics\nPhoto\nResume\nReview\nSkills\nTarget\nJobs\nApply\n\nSTEP 1\n\nConfirm your candidate basics\nAarav Student • aarav.student@example.edu\nB.Tech Computer Science, final year\nContinue\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1000,
+      "buttons": 12,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Welcome to JobClox",
+        "Confirm your candidate basics"
+      ],
+      "navButtons": [],
+      "visibleRegions": 7
+    }
+  },
+  {
+    "name": "07-candidate-profile-desktop",
+    "url": "/candidate?view=profile",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\07-candidate-profile-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCandidate\nAS\nAarav Student\naarav.student@example.edu\nLogout\nCAREER COMMAND CENTER\nWelcome to JobClox\n\nComplete onboarding to unlock your full career workspace.\n\nACTIVATION\n75% ready\n\nAdd a profile photo\n\nPROFILE SETUP\nSTEP 1 OF 8\nBasics\nPhoto\nResume\nReview\nSkills\nTarget\nJobs\nApply\n\nSTEP 1\n\nConfirm your candidate basics\nAarav Student • aarav.student@example.edu\nB.Tech Computer Science, final year\nContinue\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1000,
+      "buttons": 12,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Welcome to JobClox",
+        "Confirm your candidate basics"
+      ],
+      "navButtons": [],
+      "visibleRegions": 7
+    }
+  },
+  {
+    "name": "08-candidate-apply-desktop",
+    "url": "/candidate/jobs/job-1/apply",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\08-candidate-apply-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCandidate\nAS\nAarav Student\naarav.student@example.edu\nLogout\nBack to jobs\nNL\nJOBS / INTERNAL / APPLY\nFrontend Engineering Intern\n\nNorthstar Labs - Bengaluru Hybrid\n\nInternship\n0-1 years\nhybrid\nApply by 15/08/2026\nSubmit application\n1\nResume\n2\nFit Check\n3\nReview\n4\nSubmit\nSTEP 1\nChoose the resume for this application\n\nUse your current parsed resume or upload a stronger PDF before submitting.\n\naarav-resume.pdfLast updated 01/06/2026\n66%\nResume score\nUpload or replace resume\nPDF only. We parse it and use it for this application.\nContinue to fit check\nJOB SUMMARY\nCOMPANY\nNorthstar Labs\nSALARY\n8-12 LPA\nEMPLOYMENT\nInternship\nOPENINGS\n3\nSOURCE\nInternal\nCOMPANY SUMMARY\nINDUSTRY\nProduct\nLOCATION\nBengaluru Hybrid\nWEBSITE\nInformation not provided by source.\nCOMPANY SIZE\nInformation not provided by source.\n\nNorthstar Labs is hiring for this role through Internal.\n\nMATCH SIGNAL\n78%\nOverall match\nResume score\n66%\nSkills match\n75%\nJOB DETAILS\nDescription\n\nBuild responsive product surfaces for student workflows. Responsibilities include React implementation, accessibility fixes, and collaboration with product designers.\n\nResponsibilities\n\nInformation not provided by source.\n\nRequirements\nReact\nTypeScript\nCSS\nAccessibility\nSkills\nReact\nTypeScript\nCSS\nAccessibility\nNext.js\nTesting\nBenefits\n\nMentorship, flexible schedule\n\nJobClox\nYour Career, On The Clock.\n© 2026 ",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 2009,
+      "buttons": 10,
+      "inputs": 2,
+      "links": 0,
+      "headings": [
+        "Frontend Engineering Intern",
+        "Choose the resume for this application",
+        "Job summary",
+        "Company summary",
+        "Match signal",
+        "Job details"
+      ],
+      "navButtons": [],
+      "visibleRegions": 10
+    }
+  },
+  {
+    "name": "09-candidate-jobs-mobile",
+    "url": "/candidate",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\09-candidate-jobs-mobile.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCAREER COMMAND CENTER\nWelcome to JobClox\nACTIVATION\n75% ready\n\nAdd a profile photo\n\nPROFILE SETUP\nSTEP 1 OF 8\nBasics\nPhoto\nResume\nReview\nSkills\nTarget\nJobs\nApply\n\nSTEP 1\n\nConfirm your candidate basics\nAarav Student • aarav.student@example.edu\nB.Tech Computer Science, final year\nContinue\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 844,
+      "buttons": 12,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Welcome to JobClox",
+        "Confirm your candidate basics"
+      ],
+      "navButtons": [],
+      "visibleRegions": 7
+    }
+  },
+  {
+    "name": "10-recruiter-command-desktop",
+    "url": "/recruiter",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\10-recruiter-command-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nTODAY IN HIRING\nMake the next decision.\n\n2 candidates need your attention.\n\nPost job\nOpen pipeline\nPRIORITY QUEUE\nCandidates to review\nView all\nAA\nAarav Student\nFrontend Engineering Intern\n86%\nmatch\nReview\nME\nMeera Shah\nGraduate Data Analyst\n73%\nmatch\nReview\nHIRING FLOW\nPipeline momentum\nAttract\n2\nReview\n2\nShortlist\n0\nInterview\n1\nHire\n0\n1\njobs pending\n1\ninterviews\nOPERATING SIGNAL\nCandidate review is today’s highest-impact action.\n1 awaiting approval\n1 interviews\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1154,
+      "buttons": 15,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Northstar Labs",
+        "Make the next decision.",
+        "Candidates to review",
+        "Pipeline momentum"
+      ],
+      "navButtons": [
+        "Command",
+        "Post Job",
+        "Manage Jobs",
+        "Applicants",
+        "Company",
+        "Analytics"
+      ],
+      "visibleRegions": 8
+    }
+  },
+  {
+    "name": "11-recruiter-post-job-desktop",
+    "url": "/recruiter?view=post_job",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\11-recruiter-post-job-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nTODAY IN HIRING\nMake the next decision.\n\n2 candidates need your attention.\n\nPost job\nOpen pipeline\nPRIORITY QUEUE\nCandidates to review\nView all\nAA\nAarav Student\nFrontend Engineering Intern\n86%\nmatch\nReview\nME\nMeera Shah\nGraduate Data Analyst\n73%\nmatch\nReview\nHIRING FLOW\nPipeline momentum\nAttract\n2\nReview\n2\nShortlist\n0\nInterview\n1\nHire\n0\n1\njobs pending\n1\ninterviews\nOPERATING SIGNAL\nCandidate review is today’s highest-impact action.\n1 awaiting approval\n1 interviews\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1154,
+      "buttons": 15,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Northstar Labs",
+        "Make the next decision.",
+        "Candidates to review",
+        "Pipeline momentum"
+      ],
+      "navButtons": [
+        "Command",
+        "Post Job",
+        "Manage Jobs",
+        "Applicants",
+        "Company",
+        "Analytics"
+      ],
+      "visibleRegions": 8
+    }
+  },
+  {
+    "name": "12-recruiter-pipeline-desktop",
+    "url": "/recruiter?view=pipeline",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\12-recruiter-pipeline-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nTODAY IN HIRING\nMake the next decision.\n\n2 candidates need your attention.\n\nPost job\nOpen pipeline\nPRIORITY QUEUE\nCandidates to review\nView all\nAA\nAarav Student\nFrontend Engineering Intern\n86%\nmatch\nReview\nME\nMeera Shah\nGraduate Data Analyst\n73%\nmatch\nReview\nHIRING FLOW\nPipeline momentum\nAttract\n2\nReview\n2\nShortlist\n0\nInterview\n1\nHire\n0\n1\njobs pending\n1\ninterviews\nOPERATING SIGNAL\nCandidate review is today’s highest-impact action.\n1 awaiting approval\n1 interviews\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1154,
+      "buttons": 15,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Northstar Labs",
+        "Make the next decision.",
+        "Candidates to review",
+        "Pipeline momentum"
+      ],
+      "navButtons": [
+        "Command",
+        "Post Job",
+        "Manage Jobs",
+        "Applicants",
+        "Company",
+        "Analytics"
+      ],
+      "visibleRegions": 8
+    }
+  },
+  {
+    "name": "13-recruiter-profile-desktop",
+    "url": "/recruiter?view=profile",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\13-recruiter-profile-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nTODAY IN HIRING\nMake the next decision.\n\n2 candidates need your attention.\n\nPost job\nOpen pipeline\nPRIORITY QUEUE\nCandidates to review\nView all\nAA\nAarav Student\nFrontend Engineering Intern\n86%\nmatch\nReview\nME\nMeera Shah\nGraduate Data Analyst\n73%\nmatch\nReview\nHIRING FLOW\nPipeline momentum\nAttract\n2\nReview\n2\nShortlist\n0\nInterview\n1\nHire\n0\n1\njobs pending\n1\ninterviews\nOPERATING SIGNAL\nCandidate review is today’s highest-impact action.\n1 awaiting approval\n1 interviews\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1154,
+      "buttons": 15,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Northstar Labs",
+        "Make the next decision.",
+        "Candidates to review",
+        "Pipeline momentum"
+      ],
+      "navButtons": [
+        "Command",
+        "Post Job",
+        "Manage Jobs",
+        "Applicants",
+        "Company",
+        "Analytics"
+      ],
+      "visibleRegions": 8
+    }
+  },
+  {
+    "name": "14-recruiter-mobile",
+    "url": "/recruiter",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\14-recruiter-mobile.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nTODAY IN HIRING\nMake the next decision.\n\n2 candidates need your attention.\n\nPost job\nOpen pipeline\nPRIORITY QUEUE\nCandidates to review\nView all\nAA\nAarav Student\nFrontend Engineering Intern\n86%\nmatch\nME\nMeera Shah\nGraduate Data Analyst\n73%\nmatch\nHIRING FLOW\nPipeline momentum\nAttract\n2\nReview\n2\nShortlist\n0\nInterview\n1\nHire\n0\n1\njobs pending\n1\ninterviews\nOPERATING SIGNAL\nCandidate review is today’s highest-impact action.\n1 awaiting approval\n1 interviews\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1643,
+      "buttons": 15,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Northstar Labs",
+        "Make the next decision.",
+        "Candidates to review",
+        "Pipeline momentum"
+      ],
+      "navButtons": [
+        "Command",
+        "Post Job",
+        "Manage Jobs",
+        "Applicants",
+        "Company",
+        "Analytics"
+      ],
+      "visibleRegions": 8
+    }
+  },
+  {
+    "name": "15-admin-analytics-desktop",
+    "url": "/admin",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\15-admin-analytics-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nAdmin\nPA\nPlatform Admin\nadmin@persevex.example\nLogout\nPLATFORM OPERATIONS\nOperations Center\nAdmin\n\nExecutive summaries, verification queues, job moderation, and system health at a glance.\n\nTOTAL PARTNERS\n2\nRegistered companies\nKYC QUEUE\n1\nPending verification\nJOB APPROVALS\n1\nAwaiting review\nTOTAL APPLICANTS\n3\nPlatform-wide\nHANDSHAKES\n0\nForwarded to recruiters\nAnalytics\nKYC Verifications\n1\nJobs & Moderation\n1\nExternal Leads\n7\nScreening Desk\n2\nUser Accounts\nEmail Audit\n1\nHybrid marketplace\nJob Sources Analytics\n\nInternal supply, imported inventory, freshness, and provider health.\n\nTotal jobs0\nInternal0\nExternal0\nActive0\nStale0\nImported today0\nThis week0\nJobs by source\n\nNo source data available.\n\nProvider health\njsearchhealthy\n\nFetched · inserted · updated\n\nLead conversion\nExternal Applications Analytics\n\nCandidate demand, company/source distribution, operational funnel, and placement outcomes.\n\nTotal applications7\nnew0\ncontacted0\nshared with company0\ninterview scheduled0\nplaced0\nrejected0\nApplications per day\nNo external application history yet.\nConversion funnel\nApplications per company\nApplications per source\nTop performing external jobs\nCandidate Pipeline Funnels Analysis\nMonthly Handled Application Activities Trend\nPrimary Technology stacks Requested\nActive Job Volume split by Industry Category\nAuthorized Corporate Hiring Partner Registries\n",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1880,
+      "buttons": 10,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Operations Center",
+        "Job Sources Analytics",
+        "External Applications Analytics"
+      ],
+      "navButtons": [
+        "Analytics",
+        "KYC Verifications1",
+        "Jobs & Moderation1",
+        "External Leads7",
+        "Screening Desk2",
+        "User Accounts",
+        "Email Audit1"
+      ],
+      "visibleRegions": 20
+    }
+  },
+  {
+    "name": "16-admin-jobs-desktop",
+    "url": "/admin",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\16-admin-jobs-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nAdmin\nPA\nPlatform Admin\nadmin@persevex.example\nLogout\nPLATFORM OPERATIONS\nOperations Center\nAdmin\n\nExecutive summaries, verification queues, job moderation, and system health at a glance.\n\nTOTAL PARTNERS\n2\nRegistered companies\nKYC QUEUE\n1\nPending verification\nJOB APPROVALS\n1\nAwaiting review\nTOTAL APPLICANTS\n3\nPlatform-wide\nHANDSHAKES\n0\nForwarded to recruiters\nAnalytics\nKYC Verifications\n1\nJobs & Moderation\n1\nExternal Leads\n7\nScreening Desk\n2\nUser Accounts\nEmail Audit\n1\nPlatform Job Management\n\nCreate, assign, moderate, promote, and retire jobs using real platform records.\n\nCreate Job\nTotal jobs3\nActive2\nClosed0\nFeatured1\nSponsored1\nApplications3\nConversion0%\nCreate job\nAdmin job creation\nClearCreate Job\nTITLE\nCOMPANY ASSIGNMENT\nPlatform job\nExisting company\nNew company\nASSIGNMENT\nJobClox Internal\nLOCATION\nDEPARTMENT\nEMPLOYMENT TYPE\nFull-time\nPart-time\nContract\nInternship\nWORK MODE\nRemote\nHybrid\nOnsite\nEXPERIENCE\nEDUCATION\nSALARY RANGE\nBENEFITS\nEQUITY\nOPENINGS\nDEADLINE\nHIRING MANAGER\nSTATUS\ndraft\nsubmitted\napproved\npaused\nclosed\narchived\nVISIBILITY\nPublic\nPrivate\nDESCRIPTION\nREQUIRED SKILLS\nPREFERRED SKILLS\nFeatured\nSponsored\nPriority\nSEARCH\nSTATUS\nAll statuses\ndraft\nsubmitted\napproved\npaused\nclosed\narchived\nflagged\nsuspended\nrejected\nCOMPANY\nAll companies\nNorthstar Labs\nBrightPath Consulting\nTYPE\nAll types\nFull-time\nPart-time\nContract\nInternsh",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 2918,
+      "buttons": 54,
+      "inputs": 32,
+      "links": 0,
+      "headings": [
+        "Operations Center",
+        "Platform Job Management"
+      ],
+      "navButtons": [
+        "Analytics",
+        "KYC Verifications1",
+        "Jobs & Moderation1",
+        "External Leads7",
+        "Screening Desk2",
+        "User Accounts",
+        "Email Audit1"
+      ],
+      "visibleRegions": 12
+    }
+  },
+  {
+    "name": "17-admin-companies-desktop",
+    "url": "/admin",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\17-admin-companies-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nAdmin\nPA\nPlatform Admin\nadmin@persevex.example\nLogout\nPLATFORM OPERATIONS\nOperations Center\nAdmin\n\nExecutive summaries, verification queues, job moderation, and system health at a glance.\n\nTOTAL PARTNERS\n2\nRegistered companies\nKYC QUEUE\n1\nPending verification\nJOB APPROVALS\n1\nAwaiting review\nTOTAL APPLICANTS\n3\nPlatform-wide\nHANDSHAKES\n0\nForwarded to recruiters\nAnalytics\nKYC Verifications\n1\nJobs & Moderation\n1\nExternal Leads\n7\nScreening Desk\n2\nUser Accounts\nEmail Audit\n1\nKYC Corporate Identity Verifications\n\nVerify legal business entities and audit their files incorporation certificates. Unverified companies cannot make postings visible to candidates.\n\nNorthstar Labs\nPending KYC\n\nSector: SaaS | Owner HR contact: Nisha Recruiter (talent@northstar.example)\n\nUploaded Document File:\nincorporation.pdf\nDecline ProfileAudit Approve\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1000,
+      "buttons": 12,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Operations Center",
+        "KYC Corporate Identity Verifications"
+      ],
+      "navButtons": [
+        "Analytics",
+        "KYC Verifications1",
+        "Jobs & Moderation1",
+        "External Leads7",
+        "Screening Desk2",
+        "User Accounts",
+        "Email Audit1"
+      ],
+      "visibleRegions": 4
+    }
+  },
+  {
+    "name": "18-admin-screening-desktop",
+    "url": "/admin",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\18-admin-screening-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nAdmin\nPA\nPlatform Admin\nadmin@persevex.example\nLogout\nPLATFORM OPERATIONS\nOperations Center\nAdmin\n\nExecutive summaries, verification queues, job moderation, and system health at a glance.\n\nTOTAL PARTNERS\n2\nRegistered companies\nKYC QUEUE\n1\nPending verification\nJOB APPROVALS\n1\nAwaiting review\nTOTAL APPLICANTS\n3\nPlatform-wide\nHANDSHAKES\n0\nForwarded to recruiters\nAnalytics\nKYC Verifications\n1\nJobs & Moderation\n1\nExternal Leads\n7\nScreening Desk\n2\nUser Accounts\nEmail Audit\n1\nApplications screening Desk\n\nAdd internal review notes and check matching skill coverages. Advance candidates to \"Shortlist\" or \"Forward to Corporate Recruiter\" values.\n\nSelect All Visible (2)\nSelect Candidate for Bulk Operations\nAS\nAarav Student\n(aarav.student@example.edu)\n\nApplying for standard specification: Frontend Engineering Intern\n\nMatching Index86% overlap\nStrong\n✓ Matched Skills list from copy analysis\nReactTypeScriptCSS\n✗ Missing Stacks (Unmatched criteria)\nTesting\nScreener Notes Input:\n\nStrong React signal\n\nEdit Notes\nCurrent Status Pipeline: under review\nMark Under ReviewShortlist ProfileSubmit Forward to Recruiter HR ➔\nSelect Candidate for Bulk Operations\nMS\nMeera Shah\n(meera@example.edu)\n\nApplying for standard specification: Graduate Data Analyst\n\nMatching Index73% overlap\nModerate\n✓ Matched Skills list from copy analysis\nSQLExcel\n✗ Missing Stacks (Unmatched crite",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1794,
+      "buttons": 18,
+      "inputs": 4,
+      "links": 0,
+      "headings": [
+        "Operations Center",
+        "Applications screening Desk"
+      ],
+      "navButtons": [
+        "Analytics",
+        "KYC Verifications1",
+        "Jobs & Moderation1",
+        "External Leads7",
+        "Screening Desk2",
+        "User Accounts",
+        "Email Audit1"
+      ],
+      "visibleRegions": 4
+    }
+  },
+  {
+    "name": "19-admin-mobile",
+    "url": "/admin",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\19-admin-mobile.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nPLATFORM OPERATIONS\nOperations Center\nAdmin\n\nExecutive summaries, verification queues, job moderation, and system health at a glance.\n\nTOTAL PARTNERS\n2\nRegistered companies\nKYC QUEUE\n1\nPending verification\nJOB APPROVALS\n1\nAwaiting review\nTOTAL APPLICANTS\n3\nPlatform-wide\nHANDSHAKES\n0\nForwarded to recruiters\nAnalytics\nKYC Verifications\n1\nJobs & Moderation\n1\nExternal Leads\n7\nScreening Desk\n2\nUser Accounts\nEmail Audit\n1\nHybrid marketplace\nJob Sources Analytics\n\nInternal supply, imported inventory, freshness, and provider health.\n\nTotal jobs0\nInternal0\nExternal0\nActive0\nStale0\nImported today0\nThis week0\nJobs by source\n\nNo source data available.\n\nProvider health\njsearchhealthy\n\nFetched · inserted · updated\n\nLead conversion\nExternal Applications Analytics\n\nCandidate demand, company/source distribution, operational funnel, and placement outcomes.\n\nTotal applications7\nnew0\ncontacted0\nshared with company0\ninterview scheduled0\nplaced0\nrejected0\nApplications per day\nNo external application history yet.\nConversion funnel\nApplications per company\nApplications per source\nTop performing external jobs\nCandidate Pipeline Funnels Analysis\nMonthly Handled Application Activities Trend\nPrimary Technology stacks Requested\nActive Job Volume split by Industry Category\nAuthorized Corporate Hiring Partner Registries\nCORPORATE ENTITY NAME\tSECTOR INDUSTRY\tKYC REVIEW STATU",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 2747,
+      "buttons": 10,
+      "inputs": 0,
+      "links": 0,
+      "headings": [
+        "Operations Center",
+        "Job Sources Analytics",
+        "External Applications Analytics"
+      ],
+      "navButtons": [
+        "Analytics",
+        "KYC Verifications1",
+        "Jobs & Moderation1",
+        "External Leads7",
+        "Screening Desk2",
+        "User Accounts",
+        "Email Audit1"
+      ],
+      "visibleRegions": 5
+    }
+  }
+]

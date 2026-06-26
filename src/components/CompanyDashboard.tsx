@@ -67,7 +67,7 @@ const recruiterTabs: Array<{ id: RecruiterTab; label: string; icon: AppIcon }> =
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
-const wizardSteps = ['Job Basics', 'Requirements', 'Compensation', 'Screening', 'Review'];
+const wizardSteps = ['Job Basics', 'Requirements', 'Salary/Stipend', 'Screening', 'Review'];
 const pipelineColumns = [
   { key: 'applied', label: 'Applied' },
   { key: 'reviewing', label: 'Reviewing' },
@@ -751,6 +751,7 @@ function PostJobWizard(props: {
 }) {
   const nextStep = () => props.setWizardStep(Math.min(4, props.wizardStep + 1) as WizardStep);
   const previousStep = () => props.setWizardStep(Math.max(0, props.wizardStep - 1) as WizardStep);
+  const compensationCopy = getCompensationCopy(props.jobType, props.salary);
 
   return (
     <section className="rec-panel">
@@ -800,9 +801,9 @@ function PostJobWizard(props: {
             )}
             {props.wizardStep === 2 && (
               <div className="rec-form-grid">
-                <TextField label="Salary" value={props.salary} onChange={props.setSalary} placeholder="Compensation range" />
+                <TextField label={compensationCopy.label} value={props.salary} onChange={props.setSalary} placeholder={compensationCopy.placeholder} />
                 <TextField label="Application Deadline" value={props.deadline} onChange={props.setDeadline} type="date" />
-                <PreviewStat icon={DollarSign} label="Compensation visible" value={props.salary || 'Not set'} />
+                <PreviewStat icon={DollarSign} label={compensationCopy.visibleLabel} value={compensationCopy.preview} />
                 <PreviewStat icon={Clock} label="Deadline" value={props.deadline || 'Not set'} />
               </div>
             )}
@@ -813,10 +814,10 @@ function PostJobWizard(props: {
                 <PreviewStat icon={Star} label="Priority" value={`${branding.productName} score and skill gaps`} />
               </div>
             )}
-            {props.wizardStep === 4 && <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />}
+            {props.wizardStep === 4 && <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} jobType={props.jobType} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />}
           </div>
         ) : (
-          <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />
+          <JobPreview title={props.title} companyName={props.company?.companyName || 'Your company'} location={props.location} jobType={props.jobType} salary={props.salary} description={props.description} requirementsStr={props.requirementsStr} />
         )}
 
         <div className="rec-wizard-actions">
@@ -1277,14 +1278,25 @@ function PreviewStat({ icon: Icon, label, value }: { icon: AppIcon; label: strin
   );
 }
 
-function JobPreview({ title, companyName, location, salary, description, requirementsStr }: { title: string; companyName: string; location: string; salary: string; description: string; requirementsStr: string }) {
+function getCompensationCopy(jobType: Job['jobType'], salary: string) {
+  const isInternship = jobType === 'Internship';
+  return {
+    label: isInternship ? 'Stipend' : 'Salary',
+    placeholder: isInternship ? 'Stipend range, e.g. 15000/mo' : 'Salary range, e.g. 8-12 LPA',
+    visibleLabel: isInternship ? 'Stipend visible' : 'Salary visible',
+    preview: salary || (isInternship ? 'Stipend not set' : 'Salary not set'),
+  };
+}
+
+function JobPreview({ title, companyName, location, jobType, salary, description, requirementsStr }: { title: string; companyName: string; location: string; jobType: Job['jobType']; salary: string; description: string; requirementsStr: string }) {
   const skills = requirementsStr.split(',').map((skill) => skill.trim()).filter(Boolean);
+  const compensationCopy = getCompensationCopy(jobType, salary);
   return (
     <article className="rec-job-preview">
       <span>Preview</span>
       <h3>{title || 'Untitled role'}</h3>
       <p>{companyName} - {location || 'Location TBD'}</p>
-      <strong>{salary || 'Compensation TBD'}</strong>
+      <strong>{compensationCopy.preview}</strong>
       <div>{skills.map((skill) => <em key={skill}>{skill}</em>)}</div>
       <small>{description || 'Role description preview will appear here.'}</small>
     </article>

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "20-candidate-marketplace-unlocked-desktop",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\20-candidate-marketplace-unlocked-desktop.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nCandidate\nAarav Student\naarav.student@example.edu\nLogout\nJobs\nSaved\n1\nApplications\n1\nCareer Support\nProfile\nNotifications\nBest match\nNewest\nHighest pay\nSkills\nReact\nTypeScript\nCSS\nAccessibility\nNext.js\nTesting\nSQL\nExcel\nPython\nCommunication\nTableau\nStatistics\nFigma\nUX Research\nPrototyping\nDesign Systems\nHTML/CSS\nExperience\nEntry / Junior\nMid-level\nSenior / Lead\nLocation\nRemote\nOn-site\n3\nSHOWN OF 3\nMore filters\nCareer coach\nOptional guidance when you want it\nRECOMMENDED JOBS\nBest jobs for you\n\nRanked by your skills, experience, and preferences.\n\n3\nopportunities\nNO\nFrontend Engineering Intern\nHybrid\nNorthstar Labs\nVerified listing\nInternal\nBengaluru Hybrid\nReact\nTypeScript\nCSS\nMATCH\n66%\nCOMPENSATION\n8-12 LPA\nWORK STYLE\nHybrid\nPartial Match alignment\nSave\nApplied\nBR\nGraduate Data Analyst\nRemote\nBrightPath Consulting\nVerified listing\nInternal\nRemote\nSQL\nMATCH\n50%\nCOMPENSATION\n10-16 LPA\nWORK STYLE\nRemote\nWeak Match alignment\nSaved\nApply now\nST\nProduct Design Associate\nOnsite\nStudio Orbit\nVerified listing\nInternal\nPune Onsite\nFigma\nUX Research\nPrototyping\nMATCH\n42%\nCOMPENSATION\n9-14 LPA\nWORK STYLE\nOnsite\nWeak Match alignment\nSave\nApply now\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollHeight": 1046,
+      "buttons": 23,
+      "inputs": 5,
+      "navButtons": [
+        "Jobs",
+        "Saved1",
+        "Applications1",
+        "Career Support",
+        "Profile",
+        "Notifications"
+      ]
+    }
+  },
+  {
+    "name": "21-candidate-marketplace-unlocked-mobile",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\21-candidate-marketplace-unlocked-mobile.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nJobs\nSaved\n1\nApplications\n1\nCareer Support\nProfile\nNotifications\nMore filters\nCareer coach\nOptional guidance when you want it\nRECOMMENDED JOBS\nBest jobs for you\n\nRanked by your skills, experience, and preferences.\n\n3\nopportunities\nNO\nFrontend Engineering Intern\nHybrid\nNorthstar Labs\nVerified listing\nInternal\nBengaluru Hybrid\nReact\nTypeScript\nCSS\nMATCH\n66%\nCOMPENSATION\n8-12 LPA\nWORK STYLE\nHybrid\nPartial Match alignment\nSave\nApplied\nBR\nGraduate Data Analyst\nRemote\nBrightPath Consulting\nVerified listing\nInternal\nRemote\nSQL\nMATCH\n50%\nCOMPENSATION\n10-16 LPA\nWORK STYLE\nRemote\nWeak Match alignment\nSaved\nApply now\nST\nProduct Design Associate\nOnsite\nStudio Orbit\nVerified listing\nInternal\nPune Onsite\nFigma\nUX Research\nPrototyping\nMATCH\n42%\nCOMPENSATION\n9-14 LPA\nWORK STYLE\nOnsite\nWeak Match alignment\nSave\nApply now\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "scrollHeight": 2502,
+      "buttons": 23,
+      "inputs": 5,
+      "navButtons": [
+        "Jobs",
+        "Saved1",
+        "Applications1",
+        "Career Support",
+        "Profile",
+        "Notifications"
+      ]
+    }
+  }
+]

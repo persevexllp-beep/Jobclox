@@ -702,3 +702,637 @@ html.dark .candidate-ai-coach-heading {
     transition-duration: .01ms !important;
   }
 }
+
+/* Scoped candidate jobs refinement: drawer polish, compact details, and sparse-skill states. */
+.eff-job-drawer-backdrop {
+  z-index: 240 !important;
+  background: rgba(8, 13, 24, .38) !important;
+  backdrop-filter: blur(14px) saturate(125%) !important;
+}
+
+.eff-job-drawer {
+  top: 12px !important;
+  right: 12px !important;
+  bottom: 12px !important;
+  width: min(720px, calc(100vw - 24px)) !important;
+  height: calc(100vh - 24px) !important;
+  overflow: hidden !important;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 68%, transparent) !important;
+  border-radius: 26px 0 0 26px !important;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--pvx-accent) 12%, transparent), transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--pvx-bg-elevated) 98%, white), color-mix(in srgb, var(--pvx-bg-surface) 96%, var(--pvx-accent))) !important;
+  box-shadow: -24px 22px 70px rgba(15, 23, 42, .22), inset 1px 0 0 rgba(255, 255, 255, .72) !important;
+}
+
+.eff-drawer-head {
+  position: sticky !important;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 22px 16px !important;
+  background: color-mix(in srgb, var(--pvx-bg-elevated) 88%, transparent) !important;
+  backdrop-filter: blur(22px) saturate(135%);
+}
+
+.eff-drawer-title-row {
+  min-width: 0;
+}
+
+.eff-drawer-title-row h3 {
+  max-width: 16ch;
+  font-size: clamp(1.55rem, 2.2vw, 2rem) !important;
+  letter-spacing: 0 !important;
+}
+
+.eff-drawer-meta {
+  gap: 7px !important;
+}
+
+.eff-drawer-meta span,
+.eff-drawer-badges span {
+  background: color-mix(in srgb, var(--pvx-bg-muted) 70%, transparent) !important;
+  color: var(--pvx-text-secondary) !important;
+}
+
+.eff-drawer-close {
+  flex: 0 0 auto;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent) !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.eff-drawer-close:hover,
+.eff-drawer-close:focus-visible {
+  border-color: color-mix(in srgb, var(--pvx-accent) 42%, var(--pvx-border-default)) !important;
+  background: var(--pvx-accent-subtle) !important;
+  transform: rotate(6deg);
+}
+
+.eff-drawer-scroll {
+  gap: 14px !important;
+  padding: 14px 22px 18px !important;
+}
+
+.eff-drawer-hero,
+.eff-drawer-section,
+.eff-ai-match-panel {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 58%, transparent) !important;
+  border-radius: 20px !important;
+  background: color-mix(in srgb, var(--pvx-bg-elevated) 78%, transparent) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035), 0 14px 34px rgba(15, 23, 42, .055);
+}
+
+.eff-drawer-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.eff-salary-highlight {
+  display: inline-grid !important;
+  gap: 2px;
+  min-width: min(260px, 100%);
+  border: 1px solid color-mix(in srgb, var(--pvx-success) 22%, transparent);
+  border-radius: 16px !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--pvx-success) 13%, white), color-mix(in srgb, var(--pvx-accent) 8%, white)) !important;
+  padding: 11px 14px !important;
+  color: var(--pvx-text-primary) !important;
+}
+
+.eff-salary-highlight small,
+.eff-compensation-chip small {
+  color: var(--pvx-text-muted) !important;
+  font-size: .64rem !important;
+  font-weight: 800 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase;
+}
+
+.eff-salary-highlight strong,
+.eff-compensation-chip strong {
+  color: var(--pvx-text-primary) !important;
+  font-weight: 790 !important;
+}
+
+.eff-salary-highlight em,
+.eff-compensation-chip em {
+  color: var(--pvx-text-secondary);
+  font-size: .72rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.eff-ai-match-panel {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .92fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.eff-drawer-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(150px, 1.15fr) !important;
+  padding: 14px 22px !important;
+  background: color-mix(in srgb, var(--pvx-bg-elevated) 88%, transparent) !important;
+  backdrop-filter: blur(22px) saturate(135%);
+}
+
+.eff-drawer-actions button {
+  min-width: 0;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.eff-drawer-actions button:hover:not(:disabled),
+.eff-drawer-actions button:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--pvx-accent) 38%, var(--pvx-border-default)) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .1);
+  transform: translateY(-1px);
+}
+
+.eff-drawer-actions button:last-child {
+  background: linear-gradient(135deg, #111827, #0f172a) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .22);
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-card {
+  min-height: 228px !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-skill-alignment {
+  min-height: 30px;
+  margin-top: 12px !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-skill-alignment.is-empty {
+  display: block;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-skill-placeholder {
+  width: min(260px, 100%);
+  min-width: 0 !important;
+  padding: 8px 10px;
+  border: 1px dashed color-mix(in srgb, var(--pvx-border-default) 76%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pvx-bg-muted) 58%, transparent);
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-meta-strip {
+  margin-top: 10px !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-value-row {
+  padding-left: 88px !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-compensation-chip {
+  display: inline-grid !important;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 2px 9px !important;
+  max-width: min(360px, 100%);
+  padding: 9px 12px !important;
+  border: 1px solid color-mix(in srgb, var(--pvx-success) 18%, var(--pvx-border-default)) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pvx-success) 9%, transparent), color-mix(in srgb, var(--pvx-bg-muted) 70%, transparent));
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-compensation-chip em {
+  grid-column: 2;
+  white-space: nowrap;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-disclosure,
+.career-flow-os .candidate-wide-job-feed .eff-job-actions button {
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .eff-job-drawer-backdrop {
+    animation: drawerBackdropIn 220ms ease both;
+  }
+
+  .eff-job-drawer {
+    animation: premiumDrawerIn 360ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+}
+
+@keyframes drawerBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes premiumDrawerIn {
+  from { opacity: .72; transform: translateX(34px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+html.dark .eff-job-drawer {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(124, 140, 255, .14), transparent 40%),
+    linear-gradient(180deg, rgba(15, 23, 42, .98), rgba(8, 13, 24, .98)) !important;
+  box-shadow: -24px 22px 76px rgba(0, 0, 0, .42) !important;
+}
+
+html.dark .eff-drawer-head,
+html.dark .eff-drawer-actions {
+  background: rgba(15, 23, 42, .86) !important;
+}
+
+html.dark .eff-drawer-hero,
+html.dark .eff-drawer-section,
+html.dark .eff-ai-match-panel {
+  background: rgba(15, 23, 42, .64) !important;
+}
+
+html.dark .eff-salary-highlight,
+html.dark .career-flow-os .candidate-wide-job-feed .eff-compensation-chip {
+  background: linear-gradient(135deg, rgba(16, 185, 129, .13), rgba(59, 130, 246, .08)) !important;
+}
+
+@media (max-width: 760px) {
+  .eff-job-drawer {
+    top: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    left: 8px !important;
+    width: auto !important;
+    height: calc(100vh - 16px) !important;
+    border-radius: 22px !important;
+  }
+
+  .eff-drawer-head {
+    padding: 16px !important;
+  }
+
+  .eff-drawer-title-row h3 {
+    max-width: 12ch;
+  }
+
+  .eff-drawer-scroll {
+    padding: 12px 16px 16px !important;
+  }
+
+  .eff-drawer-hero,
+  .eff-ai-match-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .eff-drawer-hero {
+    align-items: stretch;
+  }
+
+  .eff-drawer-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    padding: 12px 16px !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-value-row {
+    padding-left: 0 !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eff-job-drawer-backdrop,
+  .eff-job-drawer,
+  .eff-drawer-close,
+  .eff-drawer-actions button {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Candidate workspace premium pass: final overrides for drawer, cards, spacing, and action fit. */
+.eff-job-drawer-backdrop {
+  z-index: 6000 !important;
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+  padding: 0 !important;
+  background: rgba(15, 23, 42, .34) !important;
+  backdrop-filter: blur(10px) saturate(118%) !important;
+}
+
+.eff-job-drawer {
+  position: fixed !important;
+  inset: 0 0 0 auto !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  width: min(760px, 100vw) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border: 0 !important;
+  border-left: 1px solid color-mix(in srgb, var(--pvx-border-default) 72%, transparent) !important;
+  border-radius: 24px 0 0 24px !important;
+  overflow: hidden !important;
+  box-shadow: -24px 0 72px rgba(15, 23, 42, .22) !important;
+}
+
+.eff-drawer-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  max-height: 31dvh;
+  overflow: auto;
+  padding: clamp(16px, 2.2vw, 24px) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 68%, transparent) !important;
+}
+
+.eff-drawer-title-row {
+  align-items: flex-start !important;
+  gap: 16px !important;
+}
+
+.eff-drawer-title-row h3 {
+  max-width: min(21ch, 100%);
+  line-height: 1.05 !important;
+}
+
+.eff-drawer-close {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.eff-drawer-scroll {
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding-bottom: 20px !important;
+}
+
+.eff-drawer-actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  padding: 12px clamp(14px, 2vw, 22px) !important;
+  border-top: 1px solid color-mix(in srgb, var(--pvx-border-default) 70%, transparent) !important;
+}
+
+.eff-drawer-actions button {
+  width: auto !important;
+  min-width: max-content !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 0 16px !important;
+  border-radius: 14px !important;
+  line-height: 1.1 !important;
+  text-align: center !important;
+  white-space: normal !important;
+}
+
+.eff-drawer-actions button:last-child {
+  flex: 1 1 190px !important;
+  max-width: 280px !important;
+  min-width: min(190px, 100%) !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-card {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 76%, transparent) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 14px 34px rgba(15, 23, 42, .055) !important;
+  transition: border-color 190ms ease, box-shadow 220ms ease, transform 220ms ease, background 220ms ease !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-card.is-selected {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 76%, transparent) !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-card::before {
+  opacity: 0 !important;
+  background:
+    linear-gradient(115deg, transparent 0%, rgba(14, 165, 233, .12) 33%, rgba(34, 197, 94, .11) 50%, transparent 67%) !important;
+  transform: translateX(-125%) !important;
+  transition: opacity 180ms ease !important;
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-card:hover,
+.career-flow-os .candidate-wide-job-feed .eff-job-card:focus-within {
+  border-color: color-mix(in srgb, var(--pvx-accent) 24%, var(--pvx-border-default)) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, .11) !important;
+  transform: translateY(-2px);
+}
+
+.career-flow-os .candidate-wide-job-feed .eff-job-card:hover::before,
+.career-flow-os .candidate-wide-job-feed .eff-job-card:focus-within::before {
+  opacity: 1 !important;
+  animation: candidateCardSheen 980ms ease both;
+}
+
+@keyframes candidateCardSheen {
+  from { transform: translateX(-125%); }
+  to { transform: translateX(125%); }
+}
+
+.career-flow-os :is(button, .eff-action, .eff-filter-pill, .eff-job-disclosure, .eff-empty-compact button, .eff-resume-steps button, .eff-pipeline-summary button),
+.eco-os :is(button, .eco-apply-inline),
+.recruiter-os :is(button, .rec-section-header button, .rec-card-actions button, .rec-wizard-actions button, .rec-review-actions button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  width: auto;
+  max-width: 100%;
+  padding-inline: 14px;
+  line-height: 1.12;
+  text-align: center;
+  white-space: normal;
+}
+
+.career-flow-os .eff-section-head {
+  gap: 16px;
+}
+
+.career-flow-os .eff-section-head > button,
+.career-flow-os .eff-section-head .eff-action,
+.career-flow-os .eff-strip-head button,
+.career-flow-os .application-table-card td button,
+.recruiter-os .rec-wizard-actions button {
+  min-width: max-content;
+  border-radius: 14px;
+}
+
+.career-flow-os .eff-pager,
+.career-flow-os .pagination,
+.career-flow-os [class*="pagination"],
+.career-flow-os [class*="pager"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.career-flow-os .eff-pager button,
+.career-flow-os .pagination button,
+.career-flow-os [class*="pagination"] button,
+.career-flow-os [class*="pager"] button {
+  min-width: 104px;
+  border-radius: 999px;
+}
+
+.eff-saved-compensation,
+.eco-compensation-chip {
+  display: inline-grid !important;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 1px 8px !important;
+  max-width: 100%;
+  padding: 8px 11px !important;
+  border: 1px solid color-mix(in srgb, var(--pvx-success) 16%, var(--pvx-border-default)) !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pvx-success) 8%, transparent), color-mix(in srgb, var(--pvx-bg-muted) 72%, transparent)) !important;
+}
+
+.eff-saved-compensation small,
+.eco-compensation-chip small {
+  color: var(--pvx-text-muted);
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.eff-saved-compensation strong,
+.eco-compensation-chip strong {
+  color: var(--pvx-text-primary);
+  font-weight: 780;
+}
+
+.eff-saved-compensation em,
+.eco-compensation-chip em {
+  grid-column: 2;
+  color: var(--pvx-text-secondary);
+  font-size: .72rem;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.application-priority-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 10px;
+  align-items: stretch;
+  margin: 0 0 14px;
+}
+
+.application-priority-strip > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 68%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--pvx-bg-muted) 58%, transparent);
+}
+
+.application-priority-strip strong {
+  overflow: hidden;
+  color: var(--pvx-text-primary);
+  font-size: .83rem;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.application-priority-strip small {
+  color: var(--pvx-text-muted);
+  font-size: .68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.eco-internship-facts {
+  align-items: center;
+}
+
+.eco-compensation-chip {
+  min-width: min(210px, 100%);
+}
+
+.recruiter-os .rec-review-actions {
+  align-items: stretch;
+}
+
+.recruiter-os .rec-review-actions > button:first-child,
+.recruiter-os .rec-review-actions > button:nth-child(2) {
+  background: color-mix(in srgb, var(--pvx-accent) 10%, var(--pvx-bg-elevated));
+  border-color: color-mix(in srgb, var(--pvx-accent) 24%, var(--pvx-border-default));
+}
+
+.recruiter-os .rec-review-actions > button:nth-child(4) {
+  background: linear-gradient(135deg, var(--pvx-success), color-mix(in srgb, var(--pvx-success) 76%, var(--pvx-accent)));
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--pvx-success) 22%, transparent);
+}
+
+@media (max-width: 760px) {
+  .eff-job-drawer {
+    inset: 0 !important;
+    width: 100vw !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .eff-drawer-head {
+    max-height: 36dvh;
+  }
+
+  .eff-drawer-title-row h3 {
+    max-width: 15ch;
+  }
+
+  .eff-drawer-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    justify-content: stretch !important;
+  }
+
+  .eff-drawer-actions button,
+  .eff-drawer-actions button:last-child {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .application-priority-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .career-flow-os .eff-section-head {
+    align-items: stretch;
+  }
+
+  .career-flow-os .eff-section-head > button,
+  .career-flow-os .eff-section-head .eff-action {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .career-flow-os .candidate-wide-job-feed .eff-job-card,
+  .career-flow-os .candidate-wide-job-feed .eff-job-card::before {
+    animation: none !important;
+    transition-duration: .01ms !important;
+    transform: none !important;
+  }
+}

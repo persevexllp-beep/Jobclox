@@ -1,0 +1,43 @@
+[
+  {
+    "label": "22-recruiter-post-job-clicked",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\22-recruiter-post-job-clicked.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nPOST JOB\nMulti-step publishing wizard\nPreview\n1\nJob Basics\n2\nRequirements\n3\nCompensation\n4\nScreening\n5\nReview\nAutosaved draft locally\nJOB TITLE\nDEPARTMENT\nLOCATION\nEMPLOYMENT TYPE\nFull-time\nPart-time\nContract\nInternship\nBack\nContinue\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "buttons": 18,
+      "inputs": 4,
+      "scrollHeight": 1000,
+      "headings": [
+        "Northstar Labs",
+        "Multi-step publishing wizard"
+      ]
+    }
+  },
+  {
+    "label": "23-recruiter-pipeline-clicked",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\23-recruiter-pipeline-clicked.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nAPPLIED\n1\n73%\nMS\nMeera ShahGraduate Data Analyst\n\nmeera@example.edu\n\nAPPLIED\nSQL\nCandidate notes\nReview\nInterview\nOffer\nREVIEWING\n1\n86%\nAS\nAarav StudentFrontend Engineering Intern\n\naarav.student@example.edu\n\nUNDER REVIEW\nReact\nTypeScript\nCandidate notes\nReview\nInterview\nOffer\nINTERVIEW\n0\nOFFER\n0\nHIRED\n0\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "buttons": 16,
+      "inputs": 2,
+      "scrollHeight": 1000,
+      "headings": [
+        "Northstar Labs"
+      ]
+    }
+  },
+  {
+    "label": "24-recruiter-company-clicked",
+    "file": "D:\\Coding\\Persevex\\v3\\JOB_PORTAL_NEXT\\JOB_PORTAL\\reports\\ui-audit-screenshots\\24-recruiter-company-clicked.png",
+    "metrics": {
+      "bodyText": "JobClox\nYour Career, On The Clock.\nRecruiter\nNR\nNisha Recruiter\nnisha@northstar.example\nLogout\nCompany profile under verification\nCurrent state: PENDING. Complete documentation to unlock approved live posting.\nUpdate documents\nNorthstar Labs\nPending KYC\nCommand\nPost Job\nManage Jobs\nApplicants\nCompany\nAnalytics\nCOMPANY PROFILE\nTrusted hiring identity\nNR\nRecruiter profile photoShown in the navbar and recruiter workspace.\nUpload photo\nREGISTERED LEGAL ENTITY\nINDUSTRY\nWEBSITE\nLINKEDIN\nCOMPANY EMAIL\nCONTACT PERSON\nPHONE\nincorporation.pdf\nDrop verification document or browse\nLatest file: incorporation.pdf\nStatus: pending\nSave company profile\nJobClox\nYour Career, On The Clock.\n© 2026 JobClox. Powered by Persevex LLP.",
+      "buttons": 11,
+      "inputs": 10,
+      "scrollHeight": 1202,
+      "headings": [
+        "Northstar Labs",
+        "Trusted hiring identity"
+      ]
+    }
+  }
+]

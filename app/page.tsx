@@ -16,6 +16,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import BrandLogo from '@/src/components/BrandLogo';
+import StudentJobSearchLottie from '@/src/components/experience/StudentJobSearchLottie';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getDefaultDashboardPath } from '@/lib/auth/guards';
 import { getPublicJobsRanked } from '@/lib/jobs/workflow';
@@ -60,10 +61,10 @@ function OpportunityJourneyVisual() {
   return (
     <div className="landing-journey-visual" role="img" aria-label="A candidate progresses from discovering a role to getting hired">
       <div className="landing-journey-glow" aria-hidden="true" />
-      <div className="landing-journey-person" aria-hidden="true"><span /><span /><i /><i /><i /></div>
+      <StudentJobSearchLottie className="landing-student-lottie" label="Student searching for jobs and internships" />
       <div className="landing-opportunity-card">
         <div className="landing-opportunity-company">NS</div>
-        <div><small>Best match</small><strong>Product Design Intern</strong><span>Northstar · Remote</span></div>
+        <div><small>Best match</small><strong>Product Design Intern</strong><span>Northstar - Remote</span></div>
         <b>92%</b>
       </div>
       <ol className="landing-journey-path" aria-hidden="true">
@@ -114,13 +115,17 @@ export default async function HomePage() {
               <form className="landing-search" action="/login" aria-label="Find opportunities">
                 <label>
                   <Search aria-hidden="true" />
-                  <span className="sr-only">Role, skill, or company</span>
-                  <input name="search" placeholder="Role, skill, or company" autoComplete="off" />
+                  <span className="landing-search-field-copy">
+                    <strong>Role, skill, or company</strong>
+                    <input name="search" placeholder="Search roles or skills" autoComplete="off" />
+                  </span>
                 </label>
                 <label>
                   <MapPin aria-hidden="true" />
-                  <span className="sr-only">Preferred location</span>
-                  <input name="location" placeholder="Location or remote" autoComplete="address-level2" />
+                  <span className="landing-search-field-copy">
+                    <strong>Preferred location</strong>
+                    <input name="location" placeholder="City or remote" autoComplete="address-level2" />
+                  </span>
                 </label>
                 <button type="submit">Explore jobs <ArrowRight aria-hidden="true" /></button>
               </form>
@@ -207,7 +212,7 @@ export default async function HomePage() {
 
         <section className="landing-cta">
           <div className="landing-container">
-            <div><span>Ready for the next move?</span><h2>Build a career signal—or a hiring engine—that compounds.</h2></div>
+            <div><span>Ready for the next move?</span><h2>Build a career signal or a hiring engine that compounds.</h2></div>
             <div><Link className="landing-primary-button is-light" href="/login?mode=register&role=candidate">Join as a candidate <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login?mode=register&role=company">Hire with {branding.productName}</Link></div>
           </div>
         </section>

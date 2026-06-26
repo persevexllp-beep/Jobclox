@@ -240,4 +240,5 @@ export interface EmailAlert {
   status: 'delivered' | 'failed' | 'pending';
   triggeredByEvent: string;
   createdAt: string;
+  isRead: boolean;
 }

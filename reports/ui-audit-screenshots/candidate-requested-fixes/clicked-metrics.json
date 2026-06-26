@@ -1,0 +1,112 @@
+[
+  [
+    "jobs",
+    {
+      "scrollWidth": 1365,
+      "clientWidth": 1365,
+      "appList": {
+        "oy": "visible"
+      },
+      "alerts": {
+        "oy": "visible"
+      },
+      "jobText": [
+        "$12 - $18 /hr",
+        "₹50000 /mo",
+        "$12 - $18 /hr",
+        "$12 - $18 /hr",
+        "₹50000 /mo",
+        "$12 - $18 /hr"
+      ],
+      "modeCount": [
+        {
+          "remote": 0,
+          "hybrid": 1
+        },
+        {
+          "remote": 1,
+          "hybrid": 0
+        },
+        {
+          "remote": 0,
+          "hybrid": 1
+        }
+      ],
+      "sourceText": [
+        "Internal job",
+        "Internal job",
+        "Internal job",
+        "Internal job",
+        "Internal job",
+        "Internal job",
+        "Internal job",
+        "Internal job"
+      ],
+      "body": "JobClox\nYour Career, On The Clock.\nCandidate\nHarsh Shukla\nharshshukla.be@gmail.com\nLogout\nJobs\nSaved\n1\nApplications\n18\nCareer Support\nProfile\nNotifications\n26\nB"
+    }
+  ],
+  [
+    "applications",
+    {
+      "scrollWidth": 1365,
+      "clientWidth": 1365,
+      "appList": {
+        "h": 443,
+        "sh": 1492,
+        "oy": "auto"
+      },
+      "alerts": {
+        "oy": "visible"
+      },
+      "jobText": [],
+      "modeCount": [],
+      "sourceText": [
+        "External job",
+        "Internal job",
+        "Internal job",
+        "Internal job",
+        "External job",
+        "Internal job",
+        "Internal job",
+        "Internal job"
+      ],
+      "body": "JobClox\nYour Career, On The Clock.\nCandidate\nHarsh Shukla\nharshshukla.be@gmail.com\nLogout\nYour application journey\nJobs\nSaved\n1\nApplications\n18\nCareer Support\nP"
+    }
+  ],
+  [
+    "notifications",
+    {
+      "scrollWidth": 1365,
+      "clientWidth": 1365,
+      "appList": {
+        "oy": "visible"
+      },
+      "alerts": {
+        "h": 492,
+        "sh": 3866,
+        "oy": "auto"
+      },
+      "jobText": [],
+      "modeCount": [],
+      "sourceText": [],
+      "body": "JobClox\nYour Career, On The Clock.\nCandidate\nHarsh Shukla\nharshshukla.be@gmail.com\nLogout\nUpdates that matter\nJobs\nSaved\n1\nApplications\n18\nCareer Support\nProfil"
+    }
+  ],
+  [
+    "profile",
+    {
+      "scrollWidth": 1365,
+      "clientWidth": 1365,
+      "appList": {
+        "oy": "visible"
+      },
+      "alerts": {
+        "oy": "visible"
+      },
+      "jobText": [],
+      "modeCount": [],
+      "sourceText": [],
+      "body": "JobClox\nYour Career, On The Clock.\nCandidate\nHarsh Shukla\nharshshukla.be@gmail.com\nLogout\nYour career signal\nJobs\nSaved\n1\nApplications\n18\nCareer Support\nProfile"
+    }
+  ]
+]

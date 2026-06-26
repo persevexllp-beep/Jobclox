@@ -61,6 +61,7 @@ type SalaryFilter = 'all' | 'lt10' | '10-20' | '20plus';
 type ExperienceFilter = 'all' | 'entry' | 'mid' | 'senior';
 type SortMode = 'match' | 'recent' | 'salary';
 type OnboardingStep = 'basics' | 'photo' | 'resume' | 'review' | 'skills' | 'preferences' | 'jobs' | 'apply';
+type EmailAlertBulkAction = 'mark-read' | 'mark-unread' | 'delete';
 
 const navItems: Array<{ id: WorkspaceMode; label: string; icon: AppIcon }> = [
   { id: 'jobs', label: 'Jobs', icon: Briefcase },
@@ -782,6 +783,26 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     }
   }, [apiFetch, showToast]);
 
+  const handleEmailAlertBulkAction = useCallback(async (ids: string[], action: EmailAlertBulkAction) => {
+    if (!ids.length) return;
+    const response = await apiFetch('/api/email-alerts/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, action }),
+    });
+
+    if (action === 'delete') {
+      const deletedIds = new Set<string>((response.deletedIds || ids) as string[]);
+      setEmailAlerts((current) => current.filter((alert) => !deletedIds.has(alert.id)));
+      if (activeEmailId && deletedIds.has(activeEmailId)) setActiveEmailId(null);
+      showToast('success', 'Notifications deleted', `${deletedIds.size} email alert${deletedIds.size === 1 ? '' : 's'} removed.`);
+      return;
+    }
+
+    const updatedAlerts = new Map<string, EmailAlert>((response.emailAlerts || []).map((alert: EmailAlert) => [alert.id, alert]));
+    setEmailAlerts((current) => current.map((alert) => updatedAlerts.get(alert.id) || alert));
+  }, [activeEmailId, apiFetch, showToast]);
+
   const renderOpportunityCard = (job: Job, index: number) => (
     <JobCard
       key={job.id}
@@ -814,12 +835,12 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
             />
           ) : (
             <>
-              {activeMode !== 'jobs' && (
-                <PageHeader
-                  title={workspaceTitles[activeMode]}
-                  className="candidate-context-header"
-                />
-              )}
+              <PageHeader
+                eyebrow={activeMode === 'jobs' ? 'Recommended jobs' : undefined}
+                title={activeMode === 'jobs' ? 'Your job search' : workspaceTitles[activeMode]}
+                description={activeMode === 'jobs' ? 'Browse roles ranked for your skills and profile readiness.' : undefined}
+                className="candidate-context-header"
+              />
               <TabNav<WorkspaceMode>
                 items={navItems.map((item) => ({
                   ...item,
@@ -834,6 +855,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                 activeId={activeMode}
                 onChange={setActiveMode}
                 ariaLabel="Candidate navigation"
+                className="candidate-primary-tabs"
               />
             </>
           )}
@@ -878,7 +900,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
             {!showOnboarding && <>
               {activeMode === 'jobs' && (
-                <React.Fragment key="jobs">
+                <div key="jobs" className="candidate-screen-view candidate-screen-view--jobs">
                   <div className="candidate-search-command">
                     <JobsFilterToolbar
                       filtersOpen={filtersOpen}
@@ -967,7 +989,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                     )}
                     </section>
                   </section>
-                </React.Fragment>
+                </div>
               )}
 
               {activeMode === 'applications' && (
@@ -1049,6 +1071,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                   emailAlerts={emailAlerts}
                   activeEmailId={activeEmailId}
                   setActiveEmailId={setActiveEmailId}
+                  onBulkAction={handleEmailAlertBulkAction}
                 />
               )}
             </>}
@@ -1455,8 +1478,12 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
   onViewDetails: () => void;
   onOpenDetails: () => void;
 }) {
-  const workMode = getWorkMode(job.location);
+  const workMode = getWorkMode(job);
+  const compensation = formatCompensation(job);
+  const locationText = job.location?.trim() || '';
+  const showLocation = Boolean(locationText && locationText.toLowerCase() !== workMode.label.toLowerCase());
   const visibleSkills = (fit.matchedSkills.length ? fit.matchedSkills : job.requirements).slice(0, 3);
+  const hasVisibleSkills = visibleSkills.length > 0;
   void profileStrength;
   void index;
   return (
@@ -1476,16 +1503,28 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
             <em title="Verified listing"><BadgeCheck className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Verified listing</span></em>
             <JobSourceBadge job={job} />
           </small>
-          <div className="eff-job-location-row eff-job-row-meta">
-            <span><MapPin className="h-3.5 w-3.5" />{job.location}</span>
+          {showLocation && (
+            <div className="eff-job-location-row eff-job-row-meta">
+              <span><MapPin className="h-3.5 w-3.5" />{locationText}</span>
+            </div>
+          )}
+          <div className={`eff-skill-alignment ${hasVisibleSkills ? '' : 'is-empty'}`} aria-label={hasVisibleSkills ? `${visibleSkills.length} top aligned skills` : 'Role skill signals are not listed'}>
+            {hasVisibleSkills ? visibleSkills.map((skill, skillIndex) => (
+                <span key={skill} className={fit.matchedSkills.includes(skill) ? 'is-matched' : ''}>
+                  <i aria-hidden="true"><b style={{ width: `${Math.max(58, fit.score - skillIndex * 9)}%` }} /></i>
+                  <em>{skill}</em>
+                </span>
+              )) : (
+                <span className="eff-skill-placeholder">
+                  <i aria-hidden="true"><b style={{ width: `${Math.max(46, Math.min(82, fit.score))}%` }} /></i>
+                  <em>Skills not specified</em>
+                </span>
+              )}
           </div>
-          <div className="eff-skill-alignment" aria-label={`${visibleSkills.length} top aligned skills`}>
-            {visibleSkills.map((skill, skillIndex) => (
-              <span key={skill} className={fit.matchedSkills.includes(skill) ? 'is-matched' : ''}>
-                <i aria-hidden="true"><b style={{ width: `${Math.max(58, fit.score - skillIndex * 9)}%` }} /></i>
-                <em>{skill}</em>
-              </span>
-            ))}
+          <div className="eff-job-meta-strip" aria-label="Job attributes">
+            <span>{job.jobType || 'Role type open'}</span>
+            <span>{job.experience || 'Experience open'}</span>
+            <span className="eff-posted-chip">{formatPostedDate(job.createdAt)}</span>
           </div>
         </div>
         <div className="eff-job-row-signals">
@@ -1495,8 +1534,11 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         </div>
       </div>
       <div className="eff-job-value-row">
-        <span><small>Compensation</small><strong>{job.salary || 'Salary on request'}</strong></span>
-        <span><small>Work style</small><strong>{workMode.label}</strong></span>
+        <span className="eff-compensation-chip">
+          <small>{compensation.label}</small>
+          <strong>{compensation.value}</strong>
+          <em>{compensation.cadence}</em>
+        </span>
       </div>
       <div className="eff-job-card-footer">
         <button type="button" className="eff-job-disclosure" onClick={() => { onViewDetails(); onOpenDetails(); }}>
@@ -1506,7 +1548,7 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         </button>
         <div className="eff-job-actions">
           <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className={`eff-save-job ${saved ? 'is-saved' : ''}`} aria-label={saved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}><Bookmark className="h-4 w-4" />{saved ? 'Saved' : 'Save'}</button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : job.isExternal ? `Apply via ${branding.productName}` : 'Apply now'}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onApply(); }} className="eff-apply-job" disabled={applied}>{applied ? 'Applied' : 'Apply now'}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></button>
         </div>
       </div>
     </article>
@@ -1518,7 +1560,7 @@ function CompanyBadge({ company }: { company: string }) {
 }
 
 function JobSourceBadge({ job }: { job: Job }) {
-  const label = job.isExternal ? (job.source === 'jsearch' ? 'JSearch' : job.source === 'adzuna' ? 'Adzuna' : job.source || 'External') : 'Internal';
+  const label = job.isExternal ? 'External job' : 'Internal job';
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${job.isExternal ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'}`}>{label}</span>;
 }
 
@@ -1564,7 +1606,7 @@ function CandidateInsightsRail({ selectedJob, selectedFit, applications, profile
             </div>
             <div className="candidate-rail-actions">
               <button type="button" onClick={onOpenDetails}>Details</button>
-              <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : selectedJob.isExternal ? `Apply via ${branding.productName}` : 'Apply now'}</button>
+              <button type="button" onClick={onApply} disabled={applied}>{applied ? 'Applied' : 'Apply now'}</button>
               <button type="button" onClick={onSave}>{saved ? 'Saved' : 'Save'}</button>
             </div>
           </>
@@ -1629,6 +1671,7 @@ function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applie
   const modalRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<Element | null>(null);
   const parsedDescription = selectedJob ? parseJobDescription(selectedJob.description) : null;
+  const compensation = selectedJob ? formatCompensation(selectedJob) : null;
 
   useEffect(() => {
     if (!selectedJob) return;
@@ -1713,9 +1756,15 @@ function JobDetailsDrawer({ selectedJob, selectedFit, similarJobs, saved, applie
 
           <div className="eff-drawer-scroll">
             <section className="eff-drawer-hero">
-              <div className="eff-salary-highlight">{selectedJob.salary || 'Compensation not listed'}</div>
+              {compensation && (
+                <div className="eff-salary-highlight">
+                  <small>{compensation.label}</small>
+                  <strong>{compensation.value}</strong>
+                  <em>{compensation.cadence}</em>
+                </div>
+              )}
               <div className="eff-drawer-badges">
-                <span className={`eff-work-mode ${getWorkMode(selectedJob.location).tone}`}>{getWorkMode(selectedJob.location).label}</span>
+                <span className={`eff-work-mode ${getWorkMode(selectedJob).tone}`}>{getWorkMode(selectedJob).label}</span>
                 {isRecentlyPosted(selectedJob.createdAt) && <span className="eff-job-flag">Recently Posted</span>}
                 {getDaysLeft(selectedJob.deadline) !== null && <span className="eff-job-flag">Deadline {getDaysLeft(selectedJob.deadline) === 0 ? 'Today' : `${getDaysLeft(selectedJob.deadline)}d`}</span>}
               </div>
@@ -1831,6 +1880,7 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
         <div className="eff-saved-grid">
           {sorted.map((job) => {
             const daysLeft = getDaysLeft(job.deadline);
+            const compensation = formatCompensation(job);
             return (
               <article key={job.id} className="eff-saved-card">
                 <div>
@@ -1843,12 +1893,16 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
                 </div>
                 <div className="eff-job-skills">
                   <span>{job.jobType}</span>
-                  <span>{job.salary}</span>
+                  <span className="eff-saved-compensation">
+                    <small>{compensation.label}</small>
+                    <strong>{compensation.value}</strong>
+                    <em>{compensation.cadence}</em>
+                  </span>
                   {daysLeft !== null && <span className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft} days left`}</span>}
                 </div>
                 <div className="eff-job-actions">
                   <button type="button" onClick={() => onRemove(job.id)}>Remove</button>
-                  <button type="button" disabled={hasApplied(job.id)} onClick={() => onApply(job)}>{hasApplied(job.id) ? 'Applied' : job.isExternal ? `Apply via ${branding.productName}` : 'Apply'}</button>
+                  <button type="button" disabled={hasApplied(job.id)} onClick={() => onApply(job)}>{hasApplied(job.id) ? 'Applied' : 'Apply'}</button>
                 </div>
               </article>
             );
@@ -1869,7 +1923,11 @@ function getDaysLeft(deadline?: string) {
 function formatPostedDate(createdAt: string) {
   const created = new Date(createdAt).getTime();
   if (Number.isNaN(created)) return 'Recently posted';
-  const days = Math.max(0, Math.floor((Date.now() - created) / 86400000));
+  const diff = Math.max(0, Date.now() - created);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (hours < 1) return 'Posted just now';
+  if (hours < 24) return `Posted ${hours} hr${hours === 1 ? '' : 's'} ago`;
   if (days === 0) return 'Posted today';
   if (days === 1) return 'Posted 1 day ago';
   if (days < 30) return `Posted ${days} days ago`;
@@ -1882,10 +1940,64 @@ function isRecentlyPosted(createdAt: string) {
   return (Date.now() - created) / 86400000 <= 7;
 }
 
-function getWorkMode(location: string) {
-  if (/hybrid/i.test(location)) return { label: 'Hybrid', tone: 'hybrid' };
-  if (/remote/i.test(location)) return { label: 'Remote', tone: 'remote' };
+function getWorkMode(job: Job) {
+  const value = job.workMode || job.location;
+  if (/hybrid/i.test(value)) return { label: 'Hybrid', tone: 'hybrid' };
+  if (/remote/i.test(value)) return { label: 'Remote', tone: 'remote' };
   return { label: 'Onsite', tone: 'onsite' };
+}
+
+function formatCompensation(job: Job) {
+  const raw = job.salary?.trim() || '';
+  const isInternship = /intern|trainee|apprentice/i.test(`${job.title} ${job.jobType}`);
+  const label = isInternship ? 'Stipend' : 'Salary';
+  if (!raw || /not\s+disclosed|discussable|on\s+request|tbd/i.test(raw)) {
+    return { label, value: 'Not disclosed', cadence: 'Basis not shared' };
+  }
+
+  const hasCurrencyOrUnit = /[$€£₹]|usd|inr|rs\.?|lpa|k\b|lakh|lac|crore|ctc|per\s+hour|per\s+hr|hourly|monthly|per\s+month|annually|per\s+year|\/\s*(hr|mo|yr)/i.test(raw);
+  const numericOnly = /^[\d\s,.-]+$/.test(raw);
+  if (numericOnly && !hasCurrencyOrUnit) {
+    return { label, value: 'Not disclosed', cadence: 'Amount needs currency' };
+  }
+
+  const compact = raw
+    .replace(/\bUSD\s*\$/ig, '$')
+    .replace(/\bINR\s*₹/ig, '₹')
+    .replace(/\bINR\s*Rs\.?/ig, '₹')
+    .replace(/\bcompensation\b:?/ig, '')
+    .replace(/\bper\s+hour\b/ig, '/hr')
+    .replace(/\bper\s+hr\b/ig, '/hr')
+    .replace(/\bper\s+month\b/ig, '/mo')
+    .replace(/\bmonthly\b/ig, '/mo')
+    .replace(/\bannually\b|\bper\s+year\b/ig, '/yr')
+    .replace(/\brupees?\b/ig, '₹')
+    .replace(/\binr\b/ig, '₹')
+    .replace(/\busd\b/ig, '$')
+    .replace(/\$\s+\$/g, '$')
+    .replace(/₹\s+₹/g, '₹')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const cadence = /\/\s*hr|\bper\s+hour\b|\bhourly\b/i.test(compact)
+    ? 'Hourly'
+    : /\/\s*mo|\bper\s+month\b|\bmonthly\b/i.test(compact)
+      ? 'Monthly'
+      : /\/\s*yr|\bannually\b|\bper\s+year\b|\blpa\b|\bctc\b/i.test(compact)
+        ? 'Annual'
+        : isInternship
+          ? 'Monthly typical'
+          : 'Annual typical';
+  const value = compact
+    .replace(/\bper\s+hour\b|\bhourly\b/ig, '/hr')
+    .replace(/\bper\s+month\b|\bmonthly\b/ig, '/mo')
+    .replace(/\bannually\b|\bper\s+year\b/ig, '/yr');
+  return {
+    label,
+    value: value.length > 28 ? `${value.slice(0, 27).trim()}...` : value,
+    cadence,
+  };
 }
 
 function analyzeJobFit(job: Job, candidate: {
@@ -2082,7 +2194,7 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
   }));
 
   return (
-    <section className="eff-full-panel application-command-center">
+    <section className="eff-full-panel application-command-center candidate-applications-panel">
       <SectionHeader eyebrow="Applications" title="Application tracker" action={<button type="button" className="eff-action" onClick={onExplore}>Find more jobs</button>} />
       {applications.length === 0 ? (
         <EmptyCompact icon={FileText} title="No applications yet" body="Apply to a strong-match role to begin tracking your progress." actionLabel="Find a role" onAction={onExplore} />
@@ -2136,12 +2248,13 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
 }
 
 function ApplicationSourceBadge({ source }: { source?: Application['source'] }) {
-  const normalized = source || 'INTERNAL';
-  const label = normalized === 'JSEARCH' ? 'JSearch' : normalized === 'EXTERNAL' ? 'External' : normalized === 'PARTNER' ? 'Partner' : 'Internal';
-  return <span className={`application-source-badge is-${normalized.toLowerCase()}`}>{label}</span>;
+  const isExternal = source === 'JSEARCH' || source === 'EXTERNAL' || source === 'PARTNER';
+  const label = isExternal ? 'External job' : 'Internal job';
+  return <span className={`application-source-badge ${isExternal ? 'is-external' : 'is-internal'}`}>{label}</span>;
 }
 
 function ApplicationDetailView({ app }: { app: Application }) {
+  const stage = getApplicationStage(app.status);
   return (
     <aside className="application-detail-view">
       <header>
@@ -2149,8 +2262,19 @@ function ApplicationDetailView({ app }: { app: Application }) {
         <h3>{app.jobTitle}</h3>
         <p>{app.companyName}</p>
       </header>
+      <div className="application-priority-strip">
+        <StatusPill status={app.status} />
+        <span>
+          <strong>{stage}</strong>
+          <small>Current stage</small>
+        </span>
+        <span>
+          <strong>{app.resumeUsed || 'Current profile resume'}</strong>
+          <small>Resume used</small>
+        </span>
+      </div>
       <div className="application-detail-grid">
-        <InfoTile label="Source" value={app.source === 'JSEARCH' ? 'JSearch' : app.source || 'Internal'} />
+        <InfoTile label="Source" value={app.source === 'JSEARCH' || app.source === 'EXTERNAL' || app.source === 'PARTNER' ? 'External job' : 'Internal job'} />
         <InfoTile label="Applied date" value={new Date(app.appliedAt).toLocaleString()} />
         <InfoTile label="Status" value={formatApplicationStatus(app.status)} />
         <InfoTile label="Resume used" value={app.resumeUsed || 'Current profile resume'} />
@@ -2281,7 +2405,7 @@ function ProfileEfficiency(props: {
   ].filter(Boolean) as string[];
 
   return (
-    <section className="eff-profile-grid">
+    <section className="eff-profile-grid candidate-profile-panel">
       <aside className="eff-profile-summary">
         <p>Job readiness</p>
         <strong>{props.profileStrength}%</strong>
@@ -2393,50 +2517,119 @@ function ProfileEfficiency(props: {
   );
 }
 
-function SignalCenter({ emailAlerts, activeEmailId, setActiveEmailId }: {
+function SignalCenter({ emailAlerts, activeEmailId, setActiveEmailId, onBulkAction }: {
   emailAlerts: EmailAlert[];
   activeEmailId: string | null;
   setActiveEmailId: (id: string | null) => void;
+  onBulkAction: (ids: string[], action: EmailAlertBulkAction) => Promise<void>;
 }) {
+  const [selectedAlertIds, setSelectedAlertIds] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState<EmailAlertBulkAction | null>(null);
+  const selectedIds = Array.from(selectedAlertIds);
+  const allVisibleSelected = emailAlerts.length > 0 && emailAlerts.every((alert) => selectedAlertIds.has(alert.id));
   const groupedAlerts = emailAlerts.reduce<Record<string, EmailAlert[]>>((groups, alert) => {
     const key = new Date(alert.createdAt).toDateString() === new Date().toDateString() ? 'Today' : 'Earlier';
     groups[key] = [...(groups[key] || []), alert];
     return groups;
   }, {});
+  const runBulkAction = async (ids: string[], action: EmailAlertBulkAction) => {
+    if (!ids.length) return;
+    setBulkBusy(action);
+    try {
+      await onBulkAction(ids, action);
+      if (action === 'delete') {
+        setSelectedAlertIds((current) => {
+          const next = new Set(current);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    } finally {
+      setBulkBusy(null);
+    }
+  };
+  const toggleSelection = (id: string) => {
+    setSelectedAlertIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    setSelectedAlertIds(allVisibleSelected ? new Set() : new Set(emailAlerts.map((alert) => alert.id)));
+  };
 
   return (
-    <section className="eff-full-panel">
+    <section className="eff-full-panel candidate-signals-panel">
       <SectionHeader eyebrow="Notifications" title="Grouped updates and career signals" />
       {emailAlerts.length === 0 ? (
         <EmptyCompact icon={Mail} title="No alerts yet" body="Matched roles and application updates will appear here." />
       ) : (
-        <div className="eff-alert-list">
-          {Object.entries(groupedAlerts).map(([group, alerts]) => (
-            <div key={group} className="eff-alert-group">
-              <p>{group}</p>
-              {alerts.map((alert) => (
-                (() => {
-                  const preview = formatEmailAlertPreview(alert);
-                  const isOpen = activeEmailId === alert.id;
-                  return (
-                    <button key={alert.id} type="button" onClick={() => setActiveEmailId(isOpen ? null : alert.id)} className={isOpen ? 'is-open' : ''}>
-                      <Bell className="h-4 w-4 text-cyan-500" />
-                      <span>
-                        <strong>{alert.subject}</strong>
-                        <small>{new Date(alert.createdAt).toLocaleString()} - {preview.statusLabel}</small>
-                        <p>{isOpen ? preview.preview : preview.summary}</p>
-                      </span>
-                      <em>{isOpen ? 'Read' : 'Unread'}</em>
-                    </button>
-                  );
-                })()
-              ))}
+        <>
+          <div className="eff-alert-toolbar">
+            <label>
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
+              <span>{selectedIds.length ? `${selectedIds.length} selected` : 'Select all'}</span>
+            </label>
+            <div>
+              <button type="button" disabled={!selectedIds.length || Boolean(bulkBusy)} onClick={() => void runBulkAction(selectedIds, 'mark-read')}>Mark read</button>
+              <button type="button" disabled={!selectedIds.length || Boolean(bulkBusy)} onClick={() => void runBulkAction(selectedIds, 'mark-unread')}>Mark unread</button>
+              <button type="button" disabled={!selectedIds.length || Boolean(bulkBusy)} onClick={() => void runBulkAction(selectedIds, 'delete')}>Delete</button>
             </div>
-          ))}
-        </div>
+          </div>
+          <div className="eff-alert-list">
+            {Object.entries(groupedAlerts).map(([group, alerts]) => (
+              <div key={group} className="eff-alert-group">
+                <p>{group}</p>
+                {alerts.map((alert) => (
+                  (() => {
+                    const preview = formatEmailAlertPreview(alert);
+                    const isOpen = activeEmailId === alert.id;
+                    const isUnread = !alert.isRead;
+                    const isSelected = selectedAlertIds.has(alert.id);
+                    const handleToggle = () => {
+                      setActiveEmailId(isOpen ? null : alert.id);
+                      if (!isOpen && isUnread) void runBulkAction([alert.id], 'mark-read');
+                    };
+                    return (
+                      <article key={alert.id} className={`eff-alert-row ${isOpen ? 'is-open' : ''} ${isUnread ? 'is-unread' : 'is-read'} ${isSelected ? 'is-selected' : ''}`}>
+                        <label className="eff-alert-select" aria-label={`Select ${alert.subject}`}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleSelection(alert.id)} />
+                        </label>
+                        <button type="button" onClick={handleToggle} className="eff-alert-content">
+                          <Bell className="h-4 w-4 text-cyan-500" />
+                          <span>
+                            <strong>{alert.subject}</strong>
+                            <small>{preview.statusLabel}</small>
+                            <p>{isOpen ? preview.preview : preview.summary}</p>
+                          </span>
+                          <time dateTime={alert.createdAt}>{formatAlertReceivedTime(alert.createdAt)}</time>
+                          {isUnread && <i aria-label="Unread alert" />}
+                        </button>
+                      </article>
+                    );
+                  })()
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </section>
   );
+}
+
+function formatAlertReceivedTime(createdAt: string) {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return 'Recently';
+  const diff = Math.max(0, Date.now() - created.getTime());
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return created.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
 }
 
 function FlowInput({ label, value, onChange, placeholder, icon: Icon, readOnly }: {
