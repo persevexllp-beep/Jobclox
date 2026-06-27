@@ -16053,6 +16053,502 @@ html.dark .auth-alert.success {
 }
 
 /* ==========================================
+   MOBILE APP-SHELL REFINEMENT
+   Interaction-first phone layout. Desktop remains governed by the rules above.
+   ========================================== */
+.pvx-mobile-account,
+.candidate-mobile-nav-shell,
+.mobile-filter-chips,
+.eff-apply-filters {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  html,
+  body { overflow-x: clip; }
+
+  .pvx-header {
+    position: sticky !important;
+    top: 0;
+    z-index: 60;
+    min-height: 58px;
+    padding: 7px 12px !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 68%, transparent);
+    background: color-mix(in srgb, var(--pvx-bg-canvas) 92%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(1.25);
+  }
+
+  .pvx-header-inner { min-height: 44px; }
+  .pvx-logo .pvx-brand-logo-subline { display: none !important; }
+  .pvx-logo .pvx-brand-logo { gap: 8px !important; }
+
+  .pvx-header-actions > .pvx-icon-button,
+  .pvx-header-actions > .pvx-role-pill,
+  .pvx-header-actions > .pvx-user-lockup,
+  .pvx-header-actions > .pvx-logout { display: none !important; }
+
+  .pvx-header-actions .relative .pvx-icon-button {
+    display: inline-grid !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    place-items: center;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+  }
+
+  .pvx-mobile-account { position: relative; display: block; }
+
+  .pvx-mobile-menu-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 58px;
+    height: 40px;
+    padding: 3px 7px 3px 3px;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 74%, transparent);
+    border-radius: 999px;
+    color: var(--pvx-text-primary);
+    background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent);
+  }
+
+  .pvx-mobile-menu-avatar,
+  .pvx-mobile-menu-avatar-fallback {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+  }
+
+  .pvx-mobile-account-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 90;
+    width: min(88vw, 320px);
+    overflow: hidden;
+    padding: 8px;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent);
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--pvx-bg-surface) 97%, transparent);
+    box-shadow: 0 18px 50px rgba(15, 23, 42, .18);
+    transform-origin: top right;
+    animation: pvx-mobile-menu-in 180ms ease-out;
+  }
+
+  .pvx-mobile-account-identity {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 3px 10px;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 62%, transparent);
+  }
+
+  .pvx-mobile-account-avatar,
+  .pvx-mobile-account-avatar-fallback {
+    grid-row: 1 / span 2;
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 13px !important;
+  }
+
+  .pvx-mobile-account-identity > span:not(.pvx-mobile-role) { min-width: 0; }
+  .pvx-mobile-account-identity strong,
+  .pvx-mobile-account-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pvx-mobile-account-identity strong { font-size: .88rem; color: var(--pvx-text-primary); }
+  .pvx-mobile-account-identity small { margin-top: 2px; font-size: .72rem; color: var(--pvx-text-muted); }
+
+  .pvx-mobile-role {
+    grid-column: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    color: var(--pvx-accent);
+    font-size: .68rem;
+    font-weight: 750;
+  }
+
+  .pvx-mobile-menu-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 50px;
+    padding: 9px 10px;
+    border-radius: 13px;
+    color: var(--pvx-text-primary);
+    text-align: left;
+  }
+
+  .pvx-mobile-menu-row > span { display: flex; align-items: center; gap: 10px; }
+  .pvx-mobile-menu-row small { color: var(--pvx-text-muted); font-size: .72rem; }
+  .pvx-mobile-menu-row.is-danger { grid-template-columns: minmax(0, 1fr) auto; color: var(--pvx-danger, #dc2626); }
+
+  .pvx-notification-menu {
+    position: fixed !important;
+    inset: 66px 10px auto !important;
+    width: auto !important;
+    max-height: calc(100dvh - 84px) !important;
+    border-radius: 20px !important;
+  }
+
+  .career-flow-os.efficiency-os > main {
+    padding-inline: 12px !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .career-flow-os .candidate-primary-tabs { display: none !important; }
+
+  .candidate-mobile-nav-shell {
+    position: fixed;
+    z-index: 70;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 8px;
+    display: block;
+  }
+
+  .candidate-mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    min-height: 64px;
+    padding: 5px;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 74%, transparent);
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--pvx-bg-surface) 94%, transparent);
+    box-shadow: 0 14px 42px rgba(15, 23, 42, .16);
+    backdrop-filter: blur(18px) saturate(1.35);
+  }
+
+  .candidate-mobile-nav > button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 52px;
+    border-radius: 17px;
+    color: var(--pvx-text-muted);
+    transition: color 160ms ease, background-color 160ms ease;
+  }
+
+  .candidate-mobile-nav > button.is-active {
+    color: var(--pvx-accent);
+    background: color-mix(in srgb, var(--pvx-accent) 10%, transparent);
+  }
+
+  .candidate-mobile-nav button > span { position: relative; display: inline-grid; place-items: center; }
+
+  .candidate-mobile-nav button em {
+    position: absolute;
+    top: -6px;
+    left: calc(100% - 3px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border: 2px solid var(--pvx-bg-surface);
+    border-radius: 999px;
+    background: var(--pvx-accent);
+    color: #fff;
+    font-size: .58rem;
+    font-style: normal;
+    line-height: 12px;
+  }
+
+  .candidate-mobile-nav button small { font-size: .61rem; font-weight: 750; }
+
+  .candidate-mobile-more-menu {
+    display: grid;
+    gap: 5px;
+    width: min(78vw, 300px);
+    margin: 0 0 8px auto;
+    padding: 8px;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 74%, transparent);
+    border-radius: 18px;
+    background: var(--pvx-bg-surface);
+    box-shadow: 0 16px 42px rgba(15, 23, 42, .18);
+    animation: pvx-mobile-menu-in 180ms ease-out;
+  }
+
+  .candidate-mobile-more-menu button {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 8px;
+    border-radius: 12px;
+    text-align: left;
+    color: var(--pvx-text-primary);
+  }
+
+  .candidate-mobile-more-menu button > svg {
+    box-sizing: content-box;
+    padding: 8px;
+    border-radius: 11px;
+    color: var(--pvx-accent);
+    background: color-mix(in srgb, var(--pvx-accent) 10%, transparent);
+  }
+
+  .candidate-mobile-more-menu strong,
+  .candidate-mobile-more-menu small { display: block; }
+  .candidate-mobile-more-menu strong { font-size: .82rem; }
+  .candidate-mobile-more-menu small { margin-top: 2px; color: var(--pvx-text-muted); font-size: .68rem; }
+
+  .career-flow-os .eff-header { margin-bottom: 8px !important; padding-top: 5px !important; }
+  .career-flow-os .candidate-context-header .pvx-page-header-eyebrow,
+  .career-flow-os .candidate-context-header .pvx-page-header-description { display: none !important; }
+  .career-flow-os .candidate-context-header .pvx-page-header-title { font-size: 1.18rem !important; line-height: 1.25 !important; letter-spacing: -.02em; }
+
+  .career-flow-os .candidate-search-command { gap: 8px !important; margin-bottom: 16px !important; }
+  .career-flow-os .eff-filter-toolbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .career-flow-os .eff-search-toolbar {
+    grid-column: 1 !important;
+    min-height: 46px !important;
+    padding-inline: 13px !important;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent) !important;
+    border-radius: 15px !important;
+    background: var(--pvx-bg-surface) !important;
+    box-shadow: 0 5px 16px rgba(15, 23, 42, .045);
+  }
+
+  .career-flow-os .eff-filter-toolbar > .eff-toolbar-toggle { display: none !important; }
+
+  .mobile-filter-chips {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 1px 1px 3px;
+    scrollbar-width: none;
+    scroll-snap-type: inline proximity;
+  }
+
+  .mobile-filter-chips::-webkit-scrollbar { display: none; }
+  .mobile-filter-chips button,
+  .mobile-filter-chips select {
+    min-width: max-content;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 82%, transparent);
+    border-radius: 999px;
+    background: var(--pvx-bg-surface);
+    color: var(--pvx-text-secondary);
+    font-size: .73rem;
+    font-weight: 700;
+    scroll-snap-align: start;
+  }
+
+  .mobile-filter-chips button { display: inline-flex; align-items: center; gap: 6px; }
+  .mobile-filter-chips button.is-active {
+    border-color: color-mix(in srgb, var(--pvx-accent) 45%, var(--pvx-border-default));
+    background: color-mix(in srgb, var(--pvx-accent) 10%, var(--pvx-bg-surface));
+    color: var(--pvx-accent);
+  }
+
+  .career-flow-os .eff-filter-drawer {
+    position: fixed;
+    z-index: 82;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 8px;
+    max-height: min(76dvh, 640px);
+    overflow-y: auto;
+    padding: 18px 14px 14px !important;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent) !important;
+    border-radius: 24px !important;
+    background: var(--pvx-bg-surface) !important;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, .24) !important;
+    animation: pvx-mobile-sheet-in 220ms ease-out;
+  }
+
+  .career-flow-os .eff-filter-drawer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .career-flow-os .eff-filter-drawer .eff-filter-field:first-child,
+  .career-flow-os .eff-filter-drawer .eff-apply-filters { grid-column: 1 / -1; }
+  .career-flow-os .eff-filter-drawer :is(input, select) { min-height: 44px !important; border-radius: 12px !important; }
+  .career-flow-os .eff-filter-drawer .eff-reset-filters,
+  .career-flow-os .eff-filter-drawer .eff-apply-filters {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px !important;
+    border-radius: 13px;
+    font-size: .78rem;
+    font-weight: 800;
+  }
+  .career-flow-os .eff-filter-drawer .eff-apply-filters { background: var(--pvx-accent); color: #fff; }
+
+  .candidate-coach-toggle { min-height: 46px !important; padding: 7px 10px !important; border-radius: 14px !important; box-shadow: none !important; }
+  .candidate-coach-toggle small { display: none; }
+  .candidate-coach-toggle-icon { width: 30px !important; height: 30px !important; border-radius: 10px !important; }
+
+  .career-flow-os .candidate-feed-heading { display: flex !important; align-items: flex-end !important; margin: 4px 2px 8px !important; }
+  .career-flow-os .candidate-feed-heading > div:first-child > span { display: none !important; }
+  .career-flow-os .candidate-feed-heading h1 { font-size: 1.23rem !important; line-height: 1.25 !important; }
+  .career-flow-os .candidate-feed-heading p { margin-top: 2px !important; font-size: .76rem !important; }
+  .career-flow-os .candidate-feed-heading > div:last-child { min-width: auto !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+  .career-flow-os .candidate-feed-heading > div:last-child strong,
+  .career-flow-os .candidate-feed-heading > div:last-child small { display: inline; font-size: .7rem !important; color: var(--pvx-text-muted); }
+
+  .career-flow-os .candidate-wide-job-feed {
+    gap: 0 !important;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 72%, transparent);
+    border-radius: 18px;
+    background: var(--pvx-bg-surface);
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card,
+  html.dark .career-flow-os .candidate-wide-job-feed .eff-job-card {
+    padding: 14px 12px !important;
+    border: 0 !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 64%, transparent) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-job-card:last-child { border-bottom: 0 !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-main { grid-template-columns: 40px minmax(0, 1fr) auto !important; gap: 9px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-copy { min-width: 0; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-head { display: block !important; padding-right: 2px; }
+  .career-flow-os .candidate-wide-job-feed .eff-work-mode { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-company-line { margin-top: 2px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-company-line > span:last-of-type { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .career-flow-os .candidate-wide-job-feed .eff-skill-alignment { display: none !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+    margin-top: 7px !important;
+    overflow: hidden;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip span {
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--pvx-text-muted);
+    font-size: .68rem !important;
+    white-space: nowrap !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip span + span::before { content: '·'; margin-right: 5px; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-signals { grid-column: 3 !important; grid-row: 1 !important; align-self: start; margin: 0 !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter,
+  .career-flow-os .candidate-wide-job-feed .eff-match-orbit {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: 48px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    gap: 3px !important;
+    padding: 0 7px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, var(--pvx-success) 11%, transparent) !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter small { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter strong { color: var(--pvx-success); font-size: .72rem !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter i { width: 5px !important; height: 5px !important; border-radius: 50% !important; background: var(--pvx-success) !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter i b { display: none !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-value-row { display: block !important; margin: 8px 0 0 49px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip {
+    display: flex !important;
+    width: fit-content !important;
+    min-height: 0 !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip small { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip strong,
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip em { font-size: .72rem !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin: 10px 0 0 49px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid color-mix(in srgb, var(--pvx-border-default) 52%, transparent) !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-job-disclosure {
+    width: auto !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--pvx-accent);
+    font-size: 0 !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-job-disclosure::before { content: 'Details'; font-size: .73rem; font-weight: 800; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-disclosure-mark { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions { display: flex !important; gap: 7px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions button { width: auto !important; min-height: 36px !important; border-radius: 11px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-save-job { width: 38px !important; min-width: 38px !important; padding: 0 !important; overflow: hidden; font-size: 0 !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-save-job svg { width: 17px; height: 17px; }
+  .career-flow-os .candidate-wide-job-feed .eff-apply-job { min-width: 92px !important; padding: 0 13px !important; }
+
+  .career-flow-os .candidate-applications-panel .eff-pipeline-summary { display: flex !important; gap: 7px !important; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
+  .career-flow-os .candidate-applications-panel .eff-pipeline-summary::-webkit-scrollbar { display: none; }
+  .career-flow-os .candidate-applications-panel .eff-pipeline-summary button { flex: 0 0 auto; min-width: 104px; min-height: 52px !important; padding: 8px 10px !important; border-radius: 13px !important; }
+  .application-mobile-list { gap: 0 !important; overflow: hidden; border: 1px solid color-mix(in srgb, var(--pvx-border-default) 72%, transparent); border-radius: 17px; background: var(--pvx-bg-surface); }
+  .application-mobile-card { border: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 62%, transparent) !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .application-mobile-card:last-child { border-bottom: 0 !important; }
+  .application-mobile-card-button { padding: 13px 12px !important; }
+
+  .auth-product-grid { padding-top: 10px !important; }
+  .auth-hero-panel h1 { max-width: 14ch !important; font-size: clamp(1.72rem, 8vw, 2.2rem) !important; }
+  .auth-hero-copy { margin-top: 5px !important; font-size: .86rem !important; }
+  .auth-journey { display: flex !important; gap: 8px !important; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .auth-journey::-webkit-scrollbar { display: none; }
+  .auth-journey > div { flex: 0 0 auto; min-height: 38px !important; padding: 5px 10px 5px 6px !important; border: 0 !important; border-radius: 999px !important; background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent) !important; }
+  .auth-journey > div span { width: 28px !important; height: 28px !important; border-radius: 50% !important; }
+  .auth-card { padding: 12px 2px 18px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+
+  @keyframes pvx-mobile-menu-in {
+    from { opacity: 0; transform: translateY(-5px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes pvx-mobile-sheet-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (max-width: 390px) {
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-footer,
+  .career-flow-os .candidate-wide-job-feed .eff-job-value-row { margin-left: 0 !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-company-line .rounded-full { display: none !important; }
+  .candidate-mobile-nav button small { font-size: .57rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pvx-mobile-account-menu,
+  .candidate-mobile-more-menu,
+  .career-flow-os .eff-filter-drawer { animation: none !important; }
+}
+
+/* ==========================================
    MOBILE DENSITY REFINEMENT LOCK
    Final mobile-first compression for candidate jobs, applications, navbar,
    and auth so phone layouts stay flat, rectangular, and single-axis.
@@ -16521,5 +17017,147 @@ html.dark .auth-alert.success {
 
   .application-mobile-card-button {
     padding: 13px;
+  }
+}
+
+/* Final mobile cascade: keep list-density and app-shell behavior above legacy locks. */
+@media (max-width: 760px) {
+  .career-flow-os .candidate-wide-job-feed {
+    gap: 0 !important;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--pvx-border-default) 72%, transparent);
+    border-radius: 18px;
+    background: var(--pvx-bg-surface);
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card,
+  html.dark .career-flow-os .candidate-wide-job-feed .eff-job-card {
+    padding: 14px 12px !important;
+    border: 0 !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 64%, transparent) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card:last-child { border-bottom: 0 !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-main { grid-template-columns: 40px minmax(0, 1fr) auto !important; gap: 9px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-head { display: block !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-work-mode,
+  .career-flow-os .candidate-wide-job-feed .eff-skill-alignment { display: none !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+    margin-top: 7px !important;
+    overflow: hidden;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip span {
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--pvx-text-muted);
+    font-size: .68rem !important;
+    white-space: nowrap !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-meta-strip span + span::before { content: '·'; margin-right: 5px; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-row-signals { grid-column: 3 !important; grid-row: 1 !important; align-self: start; margin: 0 !important; }
+
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter,
+  .career-flow-os .candidate-wide-job-feed .eff-match-orbit {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: 48px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    gap: 3px !important;
+    padding: 0 7px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, var(--pvx-success) 11%, transparent) !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter small { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter strong { grid-column: auto; grid-row: auto; color: var(--pvx-success); font-size: .72rem !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter i { grid-column: auto; grid-row: auto; width: 5px !important; height: 5px !important; border-radius: 50% !important; background: var(--pvx-success) !important; }
+  .career-flow-os .candidate-wide-job-feed .candidate-match-meter i b { display: none !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-value-row { display: block !important; margin: 8px 0 0 49px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip {
+    display: flex !important;
+    width: fit-content !important;
+    min-height: 0 !important;
+    grid-template-columns: none !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip small { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip strong,
+  .career-flow-os .candidate-wide-job-feed .eff-compensation-chip em { font-size: .72rem !important; }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-footer {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin: 10px 0 0 49px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid color-mix(in srgb, var(--pvx-border-default) 52%, transparent) !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-disclosure {
+    width: auto !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--pvx-accent);
+    font-size: 0 !important;
+  }
+
+  .career-flow-os .candidate-wide-job-feed .eff-job-disclosure::before { content: 'Details'; font-size: .73rem; font-weight: 800; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-disclosure-mark { display: none !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions { display: flex !important; grid-template-columns: none !important; gap: 7px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-job-actions button { width: auto !important; min-height: 36px !important; border-radius: 11px !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-save-job { width: 38px !important; min-width: 38px !important; padding: 0 !important; overflow: hidden; font-size: 0 !important; }
+  .career-flow-os .candidate-wide-job-feed .eff-apply-job { min-width: 92px !important; padding: 0 13px !important; }
+
+  .career-flow-os .candidate-applications-panel .eff-pipeline-summary { display: flex !important; grid-template-columns: none !important; overflow-x: auto; }
+  .career-flow-os .candidate-applications-panel .eff-pipeline-summary button { flex: 0 0 auto; min-width: 104px; min-height: 52px !important; padding: 8px 10px !important; border-radius: 13px !important; }
+  .application-mobile-list { gap: 0 !important; overflow: hidden; border: 1px solid color-mix(in srgb, var(--pvx-border-default) 72%, transparent); border-radius: 17px; background: var(--pvx-bg-surface); }
+  .application-mobile-card { border: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 62%, transparent) !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+
+  .auth-journey { display: flex !important; grid-template-columns: none !important; gap: 8px !important; overflow-x: auto; }
+  .auth-journey > div { flex: 0 0 auto; min-height: 38px !important; padding: 5px 10px 5px 6px !important; border: 0 !important; border-radius: 999px !important; }
+  .auth-card { padding: 12px 2px 18px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+}
+
+@media (max-width: 390px) {
+  .career-flow-os .candidate-wide-job-feed .eff-job-card-footer,
+  .career-flow-os .candidate-wide-job-feed .eff-job-value-row { margin-left: 0 !important; }
+}
+
+@media (max-width: 760px) {
+  .auth-product-shell {
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .auth-card,
+  html.dark .auth-card {
+    padding: 12px 2px 18px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 }

@@ -7,7 +7,7 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { AppNotification, User } from '../types';
-import { Bell, Check, CheckCircle2, LogOut, Moon, ShieldAlert, Sun, Trash2, UserCheck } from 'lucide-react';
+import { Bell, Check, CheckCircle2, ChevronDown, LogOut, Menu, Moon, ShieldAlert, Sun, Trash2, UserCheck, X } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import { formatNotificationPreview } from '../utils/messageFormatting';
 import type { ToastTone } from './ToastViewport';
@@ -48,23 +48,32 @@ function Navbar({
 }: NavbarProps) {
   const theme = useTheme();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const notificationMenuId = useId();
+  const mobileMenuId = useId();
   const notifRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const unreadNotifs = notifications.filter((n) => !n.isRead);
   const role = currentUser ? roleLabels[currentUser.role] : null;
   const RoleIcon = role?.icon;
 
   useEffect(() => {
-    if (!showNotifMenu) return;
+    if (!showNotifMenu && !showMobileMenu) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setShowNotifMenu(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false);
+      }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowNotifMenu(false);
+      if (event.key === 'Escape') {
+        setShowNotifMenu(false);
+        setShowMobileMenu(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -73,7 +82,7 @@ function Navbar({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNotifMenu]);
+  }, [showMobileMenu, showNotifMenu]);
 
   const handleLogoutClick = () => {
     onLogout();
@@ -217,6 +226,52 @@ function Navbar({
                 >
                   Logout
                 </Button>
+
+                <div className="pvx-mobile-account" ref={mobileMenuRef}>
+                  <button
+                    type="button"
+                    className="pvx-mobile-menu-trigger"
+                    onClick={() => {
+                      setShowMobileMenu((open) => !open);
+                      setShowNotifMenu(false);
+                    }}
+                    aria-label={showMobileMenu ? 'Close account menu' : 'Open account menu'}
+                    aria-expanded={showMobileMenu}
+                    aria-controls={mobileMenuId}
+                  >
+                    <UserAvatar
+                      name={currentUser.name}
+                      src={currentUser.profilePhotoUrl}
+                      className="pvx-mobile-menu-avatar"
+                      fallbackClassName="pvx-mobile-menu-avatar-fallback"
+                    />
+                    {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                  </button>
+
+                  {showMobileMenu && (
+                    <section id={mobileMenuId} className="pvx-mobile-account-menu" aria-label="Account and display settings">
+                      <div className="pvx-mobile-account-identity">
+                        <UserAvatar
+                          name={currentUser.name}
+                          src={currentUser.profilePhotoUrl}
+                          className="pvx-mobile-account-avatar"
+                          fallbackClassName="pvx-mobile-account-avatar-fallback"
+                        />
+                        <span><strong>{currentUser.name}</strong><small>{currentUser.email}</small></span>
+                        <span className="pvx-mobile-role"><RoleIcon className="h-3.5 w-3.5" />{role.label}</span>
+                      </div>
+                      <button type="button" className="pvx-mobile-menu-row" onClick={onToggleTheme}>
+                        <span>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}<strong>Appearance</strong></span>
+                        <small>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</small>
+                        <ChevronDown className="h-4 w-4 -rotate-90" aria-hidden="true" />
+                      </button>
+                      <button type="button" className="pvx-mobile-menu-row is-danger" onClick={handleLogoutClick}>
+                        <span><LogOut className="h-4 w-4" /><strong>Sign out</strong></span>
+                        <ChevronDown className="h-4 w-4 -rotate-90" aria-hidden="true" />
+                      </button>
+                    </section>
+                  )}
+                </div>
               </>
             )}
           </div>

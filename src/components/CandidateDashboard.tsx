@@ -27,6 +27,7 @@ import {
   Layers3,
   Mail,
   MapPin,
+  MoreHorizontal,
   Rocket,
   Search,
   Send,
@@ -200,6 +201,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('match');
   const [coachOpen, setCoachOpen] = useState(false);
+  const [mobileNavMoreOpen, setMobileNavMoreOpen] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -858,6 +860,17 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                 ariaLabel="Candidate navigation"
                 className="candidate-primary-tabs"
               />
+              <MobileCandidateNav
+                activeMode={activeMode}
+                onChange={(mode) => {
+                  setActiveMode(mode);
+                  setMobileNavMoreOpen(false);
+                }}
+                moreOpen={mobileNavMoreOpen}
+                onToggleMore={() => setMobileNavMoreOpen((open) => !open)}
+                savedCount={savedJobs.length}
+                applicationCount={applications.length}
+              />
             </>
           )}
         </header>
@@ -1388,6 +1401,19 @@ function JobsFilterToolbar(props: {
           <span>{props.filtersOpen ? 'Hide advanced' : 'More filters'}</span>
           {props.filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
+        <div className="mobile-filter-chips" aria-label="Quick job filters">
+          <button type="button" className={props.filterLoc === 'remote' ? 'is-active' : ''} onClick={() => props.setFilterLoc(props.filterLoc === 'remote' ? 'all' : 'remote')} aria-pressed={props.filterLoc === 'remote'}>Remote</button>
+          <button type="button" className={props.filterType === 'Full-time' ? 'is-active' : ''} onClick={() => props.setFilterType(props.filterType === 'Full-time' ? 'all' : 'Full-time')} aria-pressed={props.filterType === 'Full-time'}>Full-time</button>
+          <label>
+            <span className="sr-only">Sort jobs</span>
+            <select aria-label="Sort jobs" value={props.sortMode} onChange={(event) => props.setSortMode(event.target.value as SortMode)}>
+              <option value="match">Best match</option>
+              <option value="recent">Newest</option>
+              <option value="salary">Highest pay</option>
+            </select>
+          </label>
+          <button type="button" className={props.filtersOpen ? 'is-active' : ''} onClick={() => props.setFiltersOpen(!props.filtersOpen)} aria-expanded={props.filtersOpen}><SlidersHorizontal className="h-3.5 w-3.5" />All filters</button>
+        </div>
       </div>
       {props.filtersOpen && (
           <div className="eff-filter-drawer">
@@ -1400,6 +1426,7 @@ function JobsFilterToolbar(props: {
               <FilterSelect label="Employment Type" value={props.filterType} onChange={props.setFilterType} options={[['all', 'All types'], ['Full-time', 'Full-time'], ['Part-time', 'Part-time'], ['Contract', 'Contract'], ['Internship', 'Internship']]} />
               <FilterSelect label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Sort by match'], ['recent', 'Newest first'], ['salary', 'Highest salary']]} />
               <button type="button" className="eff-ghost-action eff-reset-filters" onClick={props.onReset}>Reset Filters</button>
+              <button type="button" className="eff-apply-filters" onClick={() => props.setFiltersOpen(false)}>Show {props.resultCount} jobs</button>
             </div>
           </div>
       )}
@@ -1557,6 +1584,49 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
         </div>
       </div>
     </article>
+  );
+}
+
+function MobileCandidateNav({ activeMode, onChange, moreOpen, onToggleMore, savedCount, applicationCount }: {
+  activeMode: WorkspaceMode;
+  onChange: (mode: WorkspaceMode) => void;
+  moreOpen: boolean;
+  onToggleMore: () => void;
+  savedCount: number;
+  applicationCount: number;
+}) {
+  const primaryItems: Array<{ id: WorkspaceMode; label: string; icon: AppIcon; badge?: number }> = [
+    { id: 'jobs', label: 'Jobs', icon: Briefcase },
+    { id: 'saved', label: 'Saved', icon: Bookmark, badge: savedCount },
+    { id: 'applications', label: 'Applied', icon: FileText, badge: applicationCount },
+    { id: 'profile', label: 'Profile', icon: UserRound },
+  ];
+
+  return (
+    <div className="candidate-mobile-nav-shell">
+      {moreOpen && (
+        <div className="candidate-mobile-more-menu" role="menu" aria-label="More candidate destinations">
+          <button type="button" role="menuitem" onClick={() => onChange('ecosystem')}><Rocket className="h-4 w-4" /><span><strong>Career support</strong><small>Coaching and learning tools</small></span></button>
+          <button type="button" role="menuitem" onClick={() => onChange('signals')}><Bell className="h-4 w-4" /><span><strong>Updates</strong><small>Messages and activity</small></span></button>
+        </div>
+      )}
+      <nav className="candidate-mobile-nav" aria-label="Candidate mobile navigation">
+        {primaryItems.map((item) => {
+          const Icon = item.icon;
+          const active = activeMode === item.id;
+          return (
+            <button key={item.id} type="button" className={active ? 'is-active' : ''} onClick={() => onChange(item.id)} aria-current={active ? 'page' : undefined}>
+              <span><Icon className="h-5 w-5" />{Boolean(item.badge) && <em>{item.badge}</em>}</span>
+              <small>{item.label}</small>
+            </button>
+          );
+        })}
+        <button type="button" className={moreOpen || activeMode === 'ecosystem' || activeMode === 'signals' ? 'is-active' : ''} onClick={onToggleMore} aria-expanded={moreOpen}>
+          <span><MoreHorizontal className="h-5 w-5" /></span>
+          <small>More</small>
+        </button>
+      </nav>
+    </div>
   );
 }
 
