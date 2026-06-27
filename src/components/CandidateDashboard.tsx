@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import type { AppIcon } from '@/src/lib/icons';
 import {
@@ -1404,7 +1405,7 @@ function JobsFilterToolbar(props: {
         <div className="mobile-filter-chips" aria-label="Quick job filters">
           <button type="button" className={props.filterLoc === 'remote' ? 'is-active' : ''} onClick={() => props.setFilterLoc(props.filterLoc === 'remote' ? 'all' : 'remote')} aria-pressed={props.filterLoc === 'remote'}>Remote</button>
           <button type="button" className={props.filterType === 'Full-time' ? 'is-active' : ''} onClick={() => props.setFilterType(props.filterType === 'Full-time' ? 'all' : 'Full-time')} aria-pressed={props.filterType === 'Full-time'}>Full-time</button>
-          <label>
+          <label className="mobile-sort-control">
             <span className="sr-only">Sort jobs</span>
             <select aria-label="Sort jobs" value={props.sortMode} onChange={(event) => props.setSortMode(event.target.value as SortMode)}>
               <option value="match">Best match</option>
@@ -1412,7 +1413,7 @@ function JobsFilterToolbar(props: {
               <option value="salary">Highest pay</option>
             </select>
           </label>
-          <button type="button" className={props.filtersOpen ? 'is-active' : ''} onClick={() => props.setFiltersOpen(!props.filtersOpen)} aria-expanded={props.filtersOpen}><SlidersHorizontal className="h-3.5 w-3.5" />All filters</button>
+          <button type="button" className={props.filtersOpen ? 'is-active' : ''} onClick={() => props.setFiltersOpen(!props.filtersOpen)} aria-expanded={props.filtersOpen}><SlidersHorizontal className="h-3.5 w-3.5" />Filters</button>
         </div>
       </div>
       {props.filtersOpen && (
@@ -2332,17 +2333,18 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
                         <span>{new Date(app.appliedAt).toLocaleDateString()}</span>
                         <ApplicationSourceBadge source={app.source} />
                       </div>
-                      <span className="application-mobile-card-link">View application details <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
+                      <span className="application-mobile-card-link"><span>View details</span><ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
                     </button>
                   </article>
                 ))}
               </div>
-              {mobileDetailOpen && activeApplication && (
+              {mobileDetailOpen && activeApplication && typeof document !== 'undefined' && createPortal(
                 <div className="application-mobile-sheet-backdrop" onClick={() => setMobileDetailOpen(false)}>
                   <div className="application-mobile-sheet-wrap" onClick={(event) => event.stopPropagation()}>
                     <ApplicationDetailView app={activeApplication} mobile onBack={() => setMobileDetailOpen(false)} />
                   </div>
-                </div>
+                </div>,
+                document.body,
               )}
             </>
           ) : (
