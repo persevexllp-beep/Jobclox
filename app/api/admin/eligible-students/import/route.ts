@@ -2,6 +2,8 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { logger } from '@/services/logger';
 
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   const user = await getCurrentUser(request);
   if (!user) {

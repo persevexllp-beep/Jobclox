@@ -17,6 +17,7 @@ import {
   Bookmark,
   Briefcase,
   CalendarClock,
+  ChevronLeft,
   CheckCircle2,
   Clock3,
   ChevronDown,
@@ -2193,12 +2194,38 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
   onExplore: () => void;
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const visibleApplications = applications.filter((app) => statusFilter === 'all' || getApplicationStage(app.status) === statusFilter);
   const activeApplication = applications.find((app) => app.id === activeApplicationId) || visibleApplications[0] || null;
   const stageCounts = applicationStages.map((stage) => ({
     ...stage,
     count: applications.filter((app) => stage.keys.includes(app.status)).length,
   }));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 760px)');
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateViewport);
+      return () => mediaQuery.removeEventListener('change', updateViewport);
+    }
+    mediaQuery.addListener(updateViewport);
+    return () => mediaQuery.removeListener(updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setMobileDetailOpen(false);
+    }
+  }, [isMobileViewport]);
+
+  const openMobileDetail = (applicationId: string) => {
+    setActiveApplicationId(applicationId);
+    setMobileDetailOpen(true);
+  };
 
   return (
     <section className="eff-full-panel application-command-center candidate-applications-panel">
@@ -2219,35 +2246,66 @@ function ApplicationTracker({ applications, activeApplicationId, setActiveApplic
               <span>All</span>
             </button>
           </div>
-          <div className="application-tracker-layout">
-            <div className="application-table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Role</th>
-                    <th>Company</th>
-                    <th>Source</th>
-                    <th>Applied Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleApplications.map((app) => (
-                    <tr key={app.id} className={activeApplication?.id === app.id ? 'is-active' : ''}>
-                      <td><strong>{app.jobTitle}</strong><small>{app.score}% match</small></td>
-                      <td>{app.companyName}</td>
-                      <td><ApplicationSourceBadge source={app.source} /></td>
-                      <td>{new Date(app.appliedAt).toLocaleDateString()}</td>
-                      <td><StatusPill status={app.status} /></td>
-                      <td><button type="button" onClick={() => setActiveApplicationId(app.id)}>View details</button></td>
+          {isMobileViewport ? (
+            <>
+              <div className="application-mobile-list" role="list" aria-label="Application list">
+                {visibleApplications.map((app) => (
+                  <article key={app.id} className={`application-mobile-card ${activeApplication?.id === app.id ? 'is-active' : ''}`} role="listitem">
+                    <button type="button" className="application-mobile-card-button" onClick={() => openMobileDetail(app.id)}>
+                      <div className="application-mobile-card-head">
+                        <strong>{app.jobTitle}</strong>
+                        <StatusPill status={app.status} />
+                      </div>
+                      <p>{app.companyName}</p>
+                      <div className="application-mobile-card-meta">
+                        <span>{app.score}% match</span>
+                        <span>{new Date(app.appliedAt).toLocaleDateString()}</span>
+                        <ApplicationSourceBadge source={app.source} />
+                      </div>
+                      <span className="application-mobile-card-link">View application details <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
+                    </button>
+                  </article>
+                ))}
+              </div>
+              {mobileDetailOpen && activeApplication && (
+                <div className="application-mobile-sheet-backdrop" onClick={() => setMobileDetailOpen(false)}>
+                  <div className="application-mobile-sheet-wrap" onClick={(event) => event.stopPropagation()}>
+                    <ApplicationDetailView app={activeApplication} mobile onBack={() => setMobileDetailOpen(false)} />
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="application-tracker-layout">
+              <div className="application-table-card">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Company</th>
+                      <th>Source</th>
+                      <th>Applied Date</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {visibleApplications.map((app) => (
+                      <tr key={app.id} className={activeApplication?.id === app.id ? 'is-active' : ''}>
+                        <td><strong>{app.jobTitle}</strong><small>{app.score}% match</small></td>
+                        <td>{app.companyName}</td>
+                        <td><ApplicationSourceBadge source={app.source} /></td>
+                        <td>{new Date(app.appliedAt).toLocaleDateString()}</td>
+                        <td><StatusPill status={app.status} /></td>
+                        <td><button type="button" onClick={() => setActiveApplicationId(app.id)}>View details</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {activeApplication && <ApplicationDetailView app={activeApplication} />}
             </div>
-            {activeApplication && <ApplicationDetailView app={activeApplication} />}
-          </div>
+          )}
         </>
       )}
     </section>
@@ -2260,14 +2318,22 @@ function ApplicationSourceBadge({ source }: { source?: Application['source'] }) 
   return <span className={`application-source-badge ${isExternal ? 'is-external' : 'is-internal'}`}>{label}</span>;
 }
 
-function ApplicationDetailView({ app }: { app: Application }) {
+function ApplicationDetailView({ app, mobile = false, onBack }: { app: Application; mobile?: boolean; onBack?: () => void }) {
   const stage = getApplicationStage(app.status);
   return (
-    <aside className="application-detail-view">
-      <header>
-        <span>Application detail view</span>
-        <h3>{app.jobTitle}</h3>
-        <p>{app.companyName}</p>
+    <aside className={`application-detail-view ${mobile ? 'is-mobile-sheet' : ''}`}>
+      <header className={mobile ? 'is-mobile-sheet-head' : undefined}>
+        <div>
+          <span>Application detail view</span>
+          <h3>{app.jobTitle}</h3>
+          <p>{app.companyName}</p>
+        </div>
+        {mobile && onBack && (
+          <button type="button" className="application-mobile-back" onClick={onBack}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            Back
+          </button>
+        )}
       </header>
       <div className="application-priority-strip">
         <StatusPill status={app.status} />

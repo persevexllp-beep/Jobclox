@@ -31,6 +31,7 @@ type EligibleStudentInput = {
   active: boolean;
   createdAt?: string;
   password: string;
+  rowNumber: number;
 };
 
 export type EligibleStudentImportResult = {
@@ -44,6 +45,20 @@ export type EligibleStudentImportResult = {
 
 const ELIGIBLE_SELECT = 'id,email,full_name,training_completed,internship_completed,active,created_at,password';
 const REQUIRED_HEADERS = ['email', 'full_name', 'training_completed', 'internship_completed', 'active', 'created_at', 'password'];
+const LOOKUP_BATCH_SIZE = 200;
+const UPSERT_BATCH_SIZE = 100;
+const HASH_CONCURRENCY = 8;
+
+type UserImportRow = {
+  id: string;
+  email: string;
+  role: User['role'];
+  status: User['status'] | null;
+};
+
+type CandidateProfileLookupRow = {
+  user_id: string;
+};
 
 function requireSupabaseAdmin() {
   if (!supabaseAdmin) {
@@ -145,8 +160,76 @@ function parseEligibleStudentsCsv(csvText: string): EligibleStudentInput[] {
       internshipCompleted: parseBoolean(get('internship_completed'), false),
       active: parseBoolean(get('active'), true),
       createdAt: get('created_at') || undefined,
+      rowNumber: index + 2,
     };
   });
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  if (size <= 0) return [items];
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  const runners = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  });
+
+  await Promise.all(runners);
+  return results;
+}
+
+async function getUsersByEmails(emails: string[]): Promise<Map<string, UserImportRow>> {
+  const users = new Map<string, UserImportRow>();
+  for (const batch of chunkArray(Array.from(new Set(emails)), LOOKUP_BATCH_SIZE)) {
+    const { data, error } = await requireSupabaseAdmin()
+      .from('users')
+      .select('id,email,role,status')
+      .in('email', batch);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of (data || []) as UserImportRow[]) {
+      users.set(row.email.toLowerCase(), row);
+    }
+  }
+  return users;
+}
+
+async function getProfileUserIds(userIds: string[]): Promise<Set<string>> {
+  const profileUserIds = new Set<string>();
+  for (const batch of chunkArray(Array.from(new Set(userIds)), LOOKUP_BATCH_SIZE)) {
+    const { data, error } = await requireSupabaseAdmin()
+      .from('candidate_profiles')
+      .select('user_id')
+      .in('user_id', batch);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of (data || []) as CandidateProfileLookupRow[]) {
+      profileUserIds.add(row.user_id);
+    }
+  }
+  return profileUserIds;
 }
 
 export async function getEligibleStudentByEmail(email: string): Promise<EligibleStudent | null> {
@@ -237,6 +320,8 @@ export async function importEligibleStudentsCsv(csvText: string): Promise<Eligib
     failed: [],
   };
 
+  const activeRowsByEmail = new Map<string, EligibleStudentInput>();
+
   for (let index = 0; index < parsedRows.length; index += 1) {
     const row = parsedRows[index];
     try {
@@ -266,16 +351,193 @@ export async function importEligibleStudentsCsv(csvText: string): Promise<Eligib
         result.inactiveRows += 1;
         continue;
       }
-
-      const accountStatus = await ensureCandidateAccountForEligibleStudent(student, row.password);
-      if (accountStatus === 'created') result.accountsCreated += 1;
-      if (accountStatus === 'updated') result.accountsUpdated += 1;
+      activeRowsByEmail.set(row.email, row);
     } catch (err) {
       result.failed.push({
-        row: index + 2,
+        row: row.rowNumber,
         email: row.email,
         reason: err instanceof Error ? err.message : 'Import failed',
       });
+    }
+  }
+
+  const activeRows = Array.from(activeRowsByEmail.values());
+  if (activeRows.length === 0) {
+    return result;
+  }
+
+  const existingUsersByEmail = await getUsersByEmails(activeRows.map((row) => row.email));
+  const candidateRows = activeRows.filter((row) => {
+    const existingUser = existingUsersByEmail.get(row.email);
+    if (existingUser && existingUser.role !== 'candidate') {
+      result.failed.push({
+        row: row.rowNumber,
+        email: row.email,
+        reason: 'Email already belongs to a non-candidate account',
+      });
+      return false;
+    }
+    return true;
+  });
+
+  if (candidateRows.length === 0) {
+    return result;
+  }
+
+  const { hashPassword } = await import('./authService');
+  const hashedRows = await mapWithConcurrency(candidateRows, HASH_CONCURRENCY, async (row) => ({
+    row,
+    passwordHash: await hashPassword(row.password),
+  }));
+
+  const provisionedUsers: Array<{ row: EligibleStudentInput; userId: string }> = [];
+  for (const batch of chunkArray(hashedRows, UPSERT_BATCH_SIZE)) {
+    try {
+      const { data, error } = await requireSupabaseAdmin()
+        .from('users')
+        .upsert(
+          batch.map(({ row, passwordHash }) => ({
+            name: row.fullName,
+            email: row.email,
+            role: 'candidate',
+            status: 'active',
+            created_at: row.createdAt || new Date().toISOString(),
+            password_hash: passwordHash,
+          })),
+          { onConflict: 'email' },
+        )
+        .select('id,email,role,status');
+
+      if (error) {
+        throw error;
+      }
+
+      const usersByEmail = new Map(
+        ((data || []) as UserImportRow[]).map((userRow) => [userRow.email.toLowerCase(), userRow]),
+      );
+      for (const { row } of batch) {
+        const user = usersByEmail.get(row.email);
+        if (!user) {
+          result.failed.push({
+            row: row.rowNumber,
+            email: row.email,
+            reason: 'Account provisioning did not return a candidate user.',
+          });
+          continue;
+        }
+        provisionedUsers.push({ row, userId: user.id });
+      }
+    } catch (batchError) {
+      for (const { row, passwordHash } of batch) {
+        try {
+          const { data, error } = await requireSupabaseAdmin()
+            .from('users')
+            .upsert(
+              {
+                name: row.fullName,
+                email: row.email,
+                role: 'candidate',
+                status: 'active',
+                created_at: row.createdAt || new Date().toISOString(),
+                password_hash: passwordHash,
+              },
+              { onConflict: 'email' },
+            )
+            .select('id,email,role,status')
+            .single<UserImportRow>();
+
+          if (error) {
+            throw error;
+          }
+
+          provisionedUsers.push({ row, userId: data.id });
+        } catch (err) {
+          result.failed.push({
+            row: row.rowNumber,
+            email: row.email,
+            reason: err instanceof Error ? err.message : 'Account provisioning failed',
+          });
+        }
+      }
+    }
+  }
+
+  if (provisionedUsers.length === 0) {
+    return result;
+  }
+
+  const existingProfileUserIds = await getProfileUserIds(provisionedUsers.map((entry) => entry.userId));
+  const profileReadyEmails = new Set<string>();
+  const profilesToCreate = provisionedUsers.filter((entry) => {
+    if (existingProfileUserIds.has(entry.userId)) {
+      profileReadyEmails.add(entry.row.email);
+      return false;
+    }
+    return true;
+  });
+
+  for (const batch of chunkArray(profilesToCreate, UPSERT_BATCH_SIZE)) {
+    try {
+      const { error } = await requireSupabaseAdmin()
+        .from('candidate_profiles')
+        .insert(
+          batch.map(({ userId, row }) => ({
+            user_id: userId,
+            education: '',
+            skills: [],
+            experience: '',
+            resume_text: '',
+            resume_file_name: '',
+            created_at: row.createdAt || new Date().toISOString(),
+          })),
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      for (const entry of batch) {
+        profileReadyEmails.add(entry.row.email);
+      }
+    } catch (batchError) {
+      for (const entry of batch) {
+        try {
+          const { error } = await requireSupabaseAdmin()
+            .from('candidate_profiles')
+            .insert({
+              user_id: entry.userId,
+              education: '',
+              skills: [],
+              experience: '',
+              resume_text: '',
+              resume_file_name: '',
+              created_at: entry.row.createdAt || new Date().toISOString(),
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          profileReadyEmails.add(entry.row.email);
+        } catch (err) {
+          result.failed.push({
+            row: entry.row.rowNumber,
+            email: entry.row.email,
+            reason: err instanceof Error ? err.message : 'Candidate profile provisioning failed',
+          });
+        }
+      }
+    }
+  }
+
+  for (const entry of provisionedUsers) {
+    if (!profileReadyEmails.has(entry.row.email)) {
+      continue;
+    }
+    if (existingUsersByEmail.has(entry.row.email)) {
+      result.accountsUpdated += 1;
+    } else {
+      result.accountsCreated += 1;
     }
   }
 
