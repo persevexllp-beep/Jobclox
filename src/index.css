@@ -13549,82 +13549,6 @@ html.dark .admin-mail-preview > div:first-child {
   opacity: 0.58;
 }
 
-.student-job-search-figure {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.student-job-search-figure i {
-  position: absolute;
-  display: block;
-}
-
-.student-job-search-figure .student-head {
-  top: 13%;
-  left: 43%;
-  width: 20%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #f6c9a8, #e7a982);
-  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.12);
-}
-
-.student-job-search-figure .student-body {
-  top: 31%;
-  left: 34%;
-  width: 36%;
-  height: 37%;
-  border-radius: 32% 32% 22% 22%;
-  background: linear-gradient(155deg, #2563eb, #7c3aed 72%);
-  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.18);
-}
-
-.student-job-search-figure .student-arm {
-  top: 43%;
-  left: 25%;
-  width: 11%;
-  height: 34%;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f6c9a8, #eab18b);
-  transform: rotate(28deg);
-}
-
-.student-job-search-figure .student-laptop {
-  right: 9%;
-  bottom: 13%;
-  width: 50%;
-  height: 30%;
-  border: 2px solid rgba(148, 181, 238, 0.85);
-  border-radius: 18px;
-  background:
-    linear-gradient(90deg, rgba(37, 99, 235, 0.14) 0 42%, transparent 42%),
-    linear-gradient(180deg, #ffffff, #eef7ff);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.13);
-}
-
-.student-job-search-figure .student-laptop::before,
-.student-job-search-figure .student-laptop::after {
-  position: absolute;
-  left: 16%;
-  height: 7px;
-  border-radius: 999px;
-  content: "";
-}
-
-.student-job-search-figure .student-laptop::before {
-  top: 30%;
-  width: 58%;
-  background: #2563eb;
-}
-
-.student-job-search-figure .student-laptop::after {
-  top: 52%;
-  width: 40%;
-  background: #22c55e;
-}
-
 .student-job-search-fallback {
   display: block;
   border-radius: 34px;
@@ -17663,4 +17587,318 @@ html.dark .auth-alert.success {
   .application-mobile-card-button {
     animation: none !important;
   }
+}
+
+/* ==========================================
+   PUBLIC EXPERIENCE: FIXED LIGHT THEME
+   Landing and authentication are brand surfaces, not workspace surfaces.
+   Their palette intentionally stays constant when the app theme changes.
+   ========================================== */
+.landing-shell,
+.auth-product-shell,
+html.dark .landing-shell,
+html.dark .auth-product-shell {
+  --pvx-bg-canvas: #f8fbff;
+  --pvx-bg-surface: #ffffff;
+  --pvx-bg-elevated: #ffffff;
+  --pvx-bg-muted: #f1f5f9;
+  --pvx-text-primary: #0f172a;
+  --pvx-text-secondary: #475569;
+  --pvx-text-muted: #64748b;
+  --pvx-text-inverse: #ffffff;
+  --pvx-border-default: #dbe4f0;
+  --pvx-border-subtle: #e8eef6;
+  --pvx-accent: #2563eb;
+  --pvx-success: #10b981;
+  --pvx-text: #0f172a;
+  --pvx-muted: #64748b;
+  --pvx-border: #dbe4f0;
+  --pvx-hairline: #dbe4f0;
+  --pvx-panel-strong: #ffffff;
+  --pvx-canvas: #f8fbff;
+  color: #0f172a !important;
+  color-scheme: light;
+}
+
+.landing-shell,
+html.dark .landing-shell {
+  background:
+    radial-gradient(circle at 10% 18%, rgba(56, 189, 248, .22), transparent 31rem),
+    radial-gradient(circle at 88% 16%, rgba(99, 102, 241, .17), transparent 34rem),
+    radial-gradient(circle at 48% 70%, rgba(45, 212, 191, .11), transparent 36rem),
+    linear-gradient(135deg, #eef9ff 0%, #ffffff 46%, #f2f1ff 100%) !important;
+}
+
+html.dark .landing-shell :is(
+  .landing-nav,
+  .landing-job-card,
+  .landing-category-grid article,
+  .landing-step-list article,
+  .landing-footer,
+  .landing-search,
+  .landing-trust-strip,
+  .landing-opportunity-card,
+  .landing-growth-signal,
+  .landing-interview-signal,
+  .landing-journey-path
+) {
+  border-color: rgba(203, 213, 225, .86) !important;
+  background: rgba(255, 255, 255, .9) !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 60px rgba(37, 99, 235, .1) !important;
+}
+
+html.dark .landing-shell :is(
+  .landing-nav-links a,
+  .landing-job-card p,
+  .landing-category-grid p,
+  .landing-step-list p,
+  .landing-proof-row,
+  .landing-popular > span,
+  .landing-popular a,
+  .landing-job-meta,
+  .landing-footer p,
+  .landing-footer a,
+  .landing-growth-signal small,
+  .landing-interview-signal small,
+  .landing-opportunity-card span,
+  .landing-search-field-copy strong
+) { color: #475569 !important; }
+
+html.dark .landing-shell :is(
+  .landing-search input,
+  .landing-hero-copy > p,
+  .landing-job-card h3,
+  .landing-category-grid h3,
+  .landing-step-list h3,
+  .landing-section-heading h2,
+  .landing-opportunity-card strong,
+  .landing-growth-signal strong,
+  .landing-interview-signal strong
+) { color: #0f172a !important; }
+
+html.dark .landing-shell .landing-search input::placeholder { color: #94a3b8 !important; }
+html.dark .landing-shell .landing-search label { border-color: #e2e8f0 !important; }
+html.dark .landing-shell :is(.landing-job-skills span, .landing-job-top > span) { background: #f1f5f9 !important; color: #475569 !important; }
+html.dark .landing-shell .landing-company-mark { border-color: #dbeafe !important; background: linear-gradient(145deg, #eff6ff, #f8fafc) !important; color: #1d4ed8 !important; }
+
+.landing-hero,
+html.dark .landing-hero {
+  background:
+    radial-gradient(circle at 76% 42%, rgba(99, 102, 241, .13), transparent 30%),
+    radial-gradient(circle at 18% 72%, rgba(14, 165, 233, .12), transparent 34%),
+    linear-gradient(118deg, rgba(224, 242, 254, .62), rgba(255, 255, 255, .26) 45%, rgba(238, 242, 255, .68)) !important;
+  background-size: 115% 115%;
+}
+
+.landing-journey-visual {
+  min-height: 540px !important;
+  border-radius: 44px;
+}
+
+.landing-journey-visual::before {
+  position: absolute;
+  inset: 7% 0 8%;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 43%, rgba(255, 255, 255, .82), transparent 38%),
+    radial-gradient(ellipse at 38% 58%, rgba(34, 211, 238, .18), transparent 46%),
+    radial-gradient(ellipse at 68% 42%, rgba(99, 102, 241, .2), transparent 48%);
+  filter: blur(24px);
+  content: "";
+  pointer-events: none;
+}
+
+.landing-journey-visual::after {
+  position: absolute;
+  inset: 11% -8% 14%;
+  z-index: 1;
+  background: linear-gradient(112deg, transparent 14%, rgba(14, 165, 233, .04) 34%, rgba(99, 102, 241, .16) 50%, rgba(45, 212, 191, .08) 64%, transparent 84%);
+  content: "";
+  filter: blur(9px);
+  mask-image: linear-gradient(90deg, transparent, #000 18% 82%, transparent);
+  pointer-events: none;
+}
+
+.landing-journey-center {
+  position: absolute;
+  z-index: 2;
+  top: 14%;
+  left: 14%;
+  width: 72%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  filter: drop-shadow(0 24px 34px rgba(79, 70, 229, .13));
+  overflow: visible;
+}
+
+.landing-journey-center .student-job-search-lottie {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 !important;
+  z-index: 2;
+  animation: none !important;
+  transform: none !important;
+}
+
+.landing-journey-center .student-job-search-lottie > div { opacity: 1; }
+
+.landing-journey-flow {
+  position: absolute;
+  inset: 12% -2% 13%;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.landing-flow-line {
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, .22) 26%, rgba(99, 102, 241, .3) 54%, rgba(16, 185, 129, .2) 76%, transparent);
+  transform-origin: center;
+}
+
+.landing-flow-line-one { top: 43%; transform: rotate(-13deg); }
+.landing-flow-line-two { top: 61%; opacity: .58; transform: rotate(10deg); }
+
+.landing-flow-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  background: #6366f1;
+  box-shadow: 0 0 0 5px rgba(99, 102, 241, .08), 0 8px 22px rgba(79, 70, 229, .24);
+}
+
+.landing-flow-particle-one { top: 25%; left: 18%; }
+.landing-flow-particle-two { top: 58%; right: 12%; width: 10px; height: 10px; background: #0ea5e9; }
+.landing-flow-particle-three { right: 28%; bottom: 12%; width: 7px; height: 7px; background: #10b981; }
+
+.landing-opportunity-card { top: 5% !important; right: 0 !important; left: 8% !important; z-index: 5 !important; }
+.landing-growth-signal { top: 47% !important; left: -1% !important; z-index: 5 !important; }
+.landing-interview-signal { top: 55% !important; right: -1% !important; z-index: 5 !important; }
+.landing-journey-path { right: 1% !important; bottom: 0 !important; left: 1% !important; z-index: 6 !important; }
+
+.auth-product-shell,
+html.dark .auth-product-shell {
+  background:
+    radial-gradient(circle at 8% 10%, rgba(56, 189, 248, .23), transparent 31rem),
+    radial-gradient(circle at 88% 16%, rgba(129, 140, 248, .2), transparent 30rem),
+    radial-gradient(circle at 50% 105%, rgba(45, 212, 191, .13), transparent 34rem),
+    linear-gradient(145deg, #eff9ff, #ffffff 47%, #f5f3ff) !important;
+}
+
+html.dark .auth-product-shell .persevex-aurora {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .42), transparent 42%),
+    radial-gradient(circle at 50% 120%, rgba(16, 185, 129, .08), transparent 44%),
+    #f8fbff !important;
+}
+
+html.dark .auth-product-shell .aurora-field-two { mix-blend-mode: multiply; }
+
+.auth-card,
+html.dark .auth-product-shell .auth-card {
+  border-color: rgba(255, 255, 255, .94) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(248, 250, 252, .78)) !important;
+  color: #0f172a !important;
+  box-shadow: 0 32px 90px rgba(30, 64, 175, .14), 0 10px 32px rgba(15, 23, 42, .07) !important;
+}
+
+.auth-hero-panel h1,
+html.dark .auth-product-shell .auth-hero-panel h1 {
+  background: linear-gradient(112deg, #0f172a 12%, #1d4ed8 58%, #7c3aed 92%) !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+.auth-journey > div,
+html.dark .auth-product-shell .auth-journey > div {
+  border-color: rgba(255, 255, 255, .9) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(239, 246, 255, .72)) !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 36px rgba(30, 64, 175, .08) !important;
+}
+
+html.dark .auth-product-shell :is(.auth-card-head h2, .auth-field input, .auth-security-note span) { color: #0f172a !important; }
+html.dark .auth-product-shell :is(.auth-hero-copy, .auth-field > span, .auth-register-note, .auth-footer, .auth-security-note) { color: #64748b !important; }
+html.dark .auth-product-shell :is(.auth-field > div, .auth-card-head button, .auth-secondary-action) {
+  border-color: #dbe4f0 !important;
+  background: rgba(255, 255, 255, .84) !important;
+  color: #0f172a !important;
+}
+
+html.dark .auth-product-shell .auth-field input:is([type="text"], [type="email"], [type="password"]),
+html.dark .landing-shell .landing-search input {
+  border: 0 !important;
+  background: transparent !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+}
+
+html.dark .auth-product-shell .auth-field input::placeholder,
+html.dark .landing-shell .landing-search input::placeholder { color: #94a3b8 !important; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-hero { animation: publicGradientDrift 16s ease-in-out infinite alternate; }
+  .landing-journey-visual::before { animation: publicGlowDrift 9s ease-in-out infinite alternate; }
+  .landing-journey-visual::after { animation: publicSignalSweep 8s ease-in-out infinite alternate; }
+  .landing-journey-center { animation: publicLottieFloat 7s ease-in-out infinite; }
+  .landing-flow-line-one { animation: publicLineBreathe 5.5s ease-in-out infinite; }
+  .landing-flow-line-two { animation: publicLineBreathe 6.5s 1s ease-in-out infinite reverse; }
+  .landing-flow-particle-one { animation: publicParticleOne 7s ease-in-out infinite; }
+  .landing-flow-particle-two { animation: publicParticleTwo 8s .8s ease-in-out infinite; }
+  .landing-flow-particle-three { animation: publicParticleThree 6s 1.4s ease-in-out infinite; }
+  .landing-growth-signal { animation: publicSignalFloat 5.5s ease-in-out infinite; }
+
+  @keyframes publicGradientDrift {
+    to { background-position: 8% 4%, 92% 8%, 0 0; }
+  }
+
+  @keyframes publicGlowDrift { to { opacity: .72; transform: translate(10px, -9px) scale(1.04); } }
+  @keyframes publicSignalSweep { to { opacity: .62; transform: translateX(18px) skewX(-3deg); } }
+  @keyframes publicLottieFloat { 50% { transform: translateY(-7px); } }
+  @keyframes publicLineBreathe { 50% { opacity: .35; filter: blur(.4px); } }
+  @keyframes publicParticleOne { 50% { transform: translate(34px, 18px) scale(1.18); } }
+  @keyframes publicParticleTwo { 50% { transform: translate(-28px, -22px) scale(.82); } }
+  @keyframes publicParticleThree { 50% { transform: translate(18px, -28px) scale(1.22); } }
+  @keyframes publicSignalFloat { 50% { transform: translateY(-7px); } }
+}
+
+@media (max-width: 1024px) {
+  .landing-journey-visual { width: min(620px, 100%); min-height: 520px !important; margin-inline: auto; }
+}
+
+@media (max-width: 720px) {
+  .landing-journey-visual { min-height: 450px !important; }
+  .landing-journey-center { top: 18%; left: 16%; width: 68%; }
+  .landing-opportunity-card { left: 0 !important; }
+  .landing-growth-signal { top: 48% !important; }
+  .landing-interview-signal { top: 58% !important; }
+}
+
+@media (max-width: 460px) {
+  .landing-journey-visual { min-height: 420px !important; }
+  .landing-journey-center { top: 22%; left: 13%; width: 74%; }
+  .landing-growth-signal { top: 51% !important; }
+  .landing-interview-signal { display: none; }
+  .landing-journey-path { overflow: hidden !important; grid-template-columns: repeat(5, minmax(58px, 1fr)) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero,
+  .landing-journey-visual::before,
+  .landing-journey-visual::after,
+  .landing-journey-center,
+  .landing-flow-line,
+  .landing-flow-particle,
+  .landing-growth-signal { animation: none !important; }
 }

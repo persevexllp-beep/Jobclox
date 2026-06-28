@@ -61,7 +61,16 @@ function OpportunityJourneyVisual() {
   return (
     <div className="landing-journey-visual" role="img" aria-label="A candidate progresses from discovering a role to getting hired">
       <div className="landing-journey-glow" aria-hidden="true" />
-      <StudentJobSearchLottie className="landing-student-lottie" label="Student searching for jobs and internships" />
+      <div className="landing-journey-flow" aria-hidden="true">
+        <span className="landing-flow-line landing-flow-line-one" />
+        <span className="landing-flow-line landing-flow-line-two" />
+        <span className="landing-flow-particle landing-flow-particle-one" />
+        <span className="landing-flow-particle landing-flow-particle-two" />
+        <span className="landing-flow-particle landing-flow-particle-three" />
+      </div>
+      <div className="landing-journey-center">
+        <StudentJobSearchLottie className="landing-student-lottie" label="Animated job-search journey" />
+      </div>
       <div className="landing-opportunity-card">
         <div className="landing-opportunity-company">NS</div>
         <div><small>Best match</small><strong>Product Design Intern</strong><span>Northstar - Remote</span></div>

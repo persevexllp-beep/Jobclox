@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useReducedMotion } from 'motion/react';
-import studentJobSearch from '@/public/animations/student-job-search.json';
+import pageSearching from '@/page searching.json';
 
 const Lottie = dynamic(() => import('lottie-react'), {
   ssr: false,
@@ -14,13 +14,7 @@ export default function StudentJobSearchLottie({ className = '', label = 'Studen
 
   return (
     <span className={`student-job-search-lottie ${className}`} role="img" aria-label={label}>
-      <Lottie animationData={studentJobSearch} autoplay={!reduceMotion} loop={!reduceMotion} />
-      <span className="student-job-search-figure" aria-hidden="true">
-        <i className="student-head" />
-        <i className="student-body" />
-        <i className="student-arm" />
-        <i className="student-laptop" />
-      </span>
+      <Lottie animationData={pageSearching} autoplay={!reduceMotion} loop={!reduceMotion} />
     </span>
   );
 }
