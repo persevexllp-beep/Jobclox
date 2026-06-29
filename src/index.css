@@ -18382,6 +18382,7 @@ html.dark .career-flow-os :is(.eff-match-orbit, .eff-compensation-chip, .eff-sav
 
 html.dark .career-flow-os .eff-completion-bar span {
   background: var(--pvx-accent) !important;
+  box-shadow: none !important;
 }
 
 html.dark .career-flow-os .onboarding-steps button.is-active {
