@@ -30,10 +30,13 @@ import {
   Mail,
   MapPin,
   MoreHorizontal,
+  Pencil,
+  Plus,
   Rocket,
   Search,
   Send,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Target,
   Trash2,
@@ -64,7 +67,7 @@ type WorkspaceMode = 'jobs' | 'ecosystem' | 'saved' | 'applications' | 'profile'
 type SalaryFilter = 'all' | 'lt10' | '10-20' | '20plus';
 type ExperienceFilter = 'all' | 'entry' | 'mid' | 'senior';
 type SortMode = 'match' | 'recent' | 'salary';
-type OnboardingStep = 'basics' | 'photo' | 'resume' | 'review' | 'skills' | 'preferences' | 'jobs' | 'apply';
+type OnboardingStep = 'basics' | 'photo' | 'resume' | 'skills' | 'ready';
 type EmailAlertBulkAction = 'mark-read' | 'mark-unread' | 'delete';
 
 const navItems: Array<{ id: WorkspaceMode; label: string; icon: AppIcon }> = [
@@ -243,7 +246,9 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [activeEmailId, setActiveEmailId] = useState<string | null>(null);
   const [activeApplicationId, setActiveApplicationId] = useState<string | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('basics');
-  const [careerPreference, setCareerPreference] = useState('');
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => (
+    typeof window !== 'undefined' && window.localStorage.getItem(`persevex_onboarding_done_${currentUser.id}`) === 'true'
+  ));
   const [resumeHistory, setResumeHistory] = useState<ResumeOption[]>(() => loadResumeHistory(currentUser.id));
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const resumeHistoryRef = useRef('');
@@ -360,11 +365,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     const nextHistory = loadResumeHistory(currentUser.id);
     resumeHistoryRef.current = serializeResumeHistory(nextHistory);
     setResumeHistory(nextHistory);
-  }, [currentUser.id]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setCareerPreference(window.localStorage.getItem(`persevex_pref_${currentUser.id}`) || '');
   }, [currentUser.id]);
 
   useEffect(() => {
@@ -516,7 +516,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const similarJobs = useMemo(() => (
     selectedJobPreview ? rankedJobs.filter((job) => job.id !== selectedJobPreview.id).slice(0, 3) : []
   ), [rankedJobs, selectedJobPreview]);
-  const recommendedOnboardingJobs = useMemo(() => rankedJobs.slice(0, 3), [rankedJobs]);
   const hasApplied = useCallback((jobId: string) => appliedJobIdSet.has(jobId), [appliedJobIdSet]);
   const toggleSavedJob = useCallback(async (jobId: string) => {
     const job = jobById.get(jobId);
@@ -539,26 +538,21 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
       !resumeText.trim() && 'Upload your resume',
       !skillsStr.trim() && 'Confirm your skills',
       !education.trim() && 'Add education',
-      !experience.trim() && 'Add experience or internship details',
-      !careerPreference.trim() && 'Pick a target role',
     ].filter(Boolean) as string[];
     let score = 0;
-    if (profilePhotoUrl) score += 15;
-    if (resumeText.trim()) score += 25;
-    if (skillsStr.trim()) score += 20;
-    if (education.trim()) score += 15;
-    if (experience.trim()) score += 15;
-    if (careerPreference.trim()) score += 10;
+    if (profilePhotoUrl) score += 20;
+    if (resumeText.trim()) score += 30;
+    if (skillsStr.trim()) score += 25;
+    if (education.trim()) score += 25;
     return { score: Math.min(100, score), missing };
-  }, [careerPreference, education, experience, profilePhotoUrl, resumeText, skillsStr]);
+  }, [education, profilePhotoUrl, resumeText, skillsStr]);
   const minimumOnboardingComplete = Boolean(
     profilePhotoUrl
     && resumeText.trim()
     && skillsStr.trim()
     && education.trim()
-    && careerPreference.trim()
   );
-  const showOnboarding = !minimumOnboardingComplete;
+  const showOnboarding = !onboardingDismissed;
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!file) return;
@@ -667,19 +661,40 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
     }
   }, [apiFetch, onCurrentUserUpdate, showToast]);
 
-  const saveCareerPreference = useCallback((value: string) => {
-    setCareerPreference(value);
-    localStorage.setItem(`persevex_pref_${currentUser.id}`, value);
-  }, [currentUser.id]);
+  const saveProfileDetails = useCallback(async () => {
+    setProfileSaving(true);
+    try {
+      const response = await apiFetch('/api/candidates/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ education, experience, skills: skillsStr, resumeText }),
+      });
+      if (response.profile) {
+        showToast('success', 'Profile updated', 'Your profile changes are saved and ready for matching.');
+        await fetchInitialData();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error(err);
+      showToast('error', 'Failed to save changes', 'Profile information could not be updated.');
+      return false;
+    } finally {
+      setProfileSaving(false);
+    }
+  }, [apiFetch, education, experience, fetchInitialData, resumeText, showToast, skillsStr]);
 
-  const completeOnboarding = useCallback(() => {
+  const completeOnboarding = useCallback(async () => {
     if (!minimumOnboardingComplete) {
-      setOnboardingStep('photo');
+      setOnboardingStep(!education.trim() ? 'basics' : !profilePhotoUrl ? 'photo' : !resumeText.trim() ? 'resume' : 'skills');
       return;
     }
+    const saved = await saveProfileDetails();
+    if (!saved) return;
     localStorage.setItem(`persevex_onboarding_done_${currentUser.id}`, 'true');
+    setOnboardingDismissed(true);
     setActiveMode('jobs');
-  }, [currentUser.id, minimumOnboardingComplete]);
+  }, [currentUser.id, education, minimumOnboardingComplete, profilePhotoUrl, resumeText, saveProfileDetails]);
 
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -745,23 +760,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setProfileSaving(true);
-    try {
-      const response = await apiFetch('/api/candidates/profile/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ education, experience, skills: skillsStr, resumeText }),
-      });
-      if (response.profile) {
-        showToast('success', 'Profile updated', 'Your profile changes are saved and ready for matching.');
-        fetchInitialData();
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('error', 'Failed to save changes', 'Profile information could not be updated.');
-    } finally {
-      setProfileSaving(false);
-    }
+    await saveProfileDetails();
   };
 
   const openApply = useCallback((job: Job) => {
@@ -907,15 +906,12 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                 skillsStr={skillsStr}
                 setSkillsStr={setSkillsStr}
                 education={education}
+                setEducation={setEducation}
                 experience={experience}
-                careerPreference={careerPreference}
-                setCareerPreference={saveCareerPreference}
-                recommendedJobs={recommendedOnboardingJobs}
-                getJobMatch={getJobMatch}
-                onSelectJob={(job) => {
-                  openApply(job);
-                  setOnboardingStep('apply');
-                }}
+                setExperience={setExperience}
+                suggestedSkills={allSkills}
+                profileSaving={profileSaving}
+                onSaveProfile={saveProfileDetails}
                 canFinish={minimumOnboardingComplete}
                 onFinish={completeOnboarding}
               />
@@ -1158,11 +1154,8 @@ const onboardingSteps: Array<{ id: OnboardingStep; label: string }> = [
   { id: 'basics', label: 'Basics' },
   { id: 'photo', label: 'Photo' },
   { id: 'resume', label: 'Resume' },
-  { id: 'review', label: 'Review' },
   { id: 'skills', label: 'Skills' },
-  { id: 'preferences', label: 'Target' },
-  { id: 'jobs', label: 'Jobs' },
-  { id: 'apply', label: 'Apply' },
+  { id: 'ready', label: 'Ready' },
 ];
 
 function OnboardingFunnel({
@@ -1183,12 +1176,12 @@ function OnboardingFunnel({
   skillsStr,
   setSkillsStr,
   education,
+  setEducation,
   experience,
-  careerPreference,
-  setCareerPreference,
-  recommendedJobs,
-  getJobMatch,
-  onSelectJob,
+  setExperience,
+  suggestedSkills,
+  profileSaving,
+  onSaveProfile,
   canFinish,
   onFinish,
 }: {
@@ -1209,18 +1202,43 @@ function OnboardingFunnel({
   skillsStr: string;
   setSkillsStr: (value: string) => void;
   education: string;
+  setEducation: (value: string) => void;
   experience: string;
-  careerPreference: string;
-  setCareerPreference: (value: string) => void;
-  recommendedJobs: Job[];
-  getJobMatch: (job: Job) => number;
-  onSelectJob: (job: Job) => void;
+  setExperience: (value: string) => void;
+  suggestedSkills: string[];
+  profileSaving: boolean;
+  onSaveProfile: () => Promise<boolean>;
   canFinish: boolean;
-  onFinish: () => void;
+  onFinish: () => Promise<void>;
 }) {
+  const [editingBasics, setEditingBasics] = useState(false);
   const currentIndex = onboardingSteps.findIndex((item) => item.id === step);
   const goNext = () => setStep(onboardingSteps[Math.min(onboardingSteps.length - 1, currentIndex + 1)].id);
-  const targetRoles = Array.from(new Set(recommendedJobs.map((job) => job.title).filter(Boolean))).slice(0, 6);
+  const selectedSkills = new Set(skillsStr.split(',').map((skill) => skill.trim().toLowerCase()).filter(Boolean));
+  const suggestionKeys = new Set<string>();
+  const skillSuggestions = [
+    ...(resumeIntelligence?.parsed.skills || []),
+    ...(resumeIntelligence?.careerInsights.missingSkills || []),
+    ...suggestedSkills,
+  ].filter((skill) => {
+    const key = skill.trim().toLowerCase();
+    if (!key || selectedSkills.has(key) || suggestionKeys.has(key)) return false;
+    suggestionKeys.add(key);
+    return true;
+  }).slice(0, 8);
+
+  const addSuggestedSkill = (skill: string) => {
+    setSkillsStr(skillsStr.trim() ? `${skillsStr.replace(/,?\s*$/, '')}, ${skill}` : skill);
+  };
+
+  const saveBasicsAndContinue = async () => {
+    if (editingBasics) {
+      const saved = await onSaveProfile();
+      if (!saved) return;
+      setEditingBasics(false);
+    }
+    goNext();
+  };
 
   return (
     <section className="onboarding-funnel">
@@ -1254,10 +1272,20 @@ function OnboardingFunnel({
         {step === 'basics' && (
           <div className="onboarding-body">
             <p>Step 1</p>
-            <h2>Confirm your candidate basics</h2>
-            <span>{currentUser.name} • {currentUser.email}</span>
-            <small>{education || 'Education will be filled from your resume or profile.'}</small>
-            <button type="button" className="eff-action" onClick={goNext}>Continue</button>
+            <div className="onboarding-title-row">
+              <div><h2>Confirm your candidate basics</h2><span>Check the essentials before building your profile.</span></div>
+              <button type="button" className="eff-ghost-action onboarding-edit-action" onClick={() => setEditingBasics((value) => !value)} aria-expanded={editingBasics}>
+                <Pencil className="h-4 w-4" /> {editingBasics ? 'Cancel edit' : 'Edit details'}
+              </button>
+            </div>
+            <div className="onboarding-basics-grid">
+              <label><span>Name</span><input value={currentUser.name} readOnly /></label>
+              <label><span>Email</span><input value={currentUser.email} readOnly /></label>
+              <label className="is-wide"><span>Education</span><input value={education} onChange={(event) => setEducation(event.target.value)} readOnly={!editingBasics} placeholder="Degree and institution" /></label>
+              <label className="is-wide"><span>Experience <small>Optional</small></span><textarea value={experience} onChange={(event) => setExperience(event.target.value)} readOnly={!editingBasics} rows={3} placeholder="Internship, training, project, or work experience" /></label>
+            </div>
+            <small>Name and email are protected account details. Education and experience can be updated here.</small>
+            <button type="button" className="eff-action" onClick={saveBasicsAndContinue} disabled={profileSaving || !education.trim()}>{profileSaving ? 'Saving details...' : editingBasics ? 'Save and continue' : 'Continue'}</button>
           </div>
         )}
 
@@ -1285,87 +1313,63 @@ function OnboardingFunnel({
         {step === 'resume' && (
           <div className="onboarding-body">
             <p>Step 3</p>
-            <h2>Upload your resume</h2>
+            <h2>Upload and review your resume</h2>
             <label className="onboarding-upload">
               <Upload className="h-5 w-5" />
               <strong className={parsingFile ? 'is-processing' : ''}>{parsingFile ? 'Parsing resume...' : resumeFileName || 'Upload resume PDF'}</strong>
               <span>PDF only. {branding.productName} will extract skills, education, and experience.</span>
-              <input type="file" accept=".pdf" className="hidden" onChange={(e) => e.target.files?.[0] && onResumeUpload(e.target.files[0])} />
+              <input type="file" accept=".pdf" className="hidden" disabled={parsingFile} onChange={(e) => e.target.files?.[0] && onResumeUpload(e.target.files[0])} />
             </label>
-            {parseError && <em>{parseError}</em>}
-            <button type="button" className="eff-action" onClick={() => setStep('review')} disabled={!resumeIntelligence && !resumeFileName}>
-              Review parsed resume
-            </button>
-          </div>
-        )}
-
-        {step === 'review' && (
-          <div className="onboarding-body">
-            <p>Step 4</p>
-            <h2>Review resume intelligence</h2>
-            {resumeIntelligence ? (
-              <div className="onboarding-review-grid">
-                <span><strong>{resumeIntelligence.confidence.overallConfidence}%</strong> parse confidence</span>
-                <span><strong>{resumeIntelligence.parsed.skills.length}</strong> skills detected</span>
-                <span><strong>{resumeIntelligence.careerInsights.recommendedRoles[0] || 'Role pending'}</strong> recommended role</span>
+            {parsingFile && (
+              <div className="onboarding-parser-status" role="status" aria-live="polite">
+                <progress aria-label="Resume parsing in progress" />
+                <span><strong>Reading your resume</strong><small>Extracting profile details and skill signals. This usually takes a few seconds.</small></span>
               </div>
-            ) : (
-              <small>Upload a resume to see parsed skills and role signals here.</small>
             )}
-            <button type="button" className="eff-action" onClick={goNext}>Accept and continue</button>
+            {parseError && <em>{parseError}</em>}
+            {resumeIntelligence ? (
+              <div className="onboarding-resume-review" aria-label="Parsed resume summary">
+                <div className="onboarding-review-heading"><CheckCircle2 className="h-5 w-5" /><span><strong>Resume parsed successfully</strong><small>Review complete—these signals will power your job matches.</small></span></div>
+                <div className="onboarding-review-grid">
+                  <span><strong>{resumeIntelligence.confidence.overallConfidence}%</strong> parse confidence</span>
+                  <span><strong>{resumeIntelligence.parsed.skills.length}</strong> skills detected</span>
+                  <span><strong>{resumeIntelligence.careerInsights.recommendedRoles[0] || 'Role pending'}</strong> recommended role</span>
+                </div>
+              </div>
+            ) : resumeFileName && !parsingFile ? <small>Your saved resume is ready. Upload it again whenever you want refreshed parsing insights.</small> : null}
+            <button type="button" className="eff-action" onClick={goNext} disabled={parsingFile || (!resumeIntelligence && !resumeFileName)}>Continue to skills</button>
           </div>
         )}
 
         {step === 'skills' && (
           <div className="onboarding-body">
-            <p>Step 5</p>
+            <p>Step 4</p>
             <h2>Confirm your skills</h2>
             <textarea value={skillsStr} onChange={(e) => setSkillsStr(e.target.value)} rows={3} placeholder="List skills separated by commas" />
             <small>{experience ? 'Experience summary detected.' : 'Add experience later if you are a fresher.'}</small>
-            <button type="button" className="eff-action" onClick={goNext}>Next: target role</button>
+            {skillSuggestions.length > 0 && (
+              <div className="onboarding-skill-suggestions">
+                <div><Sparkles className="h-4 w-4" /><strong>Skill suggestions</strong><small>Add relevant skills detected from your resume and current roles.</small></div>
+                <div>{skillSuggestions.map((skill) => <button key={skill} type="button" onClick={() => addSuggestedSkill(skill)}><Plus className="h-3.5 w-3.5" />{skill}</button>)}</div>
+              </div>
+            )}
+            <button type="button" className="eff-action" onClick={goNext} disabled={!skillsStr.trim()}>Continue to final check</button>
           </div>
         )}
 
-        {step === 'preferences' && (
-          <div className="onboarding-body">
-            <p>Step 6</p>
-            <h2>Pick your target role</h2>
-            <input value={careerPreference} onChange={(event) => setCareerPreference(event.target.value)} placeholder="Target role" />
-            <div className="onboarding-choice-grid">
-              {targetRoles.length ? targetRoles.map((role) => (
-                <button key={role} type="button" className={careerPreference === role ? 'is-active' : ''} onClick={() => setCareerPreference(role)}>
-                  {role}
-                </button>
-              )) : <small>Recommended roles appear after approved jobs match your profile.</small>}
+        {step === 'ready' && (
+          <div className="onboarding-body onboarding-ready-state">
+            <span className="onboarding-ready-icon"><CheckCircle2 className="h-8 w-8" /></span>
+            <p>Step 5</p>
+            <h2>You&apos;re all set to apply</h2>
+            <span>Your profile, photo, resume, and skills are ready. Explore verified opportunities and keep your career on the clock.</span>
+            <div className="onboarding-ready-checks">
+              <span><CheckCircle2 className="h-4 w-4" /> Candidate details confirmed</span>
+              <span><CheckCircle2 className="h-4 w-4" /> Resume ready for matching</span>
+              <span><CheckCircle2 className="h-4 w-4" /> Skills ready for job recommendations</span>
             </div>
-            <button type="button" className="eff-action" onClick={goNext}>Show recommended jobs</button>
-          </div>
-        )}
-
-        {step === 'jobs' && (
-          <div className="onboarding-body">
-            <p>Step 7</p>
-            <h2>Start with a recommended job</h2>
-            <div className="onboarding-jobs">
-              {recommendedJobs.length ? recommendedJobs.map((job) => (
-                <button key={job.id} type="button" onClick={() => onSelectJob(job)}>
-                  <strong>{job.title}</strong>
-                  <span>{job.companyName} • {getJobMatch(job)}% match</span>
-                </button>
-              )) : <small>No recommended jobs yet. Broaden filters in Job Search.</small>}
-            </div>
-            <button type="button" className="eff-ghost-action" onClick={onFinish} disabled={!canFinish}>Continue to portal</button>
-            {!canFinish && <small>Add your photo, resume, education, skills, and target role to unlock the full portal.</small>}
-          </div>
-        )}
-
-        {step === 'apply' && (
-          <div className="onboarding-body">
-            <p>Step 8</p>
-            <h2>Apply to your first job</h2>
-            <span>The application window is open. Submit with your parsed resume signal.</span>
-            <button type="button" className="eff-action" onClick={onFinish} disabled={!canFinish}>Finish onboarding</button>
-            {!canFinish && <small>Complete the required profile steps to unlock the dashboard after this application.</small>}
+            <button type="button" className="eff-action" onClick={onFinish} disabled={!canFinish || profileSaving}>{profileSaving ? 'Saving your profile...' : 'Enter JobClox and explore jobs'}</button>
+            {!canFinish && <small>Complete your education, photo, resume, and skills before entering the workspace.</small>}
           </div>
         )}
       </div>

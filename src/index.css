@@ -18093,3 +18093,267 @@ html.dark .landing-shell .landing-search input::placeholder { color: #94a3b8 !im
     height: 34px;
   }
 }
+
+/* ==========================================
+   CANDIDATE ONBOARDING SIMPLIFICATION
+   Five focused steps with editable basics, inline resume review, and a clear finish.
+   ========================================== */
+.career-flow-os .onboarding-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.career-flow-os .onboarding-title-row > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.career-flow-os .onboarding-title-row span {
+  color: var(--pvx-text-secondary);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+.career-flow-os .onboarding-edit-action {
+  display: inline-flex;
+  min-width: max-content;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid var(--pvx-border-default);
+  border-radius: 12px;
+  color: var(--pvx-accent);
+  font-size: .76rem;
+  font-weight: 800;
+}
+
+.career-flow-os .onboarding-basics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.career-flow-os .onboarding-basics-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.career-flow-os .onboarding-basics-grid label.is-wide {
+  grid-column: 1 / -1;
+}
+
+.career-flow-os .onboarding-basics-grid label > span {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--pvx-text-secondary);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.career-flow-os .onboarding-basics-grid label > span small {
+  color: var(--pvx-text-muted);
+  font-size: .64rem;
+  font-weight: 650;
+}
+
+.career-flow-os .onboarding-basics-grid :is(input, textarea) {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--pvx-border-default);
+  border-radius: 12px;
+  background: var(--pvx-bg-surface);
+  padding: 10px 12px;
+  color: var(--pvx-text-primary);
+  font-size: .82rem;
+  line-height: 1.45;
+  outline: none;
+}
+
+.career-flow-os .onboarding-basics-grid textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.career-flow-os .onboarding-basics-grid :is(input, textarea)[readonly] {
+  border-color: color-mix(in srgb, var(--pvx-border-default) 72%, transparent);
+  background: var(--pvx-bg-muted);
+  color: var(--pvx-text-secondary);
+}
+
+.career-flow-os .onboarding-basics-grid :is(input, textarea):not([readonly]):focus-visible {
+  border-color: var(--pvx-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pvx-accent) 14%, transparent);
+}
+
+.career-flow-os .onboarding-parser-status {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--pvx-accent) 28%, var(--pvx-border-default));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--pvx-accent) 7%, var(--pvx-bg-surface));
+}
+
+.career-flow-os .onboarding-parser-status progress {
+  width: 100%;
+  height: 9px;
+  accent-color: var(--pvx-accent);
+}
+
+.career-flow-os .onboarding-parser-status > span,
+.career-flow-os .onboarding-review-heading > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.career-flow-os .onboarding-parser-status strong,
+.career-flow-os .onboarding-review-heading strong {
+  color: var(--pvx-text-primary);
+  font-size: .8rem;
+}
+
+.career-flow-os .onboarding-parser-status small,
+.career-flow-os .onboarding-review-heading small {
+  color: var(--pvx-text-secondary);
+  font-size: .72rem;
+  line-height: 1.4;
+}
+
+.career-flow-os .onboarding-resume-review {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--pvx-success) 32%, var(--pvx-border-default));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--pvx-success) 7%, var(--pvx-bg-surface));
+}
+
+.career-flow-os .onboarding-review-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--pvx-success);
+}
+
+.career-flow-os .onboarding-skill-suggestions {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--pvx-accent) 22%, var(--pvx-border-default));
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--pvx-accent) 5%, var(--pvx-bg-surface));
+}
+
+.career-flow-os .onboarding-skill-suggestions > div:first-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  color: var(--pvx-accent);
+}
+
+.career-flow-os .onboarding-skill-suggestions > div:first-child small {
+  grid-column: 2;
+}
+
+.career-flow-os .onboarding-skill-suggestions > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.career-flow-os .onboarding-skill-suggestions button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--pvx-border-default);
+  border-radius: 999px;
+  background: var(--pvx-bg-surface);
+  color: var(--pvx-text-secondary);
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.career-flow-os .onboarding-ready-state {
+  justify-items: start;
+  max-width: 720px;
+  padding-block: 8px 12px;
+}
+
+.career-flow-os .onboarding-ready-icon {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--pvx-success) 30%, var(--pvx-border-default));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pvx-success) 11%, var(--pvx-bg-surface));
+  color: var(--pvx-success);
+}
+
+.career-flow-os .onboarding-ready-checks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.career-flow-os .onboarding-ready-checks span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--pvx-border-default);
+  border-radius: 12px;
+  background: var(--pvx-bg-surface);
+  color: var(--pvx-text-secondary);
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.career-flow-os .onboarding-ready-checks svg {
+  flex: 0 0 auto;
+  color: var(--pvx-success);
+}
+
+@media (max-width: 760px) {
+  .career-flow-os .onboarding-title-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .career-flow-os .onboarding-edit-action {
+    align-self: flex-start;
+  }
+
+  .career-flow-os .onboarding-basics-grid,
+  .career-flow-os .onboarding-ready-checks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .career-flow-os .onboarding-parser-status {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .career-flow-os .onboarding-review-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .career-flow-os .onboarding-ready-state .eff-action {
+    width: 100%;
+  }
+}
