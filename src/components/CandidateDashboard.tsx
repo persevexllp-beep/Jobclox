@@ -19,6 +19,7 @@ import {
   Briefcase,
   CalendarClock,
   ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Clock3,
   ChevronDown,
@@ -82,6 +83,13 @@ const workspaceTitles: Record<WorkspaceMode, string> = {
   ecosystem: 'Build your advantage',
   profile: 'Your career signal',
   signals: 'Updates that matter',
+};
+
+const getNearbyPages = (currentPage: number, totalPages: number, visiblePages = 7) => {
+  const count = Math.min(visiblePages, totalPages);
+  const maxStart = Math.max(1, totalPages - count + 1);
+  const start = Math.min(maxStart, Math.max(1, currentPage - Math.floor(count / 2)));
+  return Array.from({ length: count }, (_, index) => start + index);
 };
 
 const applicationStages = [
@@ -998,10 +1006,24 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                           {rankedJobs.map((job, index) => renderOpportunityCard(job, index))}
                         </div>
                         {marketplaceTotalPages > 1 && (
-                          <nav className="mt-5 flex items-center justify-center gap-3" aria-label="Job results pages">
-                            <button type="button" className="eff-action subtle" disabled={marketplacePage <= 1 || marketplaceLoading} onClick={() => setMarketplacePage((page) => Math.max(1, page - 1))}>Previous</button>
-                            <span className="text-sm font-semibold text-slate-600">Page {marketplacePage} of {marketplaceTotalPages}</span>
-                            <button type="button" className="eff-action" disabled={marketplacePage >= marketplaceTotalPages || marketplaceLoading} onClick={() => setMarketplacePage((page) => Math.min(marketplaceTotalPages, page + 1))}>Next</button>
+                          <nav className="candidate-pagination" aria-label="Job results pages">
+                            <button type="button" className="candidate-pagination-arrow" aria-label="Previous page" disabled={marketplacePage <= 1 || marketplaceLoading} onClick={() => setMarketplacePage((page) => Math.max(1, page - 1))}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
+                            <div className="candidate-pagination-pages">
+                              {getNearbyPages(marketplacePage, marketplaceTotalPages).map((pageNumber) => (
+                                <button
+                                  key={pageNumber}
+                                  type="button"
+                                  className={pageNumber === marketplacePage ? 'is-active' : ''}
+                                  aria-label={`Page ${pageNumber}`}
+                                  aria-current={pageNumber === marketplacePage ? 'page' : undefined}
+                                  disabled={marketplaceLoading}
+                                  onClick={() => setMarketplacePage(pageNumber)}
+                                >
+                                  {pageNumber}
+                                </button>
+                              ))}
+                            </div>
+                            <button type="button" className="candidate-pagination-arrow" aria-label="Next page" disabled={marketplacePage >= marketplaceTotalPages || marketplaceLoading} onClick={() => setMarketplacePage((page) => Math.min(marketplaceTotalPages, page + 1))}><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
                           </nav>
                         )}
                       </div>
@@ -1616,15 +1638,13 @@ function MobileCandidateNav({ activeMode, onChange, moreOpen, onToggleMore, save
           const Icon = item.icon;
           const active = activeMode === item.id;
           return (
-            <button key={item.id} type="button" className={active ? 'is-active' : ''} onClick={() => onChange(item.id)} aria-current={active ? 'page' : undefined}>
+            <button key={item.id} type="button" className={active ? 'is-active' : ''} onClick={() => onChange(item.id)} aria-label={item.label} aria-current={active ? 'page' : undefined}>
               <span><Icon className="h-5 w-5" />{Boolean(item.badge) && <em>{item.badge}</em>}</span>
-              <small>{item.label}</small>
             </button>
           );
         })}
-        <button type="button" className={moreOpen || activeMode === 'ecosystem' || activeMode === 'signals' ? 'is-active' : ''} onClick={onToggleMore} aria-expanded={moreOpen}>
+        <button type="button" className={moreOpen || activeMode === 'ecosystem' || activeMode === 'signals' ? 'is-active' : ''} onClick={onToggleMore} aria-label="More" aria-expanded={moreOpen}>
           <span><MoreHorizontal className="h-5 w-5" /></span>
-          <small>More</small>
         </button>
       </nav>
     </div>

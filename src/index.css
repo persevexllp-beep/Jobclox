@@ -17902,3 +17902,194 @@ html.dark .landing-shell .landing-search input::placeholder { color: #94a3b8 !im
   .landing-flow-particle,
   .landing-growth-signal { animation: none !important; }
 }
+
+/* ==========================================
+   CANDIDATE RESPONSIVE INTERACTION + SPACING LOCK
+   Final cascade owner for touch actions, details, pagination, and footer clearance.
+   ========================================== */
+.career-flow-os .candidate-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.career-flow-os .candidate-pagination-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.career-flow-os .candidate-pagination button {
+  display: inline-grid;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 82%, transparent);
+  border-radius: 11px;
+  background: var(--pvx-bg-surface);
+  color: var(--pvx-text-secondary);
+  font-size: .78rem;
+  font-weight: 750;
+  touch-action: manipulation;
+}
+
+.career-flow-os .candidate-pagination button.is-active {
+  border-color: var(--pvx-accent);
+  background: var(--pvx-accent);
+  color: #fff;
+}
+
+.career-flow-os .candidate-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+
+.career-flow-os .candidate-pagination-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.career-flow-os .eff-salary-highlight {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.career-flow-os .eff-salary-highlight > :is(small, strong, em) {
+  display: block;
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.career-flow-os .eff-drawer-head {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: start !important;
+  gap: 16px !important;
+}
+
+.career-flow-os .eff-drawer-title-row,
+.career-flow-os .eff-drawer-title-row > div {
+  min-width: 0;
+}
+
+.career-flow-os .eff-drawer-title-row h3 {
+  max-width: none !important;
+  padding-right: 4px;
+  overflow-wrap: anywhere;
+}
+
+.career-flow-os .eff-drawer-close {
+  margin-left: 0 !important;
+}
+
+.career-flow-os :is(.eff-apply-job, .eff-mobile-apply-bar button, .eff-drawer-actions button:last-child) {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 760px) {
+  .candidate-mobile-nav {
+    min-height: 58px;
+    padding: 5px 8px;
+  }
+
+  .candidate-mobile-nav > button {
+    min-height: 48px;
+    gap: 0;
+    touch-action: manipulation;
+  }
+
+  .candidate-mobile-nav button > span > svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .pvx-app-shell > .pvx-footer {
+    padding: 20px 14px calc(90px + env(safe-area-inset-bottom));
+  }
+
+  .pvx-app-shell > .pvx-footer > div {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .career-flow-os .eff-drawer-head {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: calc(18px + env(safe-area-inset-top)) 16px 16px !important;
+  }
+
+  .career-flow-os .eff-drawer-title-row {
+    gap: 12px !important;
+  }
+
+  .career-flow-os .eff-drawer-title-row h3 {
+    font-size: clamp(1.3rem, 6vw, 1.7rem) !important;
+    line-height: 1.14 !important;
+  }
+
+  .career-flow-os .eff-drawer-scroll {
+    padding: 14px 14px 22px !important;
+  }
+
+  .career-flow-os :is(.eff-drawer-hero, .eff-drawer-section, .eff-ai-match-panel) {
+    padding: 16px !important;
+  }
+
+  .career-flow-os .eff-drawer-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .career-flow-os .eff-salary-highlight {
+    width: 100% !important;
+    padding: 12px 14px !important;
+  }
+
+  .career-flow-os .candidate-pagination {
+    gap: 5px;
+    margin-top: 16px;
+  }
+
+  .career-flow-os .candidate-pagination-pages {
+    gap: 3px;
+  }
+
+  .career-flow-os .candidate-pagination button {
+    width: 34px;
+    min-width: 34px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: .72rem;
+  }
+}
+
+@media (max-width: 374px) {
+  .career-flow-os .candidate-pagination {
+    gap: 3px;
+  }
+
+  .career-flow-os .candidate-pagination-pages {
+    gap: 2px;
+  }
+
+  .career-flow-os .candidate-pagination button {
+    width: 30px;
+    min-width: 30px;
+    height: 34px;
+  }
+}
