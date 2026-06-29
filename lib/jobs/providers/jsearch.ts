@@ -23,6 +23,12 @@ type JSearchJob = Record<string, unknown> & {
   job_salary_period?: string;
 };
 
+type JSearchSearchPayload = {
+  data?: JSearchJob[] | {
+    jobs?: JSearchJob[];
+  };
+};
+
 function mapJobType(value: unknown): ExternalJob['jobType'] {
   const type = String(value ?? '').toLowerCase();
   if (type.includes('part')) return 'Part-time';
@@ -58,12 +64,15 @@ export class JSearchProvider implements JobProvider {
       date_posted: 'all',
     });
     const host = process.env.JSEARCH_API_HOST?.trim() || 'jsearch.p.rapidapi.com';
-    const payload = await fetchJsonWithTimeout<{ data?: JSearchJob[] }>(
-      `https://${host}/search?${params}`,
+    const configuredPath = process.env.JSEARCH_API_PATH?.trim() || '/search-v2';
+    const searchPath = configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`;
+    const payload = await fetchJsonWithTimeout<JSearchSearchPayload>(
+      `https://${host}${searchPath}?${params}`,
       { headers: { 'x-rapidapi-key': apiKey, 'x-rapidapi-host': host, Accept: 'application/json' } },
     );
+    const jobs = Array.isArray(payload.data) ? payload.data : payload.data?.jobs || [];
 
-    return (payload.data || []).flatMap((job): ExternalJob[] => {
+    return jobs.flatMap((job): ExternalJob[] => {
       const applyUrl = safeExternalUrl(job.job_apply_link);
       if (!job.job_id || !applyUrl) return [];
       const location = job.job_is_remote

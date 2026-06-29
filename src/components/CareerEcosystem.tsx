@@ -28,6 +28,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { Application, CandidateProfile, Job, User } from '../types';
+import { hasDisclosedCompensation } from '@/src/lib/compensation';
 
 interface CareerEcosystemProps {
   currentUser: User;
@@ -228,11 +229,13 @@ function InternshipExplorer({
                 <span>{internship.companyName} - {internship.location}</span>
               </button>
               <div className="eco-internship-facts">
-                <span className="eco-compensation-chip">
-                  <small>{compensation.label}</small>
-                  <strong>{compensation.value}</strong>
-                  <em>{compensation.cadence}</em>
-                </span>
+                {compensation && (
+                  <span className="eco-compensation-chip">
+                    <small>{compensation.label}</small>
+                    <strong>{compensation.value}</strong>
+                    <em>{compensation.cadence}</em>
+                  </span>
+                )}
                 <span>{internship.experience || 'Beginner friendly'}</span>
                 <span>{internship.location.toLowerCase().includes('remote') ? 'Remote' : 'In-office / Hybrid'}</span>
               </div>
@@ -428,9 +431,7 @@ function formatEcosystemCompensation(job: Job) {
   const raw = job.salary?.trim() || '';
   const isInternship = /intern|trainee|apprentice/i.test(`${job.title} ${job.jobType}`);
   const label = isInternship ? 'Stipend' : 'Salary';
-  if (!raw || /not\s+disclosed|on\s+request|tbd/i.test(raw) || /^[\d\s,.-]+$/.test(raw)) {
-    return { label, value: isInternship ? 'To be shared' : 'Not disclosed', cadence: 'Basis pending' };
-  }
+  if (!hasDisclosedCompensation(raw)) return null;
   const cadence = /\/\s*hr|hour|hourly/i.test(raw)
     ? 'Hourly'
     : /\/\s*mo|month|monthly/i.test(raw)

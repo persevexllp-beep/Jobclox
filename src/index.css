@@ -18095,6 +18095,459 @@ html.dark .landing-shell .landing-search input::placeholder { color: #94a3b8 !im
 }
 
 /* ==========================================
+   CANDIDATE DESKTOP DISCOVERY REFINEMENT
+   Final cascade owner for the simplified filters, account menu, and ambient canvas.
+   ========================================== */
+.career-flow-os.pvx-dashboard-shell--candidate {
+  isolation: isolate;
+  overflow: clip;
+  background:
+    radial-gradient(circle at 8% 16%, rgba(96, 165, 250, .15), transparent 29%),
+    radial-gradient(circle at 88% 12%, rgba(167, 139, 250, .13), transparent 27%),
+    radial-gradient(circle at 72% 78%, rgba(45, 212, 191, .11), transparent 31%),
+    var(--pvx-bg-canvas);
+  background-size: 120% 120%, 118% 118%, 126% 126%, auto;
+  animation: candidate-ambient-canvas 16s ease-in-out infinite alternate;
+}
+
+.career-flow-os.pvx-dashboard-shell--candidate::before,
+.career-flow-os.pvx-dashboard-shell--candidate::after {
+  position: absolute;
+  z-index: 0;
+  width: clamp(260px, 28vw, 520px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+  filter: blur(72px);
+  opacity: .2;
+}
+
+.career-flow-os.pvx-dashboard-shell--candidate::before {
+  top: 8%;
+  left: -12%;
+  background: rgba(56, 189, 248, .65);
+}
+
+.career-flow-os.pvx-dashboard-shell--candidate::after {
+  top: 38%;
+  right: -14%;
+  background: rgba(129, 140, 248, .58);
+}
+
+.career-flow-os .candidate-context-header {
+  padding: 12px 18px 12px 22px !important;
+}
+
+.career-flow-os .candidate-context-header .pvx-page-header-copy {
+  padding-left: 0 !important;
+}
+
+.career-flow-os .candidate-search-command {
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 430px) !important;
+  align-items: stretch !important;
+}
+
+.career-flow-os .eff-filter-toolbar {
+  grid-template-columns: minmax(270px, 1.55fr) repeat(4, minmax(126px, .62fr)) !important;
+}
+
+.candidate-job-kind-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 76%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, .08);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.candidate-job-kind-toggle button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: var(--pvx-text-secondary);
+  font-size: .76rem;
+  font-weight: 800;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.candidate-job-kind-toggle button:hover {
+  color: var(--pvx-accent);
+  background: color-mix(in srgb, var(--pvx-accent) 7%, transparent);
+}
+
+.candidate-job-kind-toggle button.is-active {
+  border-color: color-mix(in srgb, var(--pvx-accent) 26%, transparent);
+  background: color-mix(in srgb, var(--pvx-accent) 12%, var(--pvx-bg-surface));
+  color: var(--pvx-accent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--pvx-accent) 14%, transparent);
+}
+
+.candidate-job-kind-toggle button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pvx-accent) 30%, transparent);
+  outline-offset: 2px;
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-account {
+  position: relative;
+  display: block;
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 40px;
+  padding: 3px 8px 3px 3px;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 88%, transparent);
+  color: var(--pvx-text-primary);
+  cursor: pointer;
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-menu-avatar,
+.pvx-header[data-role="candidate"] .pvx-mobile-menu-avatar-fallback {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 90;
+  width: min(88vw, 320px);
+  overflow: hidden;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--pvx-border-default) 78%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--pvx-bg-surface) 97%, transparent);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, .18);
+  transform-origin: top right;
+  animation: pvx-mobile-menu-in 180ms ease-out;
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-account-identity {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 3px 10px;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pvx-border-default) 62%, transparent);
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-account-avatar,
+.pvx-header[data-role="candidate"] .pvx-mobile-account-avatar-fallback {
+  grid-row: 1 / span 2;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 13px !important;
+}
+
+.pvx-header[data-role="candidate"] .pvx-mobile-account-identity > span:not(.pvx-mobile-role) { min-width: 0; }
+.pvx-header[data-role="candidate"] .pvx-mobile-account-identity strong,
+.pvx-header[data-role="candidate"] .pvx-mobile-account-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pvx-header[data-role="candidate"] .pvx-mobile-account-identity strong { color: var(--pvx-text-primary); font-size: .88rem; }
+.pvx-header[data-role="candidate"] .pvx-mobile-account-identity small { margin-top: 2px; color: var(--pvx-text-muted); font-size: .72rem; }
+.pvx-header[data-role="candidate"] .pvx-mobile-role { grid-column: 2; display: inline-flex; align-items: center; gap: 5px; width: fit-content; color: var(--pvx-accent); font-size: .68rem; font-weight: 750; }
+.pvx-header[data-role="candidate"] .pvx-mobile-menu-row { display: grid; }
+
+@media (min-width: 761px) {
+  .career-flow-os .eff-filter-drawer { display: none !important; }
+}
+
+@media (max-width: 1180px) and (min-width: 761px) {
+  .career-flow-os .candidate-search-command {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .candidate-job-kind-toggle {
+    width: min(100%, 430px);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .pvx-header[data-role="candidate"] .pvx-header-actions > .pvx-icon-button {
+    display: inline-grid !important;
+    width: 40px !important;
+    height: 40px !important;
+    place-items: center;
+  }
+
+  .career-flow-os.pvx-dashboard-shell--candidate {
+    animation: none;
+    background-size: auto;
+  }
+
+  .career-flow-os .candidate-context-header {
+    padding: 4px 2px !important;
+  }
+
+  .career-flow-os .candidate-search-command {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .candidate-job-kind-toggle {
+    min-height: 52px;
+    padding: 5px;
+    border-radius: 16px;
+  }
+
+  .candidate-job-kind-toggle button {
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: .7rem;
+  }
+}
+
+/* ==========================================
+   MINIMAL DARK THEME + RESTRAINED MOTION
+   Neutral surfaces replace ambient glow in dark mode. Motion stays brief and
+   never controls whether content is visible.
+   ========================================== */
+html.dark :is(body, .pvx-app-shell, .pvx-dashboard-shell) {
+  background-color: var(--pvx-bg-canvas);
+}
+
+html.dark .career-flow-os.pvx-dashboard-shell--candidate,
+html.dark .landing-shell,
+html.dark .auth-product-shell {
+  background: var(--pvx-bg-canvas) !important;
+  color-scheme: dark;
+}
+
+html.dark .career-flow-os.pvx-dashboard-shell--candidate::before,
+html.dark .career-flow-os.pvx-dashboard-shell--candidate::after,
+html.dark .landing-orb,
+html.dark .landing-journey-glow,
+html.dark .landing-journey-visual::before,
+html.dark .landing-journey-visual::after,
+html.dark .auth-product-shell .aurora-field {
+  display: none !important;
+}
+
+html.dark .career-flow-os :is(
+  .candidate-context-header,
+  .candidate-search-command,
+  .eff-filter-toolbar,
+  .eff-filter-drawer,
+  .eff-job-card,
+  .eff-full-panel,
+  .eff-profile-summary,
+  .eff-profile-form,
+  .eff-drawer,
+  .eff-drawer-hero,
+  .eff-drawer-section,
+  .onboarding-progress,
+  .onboarding-card,
+  .application-priority-strip,
+  .application-table-card,
+  .application-detail-view,
+  .candidate-signals-panel,
+  .rec-panel,
+  .rec-metric-card,
+  .rec-profile-status,
+  .eco-panel,
+  .eco-score-card,
+  .eco-achievement,
+  .eco-learning-module,
+  .eco-training-card,
+  .eco-internship-card,
+  .eco-feed-item,
+  .eco-roadmap-node
+) {
+  border-color: var(--pvx-border-default) !important;
+  background: var(--pvx-bg-surface) !important;
+  box-shadow: var(--pvx-shadow-sm) !important;
+  backdrop-filter: none !important;
+}
+
+html.dark .career-flow-os :is(.eff-match-orbit, .eff-compensation-chip, .eff-saved-compensation) {
+  border-color: var(--pvx-border-default) !important;
+  background: var(--pvx-bg-muted) !important;
+  box-shadow: none !important;
+}
+
+html.dark .career-flow-os .eff-completion-bar span {
+  background: var(--pvx-accent) !important;
+}
+
+html.dark .career-flow-os .onboarding-steps button.is-active {
+  border-color: var(--pvx-accent) !important;
+  background: var(--pvx-accent) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+html.dark .landing-shell,
+html.dark .auth-product-shell {
+  --pvx-bg-canvas: #101216;
+  --pvx-bg-surface: #171a20;
+  --pvx-bg-elevated: #1d2027;
+  --pvx-bg-muted: #22262e;
+  --pvx-text-primary: #f8fafc;
+  --pvx-text-secondary: #cbd5e1;
+  --pvx-text-muted: #94a3b8;
+  --pvx-border-default: #2d323b;
+  --pvx-border-subtle: #242830;
+  --pvx-accent: #60a5fa;
+  --pvx-text: var(--pvx-text-primary);
+  --pvx-muted: var(--pvx-text-muted);
+  --pvx-border: var(--pvx-border-default);
+  --pvx-hairline: var(--pvx-border-default);
+  --pvx-panel-strong: var(--pvx-bg-surface);
+  --pvx-canvas: var(--pvx-bg-canvas);
+  color: var(--pvx-text-primary) !important;
+}
+
+html.dark .landing-hero,
+html.dark .auth-product-shell .persevex-aurora {
+  background: var(--pvx-bg-canvas) !important;
+}
+
+html.dark .landing-shell :is(
+  .landing-nav,
+  .landing-job-card,
+  .landing-category-grid article,
+  .landing-step-list article,
+  .landing-footer,
+  .landing-search,
+  .landing-trust-strip,
+  .landing-opportunity-card,
+  .landing-growth-signal,
+  .landing-interview-signal,
+  .landing-journey-path
+),
+html.dark .auth-product-shell :is(.auth-card, .auth-journey > div) {
+  border-color: var(--pvx-border-default) !important;
+  background: var(--pvx-bg-surface) !important;
+  color: var(--pvx-text-primary) !important;
+  box-shadow: var(--pvx-shadow-sm) !important;
+  backdrop-filter: none !important;
+}
+
+html.dark .landing-shell :is(
+  .landing-search input,
+  .landing-hero-copy > p,
+  .landing-job-card h3,
+  .landing-category-grid h3,
+  .landing-step-list h3,
+  .landing-section-heading h2,
+  .landing-employer-panel h2,
+  .landing-cta h2,
+  .landing-opportunity-card strong,
+  .landing-growth-signal strong,
+  .landing-interview-signal strong
+),
+html.dark .auth-product-shell :is(.auth-card-head h2, .auth-field input, .auth-security-note span) {
+  color: var(--pvx-text-primary) !important;
+}
+
+html.dark .landing-shell :is(
+  .landing-nav-links a,
+  .landing-job-card p,
+  .landing-category-grid p,
+  .landing-step-list p,
+  .landing-proof-row,
+  .landing-popular > span,
+  .landing-popular a,
+  .landing-job-meta,
+  .landing-footer p,
+  .landing-footer a,
+  .landing-growth-signal small,
+  .landing-interview-signal small,
+  .landing-opportunity-card span,
+  .landing-search-field-copy strong
+),
+html.dark .auth-product-shell :is(.auth-hero-copy, .auth-field > span, .auth-register-note, .auth-footer, .auth-security-note) {
+  color: var(--pvx-text-secondary) !important;
+}
+
+html.dark .auth-product-shell .auth-hero-panel h1 {
+  background: none !important;
+  color: var(--pvx-text-primary) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+html.dark .auth-product-shell :is(.auth-field > div, .auth-card-head button, .auth-secondary-action),
+html.dark .landing-shell .landing-search label {
+  border-color: var(--pvx-border-default) !important;
+  background: var(--pvx-bg-muted) !important;
+  color: var(--pvx-text-primary) !important;
+}
+
+html.dark .landing-shell :is(.landing-job-skills span, .landing-job-top > span),
+html.dark .landing-shell .landing-company-mark {
+  border-color: var(--pvx-border-default) !important;
+  background: var(--pvx-bg-muted) !important;
+  color: var(--pvx-text-secondary) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(button, a, input, select, textarea, [role="button"]) {
+    transition-duration: var(--pvx-motion-base);
+    transition-timing-function: var(--pvx-ease-out);
+  }
+
+  :is(.landing-nav, .landing-hero-copy, .landing-journey-visual, .auth-hero-panel, .auth-card, .rec-panel) {
+    animation: pvx-soft-enter 360ms var(--pvx-ease-out) both;
+  }
+
+  .career-flow-os :is(
+    button,
+    a,
+    .eff-job-card,
+    .eff-saved-card,
+    .eco-internship-card,
+    .candidate-job-kind-toggle
+  ) {
+    transition: color var(--pvx-motion-base) var(--pvx-ease-out),
+      background-color var(--pvx-motion-base) var(--pvx-ease-out),
+      border-color var(--pvx-motion-base) var(--pvx-ease-out),
+      box-shadow var(--pvx-motion-base) var(--pvx-ease-out) !important;
+  }
+
+  .career-flow-os :is(.eff-job-card, .eff-saved-card, .eco-internship-card):hover {
+    box-shadow: var(--pvx-shadow-lift) !important;
+  }
+}
+
+@keyframes pvx-soft-enter {
+  from { transform: translateY(7px); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.landing-nav, .landing-hero-copy, .landing-journey-visual, .auth-hero-panel, .auth-card, .rec-panel) {
+    animation: none !important;
+  }
+}
+
+@keyframes candidate-ambient-canvas {
+  from { background-position: 0% 0%, 100% 0%, 80% 100%, 0 0; }
+  to { background-position: 8% 7%, 92% 8%, 70% 92%, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .career-flow-os.pvx-dashboard-shell--candidate,
+  .pvx-header[data-role="candidate"] .pvx-mobile-account-menu {
+    animation: none !important;
+  }
+}
+
+/* ==========================================
    CANDIDATE ONBOARDING SIMPLIFICATION
    Five focused steps with editable basics, inline resume review, and a clear finish.
    ========================================== */

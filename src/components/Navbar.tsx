@@ -108,23 +108,26 @@ function Navbar({
 
             {currentUser && role && RoleIcon && (
               <>
-                <div className="pvx-role-pill">
-                  <RoleIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{role.label}</span>
-                </div>
-
-                <div className="pvx-user-lockup">
-                  <UserAvatar
-                    name={currentUser.name}
-                    src={currentUser.profilePhotoUrl}
-                    className="pvx-navbar-avatar"
-                    fallbackClassName="pvx-navbar-avatar-fallback"
-                  />
-                  <div>
-                    <span>{currentUser.name}</span>
-                    <small>{currentUser.email}</small>
-                  </div>
-                </div>
+                {currentUser.role !== 'candidate' && (
+                  <>
+                    <div className="pvx-role-pill">
+                      <RoleIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{role.label}</span>
+                    </div>
+                    <div className="pvx-user-lockup">
+                      <UserAvatar
+                        name={currentUser.name}
+                        src={currentUser.profilePhotoUrl}
+                        className="pvx-navbar-avatar"
+                        fallbackClassName="pvx-navbar-avatar-fallback"
+                      />
+                      <div>
+                        <span>{currentUser.name}</span>
+                        <small>{currentUser.email}</small>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="relative" ref={notifRef}>
                   <button
@@ -216,16 +219,18 @@ function Navbar({
                   )}
                 </div>
 
-                <Button
-                  id="sign-out-btn"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogoutClick}
-                  leftIcon={<LogOut className="h-4 w-4" />}
-                  className="pvx-logout"
-                >
-                  Logout
-                </Button>
+                {currentUser.role !== 'candidate' && (
+                  <Button
+                    id="sign-out-btn"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogoutClick}
+                    leftIcon={<LogOut className="h-4 w-4" />}
+                    className="pvx-logout"
+                  >
+                    Logout
+                  </Button>
+                )}
 
                 <div className="pvx-mobile-account" ref={mobileMenuRef}>
                   <button
@@ -235,7 +240,7 @@ function Navbar({
                       setShowMobileMenu((open) => !open);
                       setShowNotifMenu(false);
                     }}
-                    aria-label={showMobileMenu ? 'Close account menu' : 'Open account menu'}
+                    aria-label={showMobileMenu ? 'Close account details' : 'Open account details'}
                     aria-expanded={showMobileMenu}
                     aria-controls={mobileMenuId}
                   >
@@ -260,11 +265,6 @@ function Navbar({
                         <span><strong>{currentUser.name}</strong><small>{currentUser.email}</small></span>
                         <span className="pvx-mobile-role"><RoleIcon className="h-3.5 w-3.5" />{role.label}</span>
                       </div>
-                      <button type="button" className="pvx-mobile-menu-row" onClick={onToggleTheme}>
-                        <span>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}<strong>Appearance</strong></span>
-                        <small>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</small>
-                        <ChevronDown className="h-4 w-4 -rotate-90" aria-hidden="true" />
-                      </button>
                       <button type="button" className="pvx-mobile-menu-row is-danger" onClick={handleLogoutClick}>
                         <span><LogOut className="h-4 w-4" /><strong>Sign out</strong></span>
                         <ChevronDown className="h-4 w-4 -rotate-90" aria-hidden="true" />

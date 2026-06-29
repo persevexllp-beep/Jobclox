@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       workMode: ['remote', 'hybrid', 'onsite'].includes(String(workMode)) ? workMode as Job['workMode'] : undefined,
       experience: typeof experience === 'string' ? experience : 'Not Specified',
       education: typeof education === 'string' ? education : '',
-      salary: typeof salary === 'string' ? salary : 'Discussable',
+      salary: typeof salary === 'string' ? salary : '',
       benefits: typeof benefits === 'string' ? benefits : '',
       equity: typeof equity === 'string' ? equity : '',
       description: String(description),

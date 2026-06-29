@@ -269,7 +269,7 @@ function toDatabaseRows(
       job_type: job.jobType || 'Full-time',
       work_mode: job.workMode || (/remote/i.test(job.location) ? 'remote' : 'onsite'),
       experience: job.experience || 'Not specified',
-      salary: job.salary || 'Not disclosed',
+      salary: job.salary || '',
       description: job.description,
       requirements: job.requirements,
       preferred_skills: [],

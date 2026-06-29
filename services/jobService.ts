@@ -195,7 +195,7 @@ function buildSupabaseInsert(job: CreateJobInput): Record<string, unknown> {
     work_mode: job.workMode || 'remote',
     experience: job.experience || 'Not Specified',
     education: job.education || '',
-    salary: job.salary || 'Discussable',
+    salary: job.salary || '',
     benefits: job.benefits || '',
     equity: job.equity || '',
     description: job.description,

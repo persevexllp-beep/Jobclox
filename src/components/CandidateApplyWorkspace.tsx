@@ -25,6 +25,7 @@ import {
 import type { Application, CandidateProfile, Job, ResumeParserResponse, User } from '@/src/types';
 import type { ToastTone } from './ToastViewport';
 import { branding } from '@/src/config/branding';
+import { hasDisclosedCompensation } from '@/src/lib/compensation';
 
 type CandidateApplyWorkspaceProps = {
   currentUser: User;
@@ -282,7 +283,7 @@ export default function CandidateApplyWorkspace({ currentUser, apiFetch, showToa
         <aside className="apply-side-panel">
           <SummaryCard title="Job summary" icon={Briefcase}>
             <InfoRow label="Company" value={job.companyName} />
-            <InfoRow label="Salary" value={job.salary || fallbackText} />
+            {hasDisclosedCompensation(job.salary) && <InfoRow label="Salary" value={job.salary} />}
             <InfoRow label="Employment" value={job.jobType || fallbackText} />
             <InfoRow label="Openings" value={job.openings ? String(job.openings) : fallbackText} />
             <InfoRow label="Source" value={sourceLabel} />

@@ -9,6 +9,7 @@ import { MapPin, DollarSign, Building2 } from 'lucide-react';
 import { Job } from '../../types';
 import { tokens } from '../../tokens';
 import { branding } from '@/src/config/branding';
+import { hasDisclosedCompensation } from '@/src/lib/compensation';
 
 interface JobCardProps {
   job: Job;
@@ -207,14 +208,16 @@ export default function JobCard({ job, onApply, className = '' }: JobCardProps) 
             <MapPin className="h-3 w-3 mr-1" />
             <span>{job.location}</span>
           </div>
-          <motion.div 
-            className="flex items-center text-slate-400 text-[10px]"
-            animate={{ color: isHovered ? tokens.colors.primary.emerald[600] : '#94a3b8' }}
-            transition={{ duration: 0.2 }}
-          >
-            <DollarSign className="h-3 w-3 mr-1" />
-            <span className="font-mono text-slate-600">{job.salary}</span>
-          </motion.div>
+          {hasDisclosedCompensation(job.salary) && (
+            <motion.div
+              className="flex items-center text-slate-400 text-[10px]"
+              animate={{ color: isHovered ? tokens.colors.primary.emerald[600] : '#94a3b8' }}
+              transition={{ duration: 0.2 }}
+            >
+              <DollarSign className="h-3 w-3 mr-1" />
+              <span className="font-mono text-slate-600">{job.salary}</span>
+            </motion.div>
+          )}
         </div>
 
         <motion.button

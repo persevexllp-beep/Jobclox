@@ -55,6 +55,7 @@ import type { ToastTone } from './ToastViewport';
 import UserAvatar from './UserAvatar';
 import CareerSignalLottie from './experience/CareerSignalLottie';
 import { branding } from '@/src/config/branding';
+import { hasDisclosedCompensation } from '@/src/lib/compensation';
 
 interface CandidateDashboardProps {
   currentUser: User;
@@ -212,7 +213,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
   const [filterExperience, setFilterExperience] = useState<ExperienceFilter>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('match');
-  const [coachOpen, setCoachOpen] = useState(false);
   const [mobileNavMoreOpen, setMobileNavMoreOpen] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
@@ -924,7 +924,6 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                     <JobsFilterToolbar
                       filtersOpen={filtersOpen}
                       setFiltersOpen={setFiltersOpen}
-                      skills={allSkills}
                       searchTerm={searchTerm}
                       setSearchTerm={setSearchTerm}
                       filterType={filterType}
@@ -950,32 +949,7 @@ export default function CandidateDashboard({ currentUser, apiFetch, showToast, o
                         setFilterExperience('all');
                       }}
                     />
-                    <div className="candidate-coach-control">
-                      <button type="button" className="candidate-coach-toggle" onClick={() => setCoachOpen((open) => !open)} aria-expanded={coachOpen} aria-controls="candidate-career-coach-panel">
-                        <span className="candidate-coach-toggle-icon"><Rocket className="h-4 w-4" /></span>
-                        <span><strong>Career coach</strong><small>Optional guidance when you want it</small></span>
-                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                      {coachOpen && (
-                        <div id="candidate-career-coach-panel" className="candidate-coach-dropdown">
-                          <CandidateInsightsRail
-                            selectedJob={inlinePreviewJob}
-                            selectedFit={inlinePreviewFit}
-                            applications={applications}
-                            profileStrength={profileStrength}
-                            missingProfileSections={activation.missing}
-                            trendingSkills={allSkills.slice(0, 3)}
-                            saved={inlinePreviewJob ? savedJobIdSet.has(inlinePreviewJob.id) : false}
-                            applied={inlinePreviewJob ? hasApplied(inlinePreviewJob.id) : false}
-                            onProfile={() => setActiveMode('profile')}
-                            onApplications={() => setActiveMode('applications')}
-                            onApply={inlinePreviewJob ? () => openApply(inlinePreviewJob) : undefined}
-                            onSave={inlinePreviewJob ? () => toggleSavedJob(inlinePreviewJob.id) : undefined}
-                            onOpenDetails={() => setDetailsDrawerOpen(true)}
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <JobDiscoveryToggle value={filterType} onChange={setFilterType} />
                   </div>
                   <section className="eff-workspace candidate-discovery-workspace">
                     <section className="candidate-job-marketplace" aria-labelledby="recommended-jobs-title">
@@ -1392,7 +1366,6 @@ function SectionHeader({ eyebrow, title, action }: { eyebrow: string; title: str
 function JobsFilterToolbar(props: {
   filtersOpen: boolean;
   setFiltersOpen: (value: boolean) => void;
-  skills: string[];
   searchTerm: string;
   filterType: string;
   filterLoc: string;
@@ -1418,16 +1391,10 @@ function JobsFilterToolbar(props: {
           <Search className="h-4 w-4 text-cyan-500" />
           <input value={props.searchTerm} onChange={(e) => props.setSearchTerm(e.target.value)} placeholder="Search title, company, skill, or keyword" />
         </label>
-        <FilterSelect compact label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Best match'], ['recent', 'Newest'], ['salary', 'Highest pay']]} />
-        <FilterSelect compact label="Skills" value={props.filterSkill} onChange={props.setFilterSkill} options={[['all', 'Skills'], ...props.skills.map((skill) => [skill, skill] as [string, string])]} />
-        <FilterSelect compact label="Experience" value={props.filterExperience} onChange={(value) => props.setFilterExperience(value as ExperienceFilter)} options={[['all', 'Experience'], ['entry', 'Entry / Junior'], ['mid', 'Mid-level'], ['senior', 'Senior / Lead']]} />
+        <FilterSelect compact label="Employment type" value={props.filterType} onChange={props.setFilterType} options={[['all', 'Employment type'], ['Full-time', 'Full-time'], ['Part-time', 'Part-time'], ['Contract', 'Contract'], ['Internship', 'Internship']]} />
         <FilterSelect compact label="Location" value={props.filterLoc} onChange={props.setFilterLoc} options={[['all', 'Location'], ['remote', 'Remote'], ['on-site', 'On-site']]} />
-        <span className="eff-result-count"><strong>{props.resultCount}</strong><small>shown of {props.totalCount}</small></span>
-        <button type="button" className="eff-toolbar-toggle" onClick={() => props.setFiltersOpen(!props.filtersOpen)} aria-expanded={props.filtersOpen}>
-          <SlidersHorizontal className="h-4 w-4" />
-          <span>{props.filtersOpen ? 'Hide advanced' : 'More filters'}</span>
-          {props.filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        <FilterSelect compact label="Salary" value={props.filterSalary} onChange={(value) => props.setFilterSalary(value as SalaryFilter)} options={[['all', 'Salary'], ['lt10', 'Below 10 LPA'], ['10-20', '10-20 LPA'], ['20plus', '20+ LPA']]} />
+        <FilterSelect compact label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Best match'], ['recent', 'Newest'], ['salary', 'Highest pay']]} />
         <div className="mobile-filter-chips" aria-label="Quick job filters">
           <button type="button" className={props.filterLoc === 'remote' ? 'is-active' : ''} onClick={() => props.setFilterLoc(props.filterLoc === 'remote' ? 'all' : 'remote')} aria-pressed={props.filterLoc === 'remote'}>Remote</button>
           <button type="button" className={props.filterType === 'Full-time' ? 'is-active' : ''} onClick={() => props.setFilterType(props.filterType === 'Full-time' ? 'all' : 'Full-time')} aria-pressed={props.filterType === 'Full-time'}>Full-time</button>
@@ -1445,18 +1412,39 @@ function JobsFilterToolbar(props: {
       {props.filtersOpen && (
           <div className="eff-filter-drawer">
             <div className="eff-filter-drawer-grid">
-              <FilterSelect label="Search" value={props.searchTerm} onChange={props.setSearchTerm} options={[]} isSearchOnly />
-              <FilterSelect label="Skills" value={props.filterSkill} onChange={props.setFilterSkill} options={[['all', 'All skills'], ...props.skills.map((skill) => [skill, skill] as [string, string])]} />
-              <FilterSelect label="Experience" value={props.filterExperience} onChange={(value) => props.setFilterExperience(value as ExperienceFilter)} options={[['all', 'Any level'], ['entry', 'Entry / Junior'], ['mid', 'Mid-level'], ['senior', 'Senior / Lead']]} />
+              <FilterSelect label="Employment Type" value={props.filterType} onChange={props.setFilterType} options={[['all', 'All types'], ['Full-time', 'Full-time'], ['Part-time', 'Part-time'], ['Contract', 'Contract'], ['Internship', 'Internship']]} />
               <FilterSelect label="Location" value={props.filterLoc} onChange={props.setFilterLoc} options={[['all', 'All places'], ['remote', 'Remote'], ['on-site', 'On-site']]} />
               <FilterSelect label="Salary" value={props.filterSalary} onChange={(value) => props.setFilterSalary(value as SalaryFilter)} options={[['all', 'Any salary'], ['lt10', 'Below 10 LPA'], ['10-20', '10-20 LPA'], ['20plus', '20+ LPA']]} />
-              <FilterSelect label="Employment Type" value={props.filterType} onChange={props.setFilterType} options={[['all', 'All types'], ['Full-time', 'Full-time'], ['Part-time', 'Part-time'], ['Contract', 'Contract'], ['Internship', 'Internship']]} />
               <FilterSelect label="Sort" value={props.sortMode} onChange={(value) => props.setSortMode(value as SortMode)} options={[['match', 'Sort by match'], ['recent', 'Newest first'], ['salary', 'Highest salary']]} />
               <button type="button" className="eff-ghost-action eff-reset-filters" onClick={props.onReset}>Reset Filters</button>
               <button type="button" className="eff-apply-filters" onClick={() => props.setFiltersOpen(false)}>Show {props.resultCount} jobs</button>
             </div>
           </div>
       )}
+    </div>
+  );
+}
+
+function JobDiscoveryToggle({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const options = [
+    { value: 'Full-time', label: 'Full-time jobs' },
+    { value: 'all', label: 'Both' },
+    { value: 'Internship', label: 'Internships' },
+  ];
+
+  return (
+    <div className="candidate-job-kind-toggle" role="group" aria-label="Choose jobs, internships, or both">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={value === option.value ? 'is-active' : ''}
+          onClick={() => onChange(option.value)}
+          aria-pressed={value === option.value}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -1592,13 +1580,15 @@ function JobCard({ job, index, fit, profileStrength, selected, saved, applied, o
           </span>
         </div>
       </div>
-      <div className="eff-job-value-row">
-        <span className="eff-compensation-chip">
-          <small>{compensation.label}</small>
-          <strong>{compensation.value}</strong>
-          <em>{compensation.cadence}</em>
-        </span>
-      </div>
+      {compensation && (
+        <div className="eff-job-value-row">
+          <span className="eff-compensation-chip">
+            <small>{compensation.label}</small>
+            <strong>{compensation.value}</strong>
+            <em>{compensation.cadence}</em>
+          </span>
+        </div>
+      )}
       <div className="eff-job-card-footer">
         <button type="button" className="eff-job-disclosure" onClick={() => { onViewDetails(); onOpenDetails(); }}>
           <span className="eff-job-disclosure-mark" aria-hidden="true" />
@@ -1995,11 +1985,13 @@ function SavedJobsPanel({ savedJobs, getJobMatch, hasApplied, onExplore, onApply
                 </div>
                 <div className="eff-saved-facts">
                   <span>{job.jobType}</span>
-                  <span className="eff-saved-compensation">
-                    <small>{compensation.label}</small>
-                    <strong>{compensation.value}</strong>
-                    <em>{compensation.cadence}</em>
-                  </span>
+                  {compensation && (
+                    <span className="eff-saved-compensation">
+                      <small>{compensation.label}</small>
+                      <strong>{compensation.value}</strong>
+                      <em>{compensation.cadence}</em>
+                    </span>
+                  )}
                   <span>{job.experience || 'Experience open'}</span>
                   {daysLeft !== null && <span className={daysLeft <= 7 ? 'urgent' : ''}>{daysLeft <= 0 ? 'Closing today' : `${daysLeft} days left`}</span>}
                 </div>
@@ -2054,15 +2046,7 @@ function formatCompensation(job: Job) {
   const raw = job.salary?.trim() || '';
   const isInternship = /intern|trainee|apprentice/i.test(`${job.title} ${job.jobType}`);
   const label = isInternship ? 'Stipend' : 'Salary';
-  if (!raw || /not\s+disclosed|discussable|on\s+request|tbd/i.test(raw)) {
-    return { label, value: 'Not disclosed', cadence: 'Basis not shared' };
-  }
-
-  const hasCurrencyOrUnit = /[$€£₹]|usd|inr|rs\.?|lpa|k\b|lakh|lac|crore|ctc|per\s+hour|per\s+hr|hourly|monthly|per\s+month|annually|per\s+year|\/\s*(hr|mo|yr)/i.test(raw);
-  const numericOnly = /^[\d\s,.-]+$/.test(raw);
-  if (numericOnly && !hasCurrencyOrUnit) {
-    return { label, value: 'Not disclosed', cadence: 'Amount needs currency' };
-  }
+  if (!hasDisclosedCompensation(raw)) return null;
 
   const compact = raw
     .replace(/\bUSD\s*\$/ig, '$')
