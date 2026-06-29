@@ -17,25 +17,14 @@ import {
 } from 'lucide-react';
 import BrandLogo from '@/src/components/BrandLogo';
 import StudentJobSearchLottie from '@/src/components/experience/StudentJobSearchLottie';
-import { getCurrentUser } from '@/lib/auth/session';
-import { getDefaultDashboardPath } from '@/lib/auth/guards';
-import { getPublicJobsRanked } from '@/lib/jobs/workflow';
-import type { Job } from '@/src/types';
 import { branding } from '@/src/config/branding';
+
+export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
   title: `${branding.productName} | Verified jobs, internships, and hiring`,
   description: branding.metadata.description,
 };
-
-async function getFeaturedJobs(): Promise<Job[]> {
-  try {
-    const { getJobsByStatus } = await import('@/services/jobService');
-    return getPublicJobsRanked(await getJobsByStatus('approved')).slice(0, 6);
-  } catch {
-    return [];
-  }
-}
 
 const candidateSteps = [
   ['Build your signal', 'Bring your skills and resume into focus.'],
@@ -87,11 +76,7 @@ function OpportunityJourneyVisual() {
   );
 }
 
-export default async function HomePage() {
-  const [user, featuredJobs] = await Promise.all([getCurrentUser(), getFeaturedJobs()]);
-  const workspaceHref = user ? getDefaultDashboardPath(user.role) : '/login';
-  const workspaceLabel = user ? 'Open workspace' : 'Sign in';
-
+export default function HomePage() {
   return (
     <div className="landing-shell">
       <a className="pvx-skip-link" href="#main-content">Skip to main content</a>
@@ -106,8 +91,8 @@ export default async function HomePage() {
             <a href="#trust">Why {branding.productName}</a>
           </div>
           <div className="landing-nav-actions">
-            <Link className="landing-link-button" href={workspaceHref}>{workspaceLabel}</Link>
-            {!user && <Link className="landing-primary-button" href="/login?mode=register&role=company">Post a job <ArrowRight aria-hidden="true" /></Link>}
+            <Link className="landing-link-button" href="/login">Sign in</Link>
+            <Link className="landing-primary-button" href="/login?mode=register&role=company">Post a job <ArrowRight aria-hidden="true" /></Link>
           </div>
         </nav>
       </header>
@@ -166,30 +151,16 @@ export default async function HomePage() {
               <div><span>Fresh opportunities</span><h2>Discover work worth growing into.</h2><p>Browse focused, moderated opportunities built for students, freshers, and early-career professionals.</p></div>
               <Link href="/login">View your recommendations <ArrowRight aria-hidden="true" /></Link>
             </div>
-            {featuredJobs.length ? (
-              <div className="landing-job-grid">
-                {featuredJobs.map((job) => (
-                  <article className="landing-job-card" key={job.id}>
-                    <div className="landing-job-top"><div className="landing-company-mark">{job.companyName.slice(0, 2).toUpperCase()}</div><span>{job.jobType}</span></div>
-                    <div><h3>{job.title}</h3><p>{job.companyName}</p></div>
-                    <div className="landing-job-meta"><span><MapPin />{job.location || 'Flexible'}</span><span><BriefcaseBusiness />{job.experience || 'Early career'}</span></div>
-                    <div className="landing-job-skills">{job.requirements.slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}</div>
-                    <Link href={`/login?job=${encodeURIComponent(job.id)}`}>View opportunity <ArrowRight aria-hidden="true" /></Link>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="landing-category-grid">
-                {[
-                  [BriefcaseBusiness, 'Graduate roles', 'Build your first full-time chapter.'],
-                  [GraduationCap, 'Internships', 'Turn learning into credible experience.'],
-                  [Target, 'Skill-aligned work', 'Find roles shaped around your strengths.'],
-                ].map(([Icon, title, copy]) => {
-                  const ItemIcon = Icon as typeof BriefcaseBusiness;
-                  return <article key={String(title)}><ItemIcon /><h3>{String(title)}</h3><p>{String(copy)}</p><Link href="/login">Explore roles <ArrowRight /></Link></article>;
-                })}
-              </div>
-            )}
+            <div className="landing-category-grid">
+              {[
+                [BriefcaseBusiness, 'Graduate roles', 'Build your first full-time chapter.'],
+                [GraduationCap, 'Internships', 'Turn learning into credible experience.'],
+                [Target, 'Skill-aligned work', 'Find roles shaped around your strengths.'],
+              ].map(([Icon, title, copy]) => {
+                const ItemIcon = Icon as typeof BriefcaseBusiness;
+                return <article key={String(title)}><ItemIcon /><h3>{String(title)}</h3><p>{String(copy)}</p><Link href="/login">Explore roles <ArrowRight /></Link></article>;
+              })}
+            </div>
           </div>
         </section>
 
