@@ -1,9 +1,8 @@
 import type { User } from '@/src/types';
-import { buildSessionCookie, buildSessionRoleCookie } from '@/lib/auth/cookies';
 import { provisionRegistrationProfile } from '@/lib/auth/register';
 import { jsonError, jsonOk } from '@/lib/http/responses';
 import { checkRateLimit } from '@/lib/http/rate-limit';
-import { hydrateUserProfilePhoto } from '@/lib/storage/hydrate';
+import { uploadCompanyDocumentToStorage, removeCompanyDocumentFromStorage } from '@/lib/storage/uploads';
 import { logger } from '@/services/logger';
 import { branding } from '@/src/config/branding';
 
@@ -22,9 +21,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const { name, email, password, role } = body || {};
+  const { name, companyName, email, password, role, document } = body || {};
 
-  if (!name || !email || !password || !role) {
+  if (!name || !String(companyName || '').trim() || !email || !password || !role || !document?.base64 || !document?.fileName) {
     return jsonError(400, 'All profile fields are required');
   }
 
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
     return jsonError(403, 'Candidate registration is invite-only. Please sign in with an eligible student account uploaded by admin.');
   }
 
-  const { createSessionToken, hashPassword, setPasswordHashForUser, validatePasswordStrength } = await import('@/services/authService');
+  const { hashPassword, setPasswordHashForUser, validatePasswordStrength } = await import('@/services/authService');
   const passwordError = validatePasswordStrength(password);
   if (passwordError) {
     return jsonError(400, passwordError);
@@ -74,15 +73,55 @@ export async function POST(request: Request) {
     await setPasswordHashForUser(newUser.id, await hashPassword(password));
   } catch (err) {
     logger.error('auth', 'failed to store password hash', err);
+    await rollbackRegistration(newUser.id);
     return jsonError(500, 'Authentication storage is not configured');
   }
 
   let newCompany = null;
   try {
-    newCompany = await provisionRegistrationProfile(newUser);
+    newCompany = await provisionRegistrationProfile(newUser, String(companyName));
   } catch (err) {
     logger.error('companies', 'service error', err);
+    await rollbackRegistration(newUser.id);
     return jsonError(500, 'Company service unavailable');
+  }
+
+  if (!newCompany) {
+    await rollbackRegistration(newUser.id);
+    return jsonError(500, 'Company profile could not be created');
+  }
+
+  let uploadedDocument = null;
+  try {
+    const base64 = String(document.base64);
+    const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+    uploadedDocument = await uploadCompanyDocumentToStorage(
+      newUser.id,
+      newCompany.id,
+      String(document.fileName),
+      String(document.mimeType || 'application/pdf'),
+      Buffer.from(base64Data, 'base64'),
+    );
+
+    const { updateCompany } = await import('@/services/companyService');
+    const updatedCompany = await updateCompany(newCompany.id, {
+      companyName: String(companyName).trim(),
+      documents: [uploadedDocument],
+      verificationStatus: 'pending',
+    });
+    if (!updatedCompany) {
+      throw new Error('Company profile could not be updated');
+    }
+    newCompany = updatedCompany;
+  } catch (err) {
+    logger.error('companies', 'registration document upload failed', err, { userId: newUser.id });
+    if (uploadedDocument?.path) {
+      await removeCompanyDocumentFromStorage(uploadedDocument.path).catch(() => undefined);
+    }
+    await rollbackRegistration(newUser.id, newCompany.id);
+    const errorLike = err as { message?: string; statusCode?: unknown };
+    const status = typeof errorLike.statusCode === 'number' ? errorLike.statusCode : 500;
+    return jsonError(status, errorLike.message || 'Company document upload failed');
   }
 
   const { emitCommunicationEvent, emailTemplates } = await import('@/services/communicationService');
@@ -90,8 +129,8 @@ export async function POST(request: Request) {
     eventType: 'WELCOME',
     notifications: role === 'company' && newCompany ? [{
       recipientId: 'all_admin',
-      title: 'New Company Signup',
-      message: `${newUser.name} created a new employer account for ${newCompany.companyName}.`,
+      title: 'Company verification requested',
+      message: `${newUser.name} submitted ${newCompany.companyName} for verification with ${uploadedDocument.name}.`,
       type: 'info',
     }] : [{
       recipientId: newUser.id,
@@ -103,20 +142,29 @@ export async function POST(request: Request) {
       userId: newUser.id,
       recipientEmail: newUser.email,
       recipientName: newUser.name,
-      subject: `Welcome to ${branding.productName}`,
-      html: emailTemplates.welcome(newUser.name, newUser.role),
+      subject: `${branding.productName} company verification request received`,
+      html: emailTemplates.companyVerificationPending(newUser.name, newCompany.companyName),
     }],
     metadata: { role: newUser.role },
   });
 
-  const hydratedUser = await hydrateUserProfilePhoto(newUser);
-  const token = createSessionToken(hydratedUser);
-  const response = jsonOk({ user: hydratedUser, token });
-  const sessionCookie = buildSessionCookie(token);
-  const roleCookie = buildSessionRoleCookie(hydratedUser.role);
-  response.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.options);
-  response.cookies.set(roleCookie.name, roleCookie.value, roleCookie.options);
+  logger.info('auth', 'registration submitted for approval', { userId: newUser.id, role: newUser.role });
+  return jsonOk({
+    approvalRequired: true,
+    verificationStatus: 'pending',
+    message: 'Your request has been forwarded to the Persevex admin. You will get access when your company profile is verified.',
+  });
+}
 
-  logger.info('auth', 'registration succeeded', { userId: newUser.id, role: newUser.role });
-  return response;
+async function rollbackRegistration(userId: string, companyId?: string): Promise<void> {
+  try {
+    if (companyId) {
+      const { deleteCompany } = await import('@/services/companyService');
+      await deleteCompany(companyId);
+    }
+    const { deleteUser } = await import('@/services/userService');
+    await deleteUser(userId);
+  } catch (err) {
+    logger.error('auth', 'registration rollback failed', err, { userId, companyId });
+  }
 }

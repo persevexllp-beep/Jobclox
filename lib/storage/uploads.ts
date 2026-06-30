@@ -235,3 +235,13 @@ export async function uploadCompanyDocumentToStorage(
     uploadedAt: new Date().toISOString(),
   };
 }
+
+export async function removeCompanyDocumentFromStorage(path: string): Promise<void> {
+  if (!path) return;
+  const supabaseAdmin = requireServerSupabaseAdmin();
+  const bucket = getCompanyDocumentBucket();
+  const { error } = await supabaseAdmin.storage.from(bucket).remove([path]);
+  if (error) {
+    throw error;
+  }
+}

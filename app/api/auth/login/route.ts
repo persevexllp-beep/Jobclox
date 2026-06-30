@@ -117,6 +117,27 @@ export async function POST(request: Request) {
 
   await ensureLoginProfile(user);
 
+  if (user.role === 'company') {
+    try {
+      const { resolveCompanyForUser } = await import('@/services/companyService');
+      const company = await resolveCompanyForUser(user);
+      if (!company || company.verificationStatus !== 'approved') {
+        const verificationStatus = company?.verificationStatus || 'pending';
+        logger.info('auth', 'recruiter login waiting for company approval', { userId: user.id, verificationStatus });
+        return jsonOk({
+          approvalRequired: true,
+          verificationStatus,
+          message: verificationStatus === 'rejected'
+            ? 'Your company profile was not approved. Please contact the Persevex admin team for the next verification step.'
+            : 'Your request has been forwarded to the Persevex admin. You will get access when your company profile is verified.',
+        });
+      }
+    } catch (err) {
+      logger.error('companies', 'failed to verify recruiter access', err, { userId: user.id });
+      return jsonError(500, 'Company verification service unavailable');
+    }
+  }
+
   const hydratedUser = await hydrateUserProfilePhoto(user);
   const token = createSessionToken(hydratedUser);
   const response = jsonOk({ user: hydratedUser, token });

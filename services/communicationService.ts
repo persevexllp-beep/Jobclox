@@ -101,6 +101,11 @@ export const emailTemplates = {
     'Account created',
     `<p>Hi ${name}, your ${role} workspace is ready.</p>`
   ),
+  companyVerificationPending: (name: string, companyName: string) => templateShell(
+    'Company verification request received',
+    'Admin review pending',
+    `<p>Hi ${name}, we received the verification request for <strong>${companyName}</strong>.</p><p>Your request has been forwarded to the Persevex admin team. Recruiter access will be available after your company profile is approved.</p>`
+  ),
   passwordReset: (email: string) => templateShell(
     'Password Reset Requested',
     'Account recovery',

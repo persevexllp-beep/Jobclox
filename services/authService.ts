@@ -134,6 +134,14 @@ export async function validateSessionToken(token: string): Promise<User | null> 
     return null;
   }
 
+  if (user.role === 'company') {
+    const { resolveCompanyForUser } = await import('./companyService');
+    const company = await resolveCompanyForUser(user);
+    if (!company || company.verificationStatus !== 'approved') {
+      return null;
+    }
+  }
+
   return user;
 }
 

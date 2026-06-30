@@ -111,17 +111,17 @@ export default function HomePage() {
                   <Search aria-hidden="true" />
                   <span className="landing-search-field-copy">
                     <strong>Role, skill, or company</strong>
-                    <input name="search" placeholder="Search roles or skills" autoComplete="off" />
+                    <input name="search" placeholder="Search roles or skills" autoComplete="off" suppressHydrationWarning />
                   </span>
                 </label>
                 <label>
                   <MapPin aria-hidden="true" />
                   <span className="landing-search-field-copy">
                     <strong>Preferred location</strong>
-                    <input name="location" placeholder="City or remote" autoComplete="address-level2" />
+                    <input name="location" placeholder="City or remote" autoComplete="address-level2" suppressHydrationWarning />
                   </span>
                 </label>
-                <button type="submit">Explore jobs <ArrowRight aria-hidden="true" /></button>
+                <button type="submit" suppressHydrationWarning>Explore jobs <ArrowRight aria-hidden="true" /></button>
               </form>
               <div className="landing-popular" aria-label="Popular searches">
                 <span>Popular:</span>
@@ -179,7 +179,7 @@ export default function HomePage() {
               <span className="landing-kicker"><Building2 /> For hiring teams</span>
               <h2>Hire emerging talent with more signal and less noise.</h2>
               <p>Publish roles, review relevant candidates, preserve pipeline context, and move hiring decisions forward from one premium workspace.</p>
-              <div className="landing-employer-actions"><Link className="landing-primary-button" href="/login?mode=register&role=company">Start hiring <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login">Recruiter sign in</Link></div>
+              <div className="landing-employer-actions"><Link className="landing-primary-button" href="/login?mode=register&role=company">Start hiring <ArrowRight /></Link><Link className="landing-link-button is-dark" href="/login?role=company">Recruiter sign in</Link></div>
             </div>
             <div className="landing-benefit-grid">
               {recruiterBenefits.map(([title, copy], index) => {

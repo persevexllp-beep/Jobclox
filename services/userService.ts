@@ -161,3 +161,14 @@ export async function getAllUsers(): Promise<User[]> {
 
   return (data || []).map(row => mapSupabaseUser(row as SupabaseUserRow));
 }
+
+export async function deleteUser(id: string): Promise<void> {
+  const { error } = await requireSupabaseAdmin()
+    .from('users')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw error;
+  }
+}

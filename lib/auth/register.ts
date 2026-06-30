@@ -2,12 +2,12 @@ import 'server-only';
 
 import type { Company, User } from '@/src/types';
 
-export async function provisionRegistrationProfile(user: User): Promise<Company | null> {
+export async function provisionRegistrationProfile(user: User, companyName?: string): Promise<Company | null> {
   if (user.role === 'company') {
     const { createCompany } = await import('@/services/companyService');
     return createCompany({
       userId: user.id,
-      companyName: `${user.name}'s Firm`,
+      companyName: companyName?.trim() || `${user.name}'s Firm`,
       website: '',
       linkedin: '',
       industry: '',

@@ -222,6 +222,17 @@ export async function updateVerificationStatus(
   return updateCompany(id, { verificationStatus: status });
 }
 
+export async function deleteCompany(id: string): Promise<void> {
+  const { error } = await requireSupabaseAdmin()
+    .from('companies')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function reassignCompanyOwner(id: string, userId: string): Promise<Company | null> {
   const { data, error } = await requireSupabaseAdmin()
     .from('companies')
